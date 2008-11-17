@@ -1,3 +1,11 @@
+/*
+famicom ROM cartridge dump program - unagi
+script engine
+
+todo: 
+* 別の読み出しハードに対応したときは cpu_read などを関数ポインタにまとめた struct を用意して実行する
+* RAM アクセスができ次第、RAM 読み出しスクリプトも設計する
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +17,7 @@
 #include "header.h"
 #include "script.h"
 
+#define OP_PPU_WRITE_ENABLE (0)
 /*
 MAPPER num
 MIRROR [HV]
@@ -72,7 +81,9 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 	{"CPU_WRITE", SCRIPT_OPCODE_CPU_WRITE, 2, SYNTAX_COMPARE_GT, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION}},
 	{"PPU_RAMTEST", SCRIPT_OPCODE_PPU_RAMTEST, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"PPU_READ", SCRIPT_OPCODE_PPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
+#if OP_PPU_WRITE_ENABLE==1
 	{"PPU_WRITE", SCRIPT_OPCODE_PPU_WRITE, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
+#endif
 	{"STEP_START", SCRIPT_OPCODE_STEP_START, 4, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VARIABLE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE}},
 	{"STEP_END", SCRIPT_OPCODE_STEP_END, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"DUMP_END", SCRIPT_OPCODE_DUMP_END, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}}
@@ -358,11 +369,19 @@ static int syntax_check(char **text, int text_num, struct script *s)
 	return error;
 }
 
+/*
+logical_check() 用サブ関数とデータ
+*/
 static const char LOGICAL_ERROR_PREFIX[] = "logical error:";
 
 static inline void logical_print_illgalarea(const char *area, long address)
 {
 	printf("%s illgal %s area $%06x\n", LOGICAL_ERROR_PREFIX, area, (int) address);
+}
+
+static inline void logical_print_illgallength(const char *area, long length)
+{
+	printf("%s illgal %s length $%04x\n", LOGICAL_ERROR_PREFIX, area, (int) length);
 }
 
 static inline void logical_print_overdump(const char *area, long start, long end)
@@ -407,6 +426,12 @@ static inline int is_region_ppurom(long address)
 static inline int is_data_byte(long data)
 {
 	return (data >= 0) && (data < 0x100);
+}
+
+//これだけ is 系で <= 演算子を使用しているので注意
+static inline int is_range(long data, long start, long end)
+{
+	return (data >= start) && (data <= end);
 }
 static const char STR_REGION_CPU[] = "cpu";
 static const char STR_REGION_PPU[] = "ppu";
@@ -453,8 +478,13 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
+			//length filter. 0 はだめ
+			if(!is_range(length, 1, 0x4000)){
+				logical_print_illgallength(STR_REGION_CPU, length);
+				error += 1;
+			}
 			//address filter
-			if(address < 0x6000 || address >= 0x10000){
+			else if(address < 0x6000 || address >= 0x10000){
 				logical_print_illgalarea(STR_REGION_CPU, address);
 				error += 1;
 			}else if (end >= 0x10000){
@@ -500,8 +530,13 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
+			//length filter. 0 を容認する
+			if(!is_range(length, 0, 0x2000)){
+				logical_print_illgallength(STR_REGION_PPU, length);
+				error += 1;
+			}
 			//address filter
-			if(!is_region_ppurom(address)){
+			else if(!is_region_ppurom(address)){
 				logical_print_illgalarea(STR_REGION_PPU, address);
 				error += 1;
 			}else if (end >= 0x2000){
@@ -518,6 +553,7 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			setting = DUMP;
 			}
 			break;
+#if OP_PPU_WRITE_ENABLE==1
 		case SCRIPT_OPCODE_PPU_WRITE:{
 			const long address = s->value[0];
 			const long data = s->value[1];
@@ -534,6 +570,7 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			}
 			}
 			break;
+#endif
 		case SCRIPT_OPCODE_STEP_START:{
 			int i;
 			{
@@ -589,6 +626,9 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 	return error;
 }
 
+/*
+execute() 用サブ関数とデータ
+*/
 enum {PPU_TEST_RAM, PPU_TEST_ROM};
 const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
 /*static*/ int ppu_ramtest(void)
@@ -723,16 +763,26 @@ static int execute(const struct script *s, struct romimage *r)
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_READ:{
+			const long address = s->value[0];
 			const long length = s->value[1];
-			ppu_read(s->value[0], length, ppu_rom.data);
-			read_result_print(&ppu_rom, length);
+			if(length == 0){
+				/*for mmc2,4 protect.
+				このときは1byte読み込んで、その内容はバッファにいれない*/
+				u8 dummy;
+				ppu_read(address, 1, &dummy);
+			}else{
+				ppu_read(address, length, ppu_rom.data);
+				read_result_print(&ppu_rom, length);
+			}
 			ppu_rom.data += length;
 			ppu_rom.offset += length;
 			}
 			break;
+#if OP_PPU_WRITE_ENABLE==1
 		case SCRIPT_OPCODE_PPU_WRITE:
 			ppu_write(s->value[0], s->value[1]);
 			break;
+#endif
 		case SCRIPT_OPCODE_STEP_START:
 			//ループの戻り先はこの命令の次なので &s[1]
 			step_new(s->variable, s->value[1], s->value[2], s->value[3], &s[1]);
