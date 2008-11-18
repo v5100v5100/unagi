@@ -1,3 +1,11 @@
+/*
+famicom ROM cartridge dump program - unagi
+iNES header/buffer control
+
+todo:
+* buffer の malloc 方法のやり直し?
+* (このソース外の仕事だけど)mirror, battery, mapper number をコマンドラインからも指定できるようにする
+*/
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

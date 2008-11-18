@@ -4,6 +4,7 @@ script engine
 
 todo: 
 * 別の読み出しハードに対応したときは cpu_read などを関数ポインタにまとめた struct を用意して実行する
+* 変数管理のグローバル値を、logical_test(), excute() ローカルにしたい
 * RAM アクセスができ次第、RAM 読み出しスクリプトも設計する
 */
 #include <stdio.h>

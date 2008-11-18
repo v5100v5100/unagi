@@ -1,3 +1,12 @@
+/*
+famicom ROM cartridge dump program - unagi
+emuste.net でおなじみのもののハードドライバ
+
+todo: 
+* battery backup RAM を読めるようにする(namco109 は読めているのか電池が切れてるのかよくわからない、その他は全滅)
+* _outp(), _inp() を明確に使えるようにするか、インラインアセンブラにする
+* 別のハードウェアに対応した場合は PORT_DATA から wait までをヘッダにまとめる
+*/
 //#include <dos.h> ?
 //#include <windows.h>
 #include "type.h"

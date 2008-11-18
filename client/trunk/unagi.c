@@ -1,3 +1,11 @@
+/*
+famicom ROM cartridge dump program - unagi
+command line interface
+
+todo:
+* test 用の関数などのコマンドライン系統を統一する
+* mirror, battery, mapper number をコマンドラインからも指定できるようにする
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include "type.h"
