@@ -60,8 +60,8 @@ GNU Lesser General Public License v2
 ジに含めないでください。
 
 --謝辞--
-資料提供をしてくれた color さん, VirtuaNES のソース, nesdev.parodius.com
-GIVEIO.SYSアクセスライブラリのさとうさん
-ハードウェアを貸してくれたカシオン
-アイコンを書いてくれたひろひろきさん
-プログラミング環境の mingw と rxvt
+* 資料提供をしてくれた color さん, VirtuaNES のソース, nesdev
+* GIVEIO.SYSアクセスライブラリのさとうさん
+* ハードウェアを貸してくれたカシオン
+* アイコンを描いてくれたひろひろきさん
+* プログラミング環境の mingw と rxvt
