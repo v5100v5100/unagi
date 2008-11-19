@@ -26,8 +26,8 @@ static const u8 NES_HEADER_INIT[NES_HEADER_SIZE] = {
 static void nesheader_set(const struct romimage *r, u8 *header)
 {
 	memcpy(header, NES_HEADER_INIT, NES_HEADER_SIZE);
-	header[4] = r->cpu_rom.size >> (4*3 + 2);
-	header[5] = r->ppu_rom.size >> (4*3 + 1);
+	header[4] = r->cpu_rom.size / PROGRAM_ROM_MIN;
+	header[5] = r->ppu_rom.size / CHARCTER_ROM_MIN;
 	if(r->mirror == MIRROR_VERTICAL){
 		header[6] |= 0x01;
 	}
@@ -58,13 +58,16 @@ static void mirroring_fix(struct memory *m, long min)
 	}
 	if(m->size != min){
 		printf("mirroring %s rom fixed\n", m->name);
+		m->size = min;
 	}
-	m->size = min;
 }
 
 void nesfile_create(struct romimage *r, const char *romfilename)
 {
-	mirroring_fix(&(r->cpu_rom), PROGRAM_ROM_MIN);
+	//RAM adapter bios size 0x2000 は変更しない
+	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){
+		mirroring_fix(&(r->cpu_rom), PROGRAM_ROM_MIN);
+	}
 	if(r->ppu_rom.size != 0){
 		mirroring_fix(&(r->ppu_rom), CHARCTER_ROM_MIN);
 	}
@@ -73,7 +76,10 @@ void nesfile_create(struct romimage *r, const char *romfilename)
 	nesheader_set(r, r->neshead);
 	f = fopen(romfilename, "wb");
 	fseek(f, 0, SEEK_SET);
-	fwrite(r->neshead, sizeof(u8), NES_HEADER_SIZE, f);
+	//RAM adapter bios には NES ヘッダを作らない
+	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){ 
+		fwrite(r->neshead, sizeof(u8), NES_HEADER_SIZE, f);
+	}
 	fwrite(r->cpu_rom.data, sizeof(u8), r->cpu_rom.size, f);
 	if(r->ppu_rom.size != 0){
 		fwrite(r->ppu_rom.data, sizeof(u8), r->ppu_rom.size, f);

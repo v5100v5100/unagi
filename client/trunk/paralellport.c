@@ -202,22 +202,25 @@ static const int BUS_CONTROL_BUS_WRITE = (
 	(CPU_READ << BITNUM_CPU_RW)
 );
 
-#define M2_SET_READ (0)
-static void fc_bus_read(long address, long length, u8 *data, int control)
+enum{ 
+	M2_CONTROL_TRUE, M2_CONTROL_FALSE
+};
+
+static void fc_bus_read(long address, long length, u8 *data, int control, int m2_control)
 {
 	address_set(address, control);
 	bus_control(control);
-	if(M2_SET_READ == 1){
+	if(m2_control == M2_CONTROL_TRUE){
 		control = bit_clear(control, BITNUM_CPU_M2);
 		bus_control(control); //H->L: mapper がアドレスを取ってくる
 	}
 	while(length != 0){
-		if(M2_SET_READ == 1){
+		if(m2_control == M2_CONTROL_TRUE){
 			//L->H: mapper が data を出す
 			control = bit_set(control, BITNUM_CPU_M2);
 		}
 		*data = data_get(control);
-		if(M2_SET_READ == 1){
+		if(m2_control == M2_CONTROL_TRUE){
 			//H->L: おやすみ
 			control = bit_clear(control, BITNUM_CPU_M2);
 			bus_control(control);
@@ -226,7 +229,7 @@ static void fc_bus_read(long address, long length, u8 *data, int control)
 		}
 		address_increment(control);
 
-		if(M2_SET_READ == 1){
+		if(m2_control == M2_CONTROL_TRUE){
 			//H->L: mapper がアドレスを取ってくる
 			control = bit_clear(control, BITNUM_CPU_M2);
 			bus_control(control);
@@ -244,12 +247,12 @@ void cpu_read(long address, long length, u8 *data)
 	if(address & ADDRESS_MASK_A15){
 		control = bit_clear(control, BITNUM_CPU_RAMROM_SELECT);
 	}
-	fc_bus_read(address, length, data, control);
+	fc_bus_read(address, length, data, control, M2_CONTROL_TRUE);
 }
 
 void ppu_read(long address, long length, u8 *data)
 {
-	fc_bus_read(address, length, data, BUS_CONTROL_PPU_READ);
+	fc_bus_read(address, length, data, BUS_CONTROL_PPU_READ, M2_CONTROL_FALSE);
 }
 /*
 6502 write cycle
