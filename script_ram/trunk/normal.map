@@ -1,4 +1,4 @@
-#mmc4, vrc6
+#mmc4, vrc4, vrc6
 CPU_RAMSIZE 0x2000
 DUMP_START
 CPU_RAMRW $6000 $2000
