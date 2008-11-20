@@ -72,6 +72,7 @@ enum{
 static const char OPSTR_CPU_ROMSIZE[] = "CPU_ROMSIZE";
 static const char OPSTR_CPU_RAMSIZE[] = "CPU_RAMSIZE";
 static const char OPSTR_PPU_ROMSIZE[] = "PPU_ROMSIZE";
+static const char OPSTR_CPU_RAMRW[] = "CPU_RAMRW";
 static const struct script_syntax SCRIPT_SYNTAX[] = {
 	{"MAPPER", SCRIPT_OPCODE_MAPPER, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"MIRROR", SCRIPT_OPCODE_MIRROR, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_HV, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
@@ -81,7 +82,7 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 	{"DUMP_START", SCRIPT_OPCODE_DUMP_START, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"CPU_READ", SCRIPT_OPCODE_CPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"CPU_WRITE", SCRIPT_OPCODE_CPU_WRITE, 2, SYNTAX_COMPARE_GT, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION}},
-	{"CPU_RAMRW", SCRIPT_OPCODE_CPU_RAMRW, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
+	{OPSTR_CPU_RAMRW, SCRIPT_OPCODE_CPU_RAMRW, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"PPU_RAMTEST", SCRIPT_OPCODE_PPU_RAMTEST, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"PPU_READ", SCRIPT_OPCODE_PPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 #if OP_PPU_WRITE_ENABLE==1
@@ -529,7 +530,7 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
 			if(r->mode == MODE_ROM_DUMP){
-				printf("%s cannot use CPU_RAMRW on ROMDUMP mode\n", LOGICAL_ERROR_PREFIX);
+				printf("%s cannot use %s on ROMDUMP mode\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_RAMRW);
 				error += 1;
 			}
 			const long address = s->value[0];
@@ -792,10 +793,11 @@ static int execute(const struct script *s, struct romimage *r)
 		printf("execute error: Can't Access Direct IO %d\n", gg);
 		return NG;
 	}
-	struct memory cpu_rom, cpu_ram, ppu_rom;
+	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
 	cpu_rom = r->cpu_rom;
-	cpu_ram = r->cpu_ram_read;
 	ppu_rom = r->ppu_rom;
+	cpu_ram_read = r->cpu_ram_read;
+	cpu_ram_write = r->cpu_ram_write;
 	
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
@@ -807,7 +809,7 @@ static int execute(const struct script *s, struct romimage *r)
 			const long length = s->value[1];
 			m = &cpu_rom;
 			if(is_region_cpuram(addr)){
-				m = &cpu_ram;
+				m = &cpu_ram_read;
 			}
 			cpu_read(addr, length, m->data);
 			read_result_print(m, length);
@@ -822,12 +824,13 @@ static int execute(const struct script *s, struct romimage *r)
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
 			const long length = s->value[1];
-			execute_cpu_ramrw(&r->cpu_ram_write, &cpu_ram, r->mode, s->value[0], length);
-			cpu_ram.data += length;
-			cpu_ram.offset += length;
+			execute_cpu_ramrw(&cpu_ram_write, &cpu_ram_read, r->mode, s->value[0], length);
+			read_result_print(&cpu_ram_read, length);
+			cpu_ram_read.data += length;
+			cpu_ram_read.offset += length;
 			if(r->mode == MODE_RAM_WRITE){
-				r->cpu_ram_write.data += length;
-				r->cpu_ram_write.offset += length;
+				cpu_ram_write.data += length;
+				cpu_ram_write.offset += length;
 			}
 			}
 			break;

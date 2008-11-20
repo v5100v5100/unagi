@@ -35,18 +35,10 @@ static void backupram_test(const char *file)
 		printf("%d\n", ppu_ramtest());
 		break;
 	case 'b':{
-		const int testbufsize = 0x2000;
+		const int testbufsize = 0x100;
 		u8 testbuf[testbufsize];
 		int i;
-		cpu_write(0x8000, 0x80);
-		for(i=0; i <5; i++){
-			cpu_write(0xe000, 0);
-		}
-		for(i=0; i <5; i++){
-			cpu_write(0xa000, 0);
-		}
 		cpu_read(0x6000, testbufsize, testbuf);
-		buf_save(testbuf, file, testbufsize);
 		for(i=0;i<0x10;i++){
 			printf("%02x ", testbuf[i]);
 		}
