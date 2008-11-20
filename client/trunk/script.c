@@ -496,6 +496,11 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 				logical_print_overdump(STR_REGION_CPU, address, end);
 				error += 1;
 			}
+			//$7fff-$8000を連続でまたがせない
+			else if((address <= 0x7fff) && (end >= 0x8000)){
+				printf("%s address cannot over $7fff-$8000. divide CPU_READ.\n", LOGICAL_ERROR_PREFIX);
+				error += 1;
+			}
 			//dump length update
 			if(is_region_cpuram(address)){
 				cpu_ramsize += length;
@@ -595,8 +600,10 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			setting = DUMP;
 			}
 			break;
-#if OP_PPU_WRITE_ENABLE==1
 		case SCRIPT_OPCODE_PPU_WRITE:{
+			if(OP_PPU_WRITE_ENABLE==0){
+				break;
+			}
 			const long address = s->value[0];
 			const long data = s->value[1];
 			setting = DUMP;
@@ -612,7 +619,6 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			}
 			}
 			break;
-#endif
 		case SCRIPT_OPCODE_STEP_START:{
 			int i;
 			{
@@ -857,11 +863,11 @@ static int execute(const struct script *s, struct romimage *r)
 			ppu_rom.offset += length;
 			}
 			break;
-#if OP_PPU_WRITE_ENABLE==1
 		case SCRIPT_OPCODE_PPU_WRITE:
-			ppu_write(s->value[0], s->value[1]);
+			if(OP_PPU_WRITE_ENABLE == 1){
+				ppu_write(s->value[0], s->value[1]);
+			}
 			break;
-#endif
 		case SCRIPT_OPCODE_STEP_START:
 			//ループの戻り先はこの命令の次なので &s[1]
 			step_new(s->variable, s->value[1], s->value[2], s->value[3], &s[1]);
