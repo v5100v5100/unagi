@@ -4,8 +4,12 @@ emuste.net でおなじみのもののハードドライバ
 
 todo: 
 * battery backup RAM を読めるようにする(namco109 は読めているのか電池が切れてるのかよくわからない、その他は全滅)
-* _outp(), _inp() を明確に使えるようにするか、インラインアセンブラにする
 * 別のハードウェアに対応した場合は PORT_DATA から wait までをヘッダにまとめる
+
+memo:
+* gcc のアセンブラは x86 であろうと src,dst の順で反転している
+* out,in のアドレスに dx を使わないと 8bit アドレスになる
+* out,in のデータはレジスタでデータ幅が変わる al:8bit, ax:16bit, eax:32bit
 */
 //#include <dos.h> ?
 //#include <windows.h>
@@ -13,6 +17,7 @@ todo:
 #include "kairo.h"
 #include "paralellport.h"
 
+#define ASM_ENABLE (1)
 enum{
 	PORT_DATA = 0x0378,
 	PORT_STATUS,
@@ -22,10 +27,10 @@ enum{
 	ADDRESS_MASK_A0toA14 = 0x7fff,
 	ADDRESS_MASK_A15 = 0x8000
 };
-//mingw だと conio.h に _outp, _inp がないけど、リンクできる...
-//自前プロトタイプでいいのか?
+#if ASM_ENABLE==0
 void _outp(int, int);
 int _inp(int);
+#endif
 
 static inline int bit_set(int data, const int bit)
 {
@@ -47,7 +52,16 @@ static inline void wait(void)
 
 static inline void bus_control(int data)
 {
+#if ASM_ENABLE==0
 	_outp(PORT_DATA, data);
+#else
+	asm(
+		" movl %0,%%edx\n"
+		" movl %1,%%eax\n"
+		" out %%al,%%dx\n"
+		:: "i"(PORT_DATA), "q"(data): "%edx", "%eax"
+	);
+#endif
 	wait();
 }
 
@@ -59,7 +73,16 @@ static inline void address_control(int data)
 {
 	data &= 0x01;
 	data ^= 0x01;
+#if ASM_ENABLE==0
 	_outp(PORT_CONTROL, data);
+#else
+	asm(
+		" movl %0,%%edx\n"
+		" movl %1,%%eax\n"
+		" out %%al,%%dx\n"
+		:: "i"(PORT_CONTROL), "q"(data): "%edx", "%eax"
+	);
+#endif
 	wait();
 }
 
@@ -108,7 +131,18 @@ STATUS bit7 BUSY
 */
 static inline int data_bit_get(void)
 {
+#if ASM_ENABLE==1
+	int data;
+	asm(
+		" xorl %%eax,%%eax\n"
+		" movl %1,%%edx\n"
+		" in %%dx,%%al\n"
+		" movl %%eax,%0"
+		:"=q"(data) : "i"(PORT_STATUS) :"%edx", "%eax"
+	);
+#else
 	int data = _inp(PORT_STATUS);
+#endif
 	data >>= 7;
 	data &= 0x01;
 	return data ^ 0x01;
