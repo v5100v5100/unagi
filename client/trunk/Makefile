@@ -7,7 +7,7 @@ CFLAGS = -O0 -Wall -g -DDEBUG=1
 
 all: $(TARGET)
 clean: 
-	rm -f $(OBJ)
+	rm -f $(OBJ) $(TARGET)
 $(TARGET): $(OBJ)
 	gcc -o $@ $(OBJ)
 unagi.res.o: unagi.rc unagi.ico
