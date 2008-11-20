@@ -59,6 +59,7 @@ enum{
 	SCRIPT_OPCODE_DUMP_START,
 	SCRIPT_OPCODE_CPU_READ,
 	SCRIPT_OPCODE_CPU_WRITE,
+	SCRIPT_OPCODE_CPU_RAMRW,
 	SCRIPT_OPCODE_PPU_RAMTEST,
 	SCRIPT_OPCODE_PPU_READ,
 	SCRIPT_OPCODE_PPU_WRITE,
@@ -75,11 +76,12 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 	{"MAPPER", SCRIPT_OPCODE_MAPPER, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"MIRROR", SCRIPT_OPCODE_MIRROR, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_HV, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{OPSTR_CPU_ROMSIZE, SCRIPT_OPCODE_CPU_ROMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-//	{OPSTR_CPU_RAMSIZE, SCRIPT_OPCODE_CPU_RAMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
+	{OPSTR_CPU_RAMSIZE, SCRIPT_OPCODE_CPU_RAMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{OPSTR_PPU_ROMSIZE, SCRIPT_OPCODE_PPU_ROMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"DUMP_START", SCRIPT_OPCODE_DUMP_START, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"CPU_READ", SCRIPT_OPCODE_CPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"CPU_WRITE", SCRIPT_OPCODE_CPU_WRITE, 2, SYNTAX_COMPARE_GT, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION}},
+	{"CPU_RAMRW", SCRIPT_OPCODE_CPU_RAMRW, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"PPU_RAMTEST", SCRIPT_OPCODE_PPU_RAMTEST, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 	{"PPU_READ", SCRIPT_OPCODE_PPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
 #if OP_PPU_WRITE_ENABLE==1
@@ -467,7 +469,8 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			r->cpu_rom.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_RAMSIZE:
-			r->cpu_ram.size = s->value[0];
+			r->cpu_ram_read.size = s->value[0];
+			r->cpu_ram_write.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_PPU_ROMSIZE:
 			r->ppu_rom.size = s->value[0];
@@ -488,7 +491,7 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			else if(address < 0x6000 || address >= 0x10000){
 				logical_print_illgalarea(STR_REGION_CPU, address);
 				error += 1;
-			}else if (end >= 0x10000){
+			}else if(end >= 0x10000){
 				logical_print_overdump(STR_REGION_CPU, address, end);
 				error += 1;
 			}
@@ -520,6 +523,43 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			}
 			if(test == 1){
 				logical_print_access(STR_REGION_CPU, STR_ACCESS_WRITE, address, data);
+			}
+			setting = DUMP;
+			}
+			break;
+		case SCRIPT_OPCODE_CPU_RAMRW:{
+			if(r->mode == MODE_ROM_DUMP){
+				printf("%s cannot use CPU_RAMRW on ROMDUMP mode\n", LOGICAL_ERROR_PREFIX);
+				error += 1;
+			}
+			const long address = s->value[0];
+			const long length = s->value[1];
+			const long end = address + length - 1;
+			//length filter. 0 §œ§¿§·
+			if(!is_range(length, 1, 0x2000)){
+				logical_print_illgallength(STR_REGION_CPU, length);
+				error += 1;
+			}
+			//address filter
+			else if(address < 0x6000 || address >= 0x8000){
+				logical_print_illgalarea(STR_REGION_CPU, address);
+				error += 1;
+			}else if(end >= 0x8000){
+				logical_print_overdump(STR_REGION_CPU, address, end);
+				error += 1;
+			}
+			cpu_ramsize += length;
+			if(r->mode == MODE_RAM_WRITE){
+				r->cpu_ram_write.data = buf_load_full(r->ramfile, &(r->cpu_ram_write.size));
+				if(r->cpu_ram_write.data == NULL){
+					printf("%s RAM image open error\n.", LOGICAL_ERROR_PREFIX);
+					error += 1;
+				}else if(r->cpu_ram_read.size != r->cpu_ram_write.size){
+					printf("%s RAM image size is not same.\n", LOGICAL_ERROR_PREFIX);
+					free(r->cpu_ram_write.data);
+					r->cpu_ram_write.data = NULL;
+					error += 1;
+				}
 			}
 			setting = DUMP;
 			}
@@ -622,7 +662,7 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 	}
 	//dump length conform
 	error += dump_length_conform(OPSTR_CPU_ROMSIZE, cpu_romsize, r->cpu_rom.size);
-	error += dump_length_conform(OPSTR_CPU_RAMSIZE, cpu_ramsize, r->cpu_ram.size);
+	error += dump_length_conform(OPSTR_CPU_RAMSIZE, cpu_ramsize, r->cpu_ram_read.size);
 	error += dump_length_conform(OPSTR_PPU_ROMSIZE, ppu_romsize, r->ppu_rom.size);
 	return error;
 }
@@ -714,6 +754,30 @@ static void read_result_print(const struct memory *m, long length)
 	checksum_print(m->data, length);
 }
 
+static void execute_cpu_ramrw(const struct memory *w, struct memory *r, int mode, long address, long length)
+{
+	if(mode == MODE_RAM_WRITE){
+		const u8 *writedata;
+		long a = address;
+		long l = length;
+		writedata = w->data;
+		while(l != 0){
+			cpu_write(a++, *writedata);
+			writedata += 1;
+			l--;
+		}
+	}
+	cpu_read(address, length, r->data);
+	if(mode == MODE_RAM_DUMP){
+		return;
+	}
+	if(memcmp(r->data, w->data, length) == 0){
+		printf("RAM data write success.\n");
+	}else{
+		printf("RAM data write failed.\n");
+	}
+}
+
 static int execute(const struct script *s, struct romimage *r)
 {
 	const int gg = giveio_start();
@@ -730,7 +794,7 @@ static int execute(const struct script *s, struct romimage *r)
 	}
 	struct memory cpu_rom, cpu_ram, ppu_rom;
 	cpu_rom = r->cpu_rom;
-	cpu_ram = r->cpu_ram;
+	cpu_ram = r->cpu_ram_read;
 	ppu_rom = r->ppu_rom;
 	
 	variable_init_all();
@@ -754,6 +818,17 @@ static int execute(const struct script *s, struct romimage *r)
 			long data;
 			expression_calc(&s->expression, &data);
 			cpu_write(s->value[0], data);
+			}
+			break;
+		case SCRIPT_OPCODE_CPU_RAMRW:{
+			const long length = s->value[1];
+			execute_cpu_ramrw(&r->cpu_ram_write, &cpu_ram, r->mode, s->value[0], length);
+			cpu_ram.data += length;
+			cpu_ram.offset += length;
+			if(r->mode == MODE_RAM_WRITE){
+				r->cpu_ram_write.data += length;
+				r->cpu_ram_write.offset += length;
+			}
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMTEST:
@@ -807,8 +882,24 @@ static int execute(const struct script *s, struct romimage *r)
 	return OK;
 }
 
-void script_load(const char *scriptfile, const char *nesfile, const int test_only)
+void script_load(const char *inmode, const char *scriptfile, const char *targetfile, const int test_only)
 {
+	int mode;
+	switch(inmode[0]){
+	case 'd':
+		mode = MODE_ROM_DUMP;
+		break;
+	case 'r':
+		mode = MODE_RAM_DUMP;
+		break;
+	case 'w':
+		mode = MODE_RAM_WRITE;
+		break;
+	default:
+		printf("unknown mode %s\n", inmode);
+		return;
+	}
+	
 	struct script *s;
 	{
 		int scriptsize = 0;
@@ -847,36 +938,56 @@ void script_load(const char *scriptfile, const char *nesfile, const int test_onl
 			data: NULL,
 			name: STR_REGION_CPU
 		},
-		cpu_ram: {
-			size: 0, offset: 0,
-			data: NULL,
-			name: STR_REGION_CPU
-		},
 		ppu_rom: {
 			size: 0, offset: 0,
 			data: NULL,
 			name: STR_REGION_PPU
 		},
+		cpu_ram_read: {
+			size: 0, offset: 0,
+			data: NULL,
+			name: STR_REGION_CPU
+		},
+		cpu_ram_write: {
+			size: 0, offset: 0,
+			data: NULL,
+			name: STR_REGION_CPU
+		},
 		neshead: NULL,
 		mappernum: 0,
-		mirror: MIRROR_PROGRAMABLE
+		mirror: MIRROR_PROGRAMABLE,
+		mode: mode,
+		ramfile: NULL
 	};
+	if(mode == MODE_RAM_WRITE){
+		r.ramfile = targetfile;
+	}
 	if((logical_check(s, &r, test_only) == 0) && (test_only == 0)){
 		//dump RAM ŒŒ∞ËºË∆¿
 		if(nesbuffer_malloc(&r) == NG){
 			free(s);
+			if(r.cpu_ram_write.data != NULL){
+				free(r.cpu_ram_write.data);
+			}
 			return;
 		}
 		//dump
 		if(execute(s, &r) == OK){
 			//¿Æ≤ÃΩ–Œœ
-			nesfile_create(&r, nesfile);
-			if(r.cpu_ram.size != 0){
-				backupram_create(&(r.cpu_ram), "hoe.sav");
+			switch(r.mode){
+			case MODE_ROM_DUMP:
+				nesfile_create(&r, targetfile);
+				break;
+			case MODE_RAM_DUMP:
+				backupram_create(&(r.cpu_ram_read), targetfile);
+				break;
 			}
 		}
 		//dump RAM ŒŒ∞Ë≤Ú ¸
 		nesbuffer_free(&r);
+		if(r.cpu_ram_write.data != NULL){
+			free(r.cpu_ram_write.data);
+		}
 	}
 	free(s);
 }

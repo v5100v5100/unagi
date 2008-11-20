@@ -31,7 +31,7 @@ static void nesheader_set(const struct romimage *r, u8 *header)
 	if(r->mirror == MIRROR_VERTICAL){
 		header[6] |= 0x01;
 	}
-	if(r->cpu_ram.size != 0){
+	if(r->cpu_ram_read.size != 0){
 		header[6] |= 0x02;
 	}
 	//4 screen は無視
@@ -100,21 +100,23 @@ NES file 出力時は neshead から ROM サイズ分出力するだけ。
 int nesbuffer_malloc(struct romimage *r)
 {
 	u8 *p;
-	const int nessize = NES_HEADER_SIZE + r->cpu_rom.size + r->ppu_rom.size + r->cpu_ram.size;
+	const int nessize = NES_HEADER_SIZE + r->cpu_rom.size + r->ppu_rom.size + r->cpu_ram_read.size;
 	r->neshead = malloc(nessize);
 	if(r->neshead == NULL){
 		printf("%s: malloc failed\n", __FUNCTION__);
 		return NG;
 	}
 	p = r->neshead + NES_HEADER_SIZE;
-	r->cpu_rom.data = p;
+	if(r->cpu_rom.size != 0){
+		r->cpu_rom.data = p;
+	}
 	p += r->cpu_rom.size;
 	if(r->ppu_rom.size != 0){
 		r->ppu_rom.data = p;
 	}
 	p += r->ppu_rom.size;
-	if(r->cpu_ram.size != 0){
-		r->cpu_ram.data = p;
+	if(r->cpu_ram_read.size != 0){
+		r->cpu_ram_read.data = p;
 	}
 	return OK;
 }

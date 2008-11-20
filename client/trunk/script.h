@@ -1,7 +1,7 @@
 #ifndef _SCRIPT_H_
 #define _SCRIPT_H_
 int ppu_ramtest(void);
-void script_load(const char *scriptfile, const char *nesfile, const int test_only);
+void script_load(const char *inmode, const char *scriptfile, const char *targetfile, const int test_only);
 
 struct st_variable{
 	int type;

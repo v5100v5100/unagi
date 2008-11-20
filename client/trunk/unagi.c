@@ -14,6 +14,7 @@ todo:
 #include "file.h"
 #include "script.h"
 
+#if DEBUG==1
 static void backupram_test(const char *file)
 {
 	const int gg = giveio_start();
@@ -37,17 +38,18 @@ static void backupram_test(const char *file)
 		const int testbufsize = 0x2000;
 		u8 testbuf[testbufsize];
 		int i;
-		/*cpu_write(0x8000, 0x80);
-		cpu_write(0xe000, 0);
-		cpu_write(0xe000, 0);
-		cpu_write(0xe000, 0);
-		cpu_write(0xe000, 0);
-		cpu_write(0xe000, 0);*/
-		for(i=0;i<0x10;i++){
-			cpu_write(0x6000 + i, i);
+		cpu_write(0x8000, 0x80);
+		for(i=0; i <5; i++){
+			cpu_write(0xe000, 0);
+		}
+		for(i=0; i <5; i++){
+			cpu_write(0xa000, 0);
 		}
 		cpu_read(0x6000, testbufsize, testbuf);
 		buf_save(testbuf, file, testbufsize);
+		for(i=0;i<0x10;i++){
+			printf("%02x ", testbuf[i]);
+		}
 		}break;
 	}
 	
@@ -56,21 +58,25 @@ static void backupram_test(const char *file)
 	}
 	return;
 }
+#endif
 
 int main(int c, char **v)
 {
 	switch(c){
+#if DEBUG==1
 	case 2:
 		backupram_test(v[1]);
 		break;
-	case 3:
-		script_load(v[1], v[2], 0);
-		break;
+#endif
 	case 4:
-		script_load(v[1], v[2], 1);
+		script_load(v[1], v[2], v[3], 0);
+		break;
+	case 5:
+		script_load(v[1], v[2], v[3], 1);
 		break;
 	default:
-		printf("%s [mapper script] [dump file]", v[0]);
+		printf("%s [mode] [mapper script] [target file]\n", v[0]);
+		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
 	}
 	return 0;
 }

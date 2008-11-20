@@ -209,7 +209,6 @@ enum{
 static void fc_bus_read(long address, long length, u8 *data, int control, int m2_control)
 {
 	address_set(address, control);
-	bus_control(control);
 	if(m2_control == M2_CONTROL_TRUE){
 		control = bit_clear(control, BITNUM_CPU_M2);
 		bus_control(control); //H->L: mapper がアドレスを取ってくる
