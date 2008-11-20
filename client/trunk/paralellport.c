@@ -7,6 +7,7 @@ todo:
 * 別のハードウェアに対応した場合は PORT_DATA から wait までをヘッダにまとめる
 
 memo:
+* -O0 なら inline asm でも反応できるが、-O2 だと動かない
 * gcc のアセンブラは x86 であろうと src,dst の順で反転している
 * out,in のアドレスに dx を使わないと 8bit アドレスになる
 * out,in のデータはレジスタでデータ幅が変わる al:8bit, ax:16bit, eax:32bit
@@ -17,7 +18,7 @@ memo:
 #include "kairo.h"
 #include "paralellport.h"
 
-#define ASM_ENABLE (1)
+#define ASM_ENABLE (0)
 enum{
 	PORT_DATA = 0x0378,
 	PORT_STATUS,
