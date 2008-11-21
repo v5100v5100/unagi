@@ -1,5 +1,5 @@
 famicom ROM cartridge dump program - unagi
-client version 0.4.0
+client version 0.5.0
 by sato_tiff, sato at kitanaka.net
 公式サイト http://sourceforge.jp/projects/unagi/
 
@@ -28,12 +28,25 @@ GIVEIO.SYS をインストールした環境
 cmd.exe, rxvt などのコマンドラインシェル
 
 --コマンドライン引数--
-soon.exe [script file] [dump file] [testflag]
-script file - 対応するマッパのスクリプトファイルを指定します。
+unagi.exe [mode] [script file] [target file] [flag]
+== d ROM DUMP MODE==
+ROM イメージを作成します。
+unagi.exe d [script file] [dump file] [testflag]
+script file - 対応するマッパの ROM スクリプトファイルを指定します。
 dump file   - 出力する ROM イメージファイルを指定します。
-testflag    - スクリプトをテストだけする場合はなにか文字をいれてくださ
-              い。このオプションをつけるとハードウェアにアクセスしませ
-              ん。
+testflag    - (仕様変更予定)
+
+== r RAM READ MODE==
+バックアップ RAM イメージを PC 上に作成します。
+unagi.exe r [script file] [dump file]
+script file - 対応するマッパの RAM スクリプトファイルを指定します。
+dump file   - 出力する RAM イメージファイルを指定します。
+
+== w RAM WRITE MODE==
+バックアップ RAM イメージをカートリッジへ転送します。
+unagi.exe w [script file] [ram file]
+script file - 対応するマッパの RAM スクリプトファイルを指定します。
+ram file    - 入力する RAM イメージファイルを指定します。
 
 --スクリプト仕様--
 ROM dump script パッケージの syntax.txt を参照してください。
@@ -56,6 +69,8 @@ GNU Lesser General Public License v2
 --謝辞--
 * 資料提供をしてくれた color さん, VirtuaNES のソース, nesdev
 * GIVEIO.SYSアクセスライブラリのさとうさん
-* ハードウェアを貸してくれたカシオン
+* ハードウェアを貸してくれたカシオンさん (敬称を付けなかったら脅しの
+  メールが来ました。)
 * アイコンを描いてくれたひろひろきさん
-* プログラミング環境の mingw と rxvt
+* プログラミング環境の mingw と rxvt (敬称を付けなくても脅しはきません
+  でした)
