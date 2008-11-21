@@ -8,9 +8,11 @@ todo:
 
 memo:
 * -O0 なら inline asm でも反応できるが、-O2 だと動かない
+ * 予想に反して out は動くが、 in に wait が必要みたい
 * gcc のアセンブラは x86 であろうと src,dst の順で反転している
-* out,in のアドレスに dx を使わないと 8bit アドレスになる
-* out,in のデータはレジスタでデータ幅が変わる al:8bit, ax:16bit, eax:32bit
+* http://download.intel.com/jp/developer/jpdoc/IA32_Arh_Dev_Man_Vol2A_i.pdf
+ * out,in のアドレスに dx を使わないと 8bit アドレスになる
+ * out,in のデータはレジスタでデータ幅が変わる al:8bit, ax:16bit, eax:32bit
 */
 //#include <dos.h> ?
 //#include <windows.h>
