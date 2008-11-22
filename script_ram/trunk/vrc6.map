@@ -1,0 +1,9 @@
+#VRC6 A0,A1 reversed
+#http://nesdev.parodius.com/vrc6-j.txt
+#初期値が SRAM enable のようなのでやらなくてもよい
+CPU_RAMSIZE 0x2000
+DUMP_START
+CPU_WRITE $b003 $80
+CPU_RAMRW $6000 0x2000
+CPU_WRITE $b003 0
+DUMP_END
