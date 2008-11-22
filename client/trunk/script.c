@@ -12,7 +12,7 @@ todo:
 #include <string.h>
 #include "type.h"
 #include "file.h"
-#include "driver_onajimi.h"
+#include "driver_master.h"
 #include "giveio.h"
 #include "textutil.h"
 #include "header.h"
@@ -679,7 +679,10 @@ execute() 用サブ関数とデータ
 */
 enum {PPU_TEST_RAM, PPU_TEST_ROM};
 const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
-/*static*/ int ppu_ramtest(void)
+#if DEBUG==0
+static 
+#endif
+int ppu_ramtest(const struct driver *d)
 {
 	const int length = sizeof(PPU_TEST_DATA);
 	const long testaddr = 123;
@@ -688,26 +691,26 @@ const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
 		int i = length;
 		long address = testaddr;
 		while(i != 0){
-			ppu_write(address++, 0);
+			d->ppu_write(address++, 0);
 			i--;
 		}
 	}
 	
 	//ppu test data write
 	{
-		const u8 *d;
+		const u8 *data;
 		int i = length;
 		long address = testaddr;
-		d = PPU_TEST_DATA;
+		data = PPU_TEST_DATA;
 		while(i != 0){
-			ppu_write(address++, (long) *d);
-			d++;
+			d->ppu_write(address++, (long) *data);
+			data++;
 			i--;
 		}
 	}
 
 	u8 writedata[length];
-	ppu_read(testaddr, length, writedata);
+	d->ppu_read(testaddr, length, writedata);
 	if(memcmp(writedata, PPU_TEST_DATA, length) == 0){
 		return PPU_TEST_RAM;
 	}
@@ -761,7 +764,7 @@ static void read_result_print(const struct memory *m, long length)
 	checksum_print(m->data, length);
 }
 
-static void execute_cpu_ramrw(const struct memory *w, struct memory *r, int mode, long address, long length)
+static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, struct memory *r, int mode, long address, long length)
 {
 	if(mode == MODE_RAM_WRITE){
 		const u8 *writedata;
@@ -769,12 +772,12 @@ static void execute_cpu_ramrw(const struct memory *w, struct memory *r, int mode
 		long l = length;
 		writedata = w->data;
 		while(l != 0){
-			cpu_write(a++, *writedata);
+			d->cpu_write(a++, *writedata);
 			writedata += 1;
 			l--;
 		}
 	}
-	cpu_read(address, length, r->data);
+	d->cpu_read(address, length, r->data);
 	if(mode == MODE_RAM_DUMP){
 		return;
 	}
@@ -787,12 +790,18 @@ static void execute_cpu_ramrw(const struct memory *w, struct memory *r, int mode
 
 static int execute(const struct script *s, struct romimage *r)
 {
+	const struct driver *d;
+	d = driver_get("hongkongfc");
+	if(d == NULL){
+		printf("execute error: driver not found.\n");
+		return NG;
+	}
 	const int gg = giveio_start();
 	switch(gg){
 	case GIVEIO_OPEN:
 	case GIVEIO_START:
 	case GIVEIO_WIN95:
-		reader_init();
+		d->init();
 		break;
 	default:
 	case GIVEIO_ERROR:
@@ -817,7 +826,7 @@ static int execute(const struct script *s, struct romimage *r)
 			if(is_region_cpuram(addr)){
 				m = &cpu_ram_read;
 			}
-			cpu_read(addr, length, m->data);
+			d->cpu_read(addr, length, m->data);
 			read_result_print(m, length);
 			m->data += length;
 			m->offset += length;
@@ -825,12 +834,12 @@ static int execute(const struct script *s, struct romimage *r)
 		case SCRIPT_OPCODE_CPU_WRITE:{
 			long data;
 			expression_calc(&s->expression, &data);
-			cpu_write(s->value[0], data);
+			d->cpu_write(s->value[0], data);
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
 			const long length = s->value[1];
-			execute_cpu_ramrw(&cpu_ram_write, &cpu_ram_read, r->mode, s->value[0], length);
+			execute_cpu_ramrw(d, &cpu_ram_write, &cpu_ram_read, r->mode, s->value[0], length);
 			read_result_print(&cpu_ram_read, length);
 			cpu_ram_read.data += length;
 			cpu_ram_read.offset += length;
@@ -841,7 +850,7 @@ static int execute(const struct script *s, struct romimage *r)
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMTEST:
-			if(ppu_ramtest() == PPU_TEST_RAM){
+			if(ppu_ramtest(d) == PPU_TEST_RAM){
 				printf("PPU_RAMTEST: charcter RAM found\n");
 				r->ppu_rom.size = 0;
 				end = 0;
@@ -854,9 +863,9 @@ static int execute(const struct script *s, struct romimage *r)
 				/*for mmc2,4 protect.
 				このときは1byte読み込んで、その内容はバッファにいれない*/
 				u8 dummy;
-				ppu_read(address, 1, &dummy);
+				d->ppu_read(address, 1, &dummy);
 			}else{
-				ppu_read(address, length, ppu_rom.data);
+				d->ppu_read(address, length, ppu_rom.data);
 				read_result_print(&ppu_rom, length);
 			}
 			ppu_rom.data += length;
@@ -865,7 +874,7 @@ static int execute(const struct script *s, struct romimage *r)
 			break;
 		case SCRIPT_OPCODE_PPU_WRITE:
 			if(OP_PPU_WRITE_ENABLE == 1){
-				ppu_write(s->value[0], s->value[1]);
+				d->ppu_write(s->value[0], s->value[1]);
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:

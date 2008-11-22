@@ -9,20 +9,26 @@ todo:
 #include <stdio.h>
 #include <stdlib.h>
 #include "type.h"
-#include "driver_onajimi.h"
+#include "driver_master.h"
 #include "giveio.h"
 #include "file.h"
 #include "script.h"
 
 #if DEBUG==1
-static void backupram_test(const char *file)
+static void test(const char *drivername, const char *file)
 {
+	const struct driver *d;
+	d = driver_get(drivername);
+	if(d == NULL){
+		printf("execute error: driver not found.\n");
+		return;
+	}
 	const int gg = giveio_start();
 	switch(gg){
 	case GIVEIO_OPEN:
 	case GIVEIO_START:
 	case GIVEIO_WIN95:
-		reader_init();
+		d->init();
 		break;
 	default:
 	case GIVEIO_ERROR:
@@ -32,13 +38,13 @@ static void backupram_test(const char *file)
 
 	switch(file[0]){
 	case 'p':
-		printf("%d\n", ppu_ramtest());
+		printf("%d\n", ppu_ramtest(d));
 		break;
 	case 'b':{
 		const int testbufsize = 0x100;
 		u8 testbuf[testbufsize];
 		int i;
-		cpu_read(0x6000, testbufsize, testbuf);
+		d->cpu_read(0x6000, testbufsize, testbuf);
 		for(i=0;i<0x10;i++){
 			printf("%02x ", testbuf[i]);
 		}
@@ -56,8 +62,8 @@ int main(int c, char **v)
 {
 	switch(c){
 #if DEBUG==1
-	case 2:
-		backupram_test(v[1]);
+	case 3:
+		test(v[1], v[2]);
 		break;
 #endif
 	case 4:

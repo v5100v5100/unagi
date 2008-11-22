@@ -1,6 +1,9 @@
 #ifndef _SCRIPT_H_
 #define _SCRIPT_H_
-int ppu_ramtest(void);
+#if DEBUG==1
+#include "driver_master.h"
+int ppu_ramtest(const struct driver *d);
+#endif
 void script_load(const char *inmode, const char *scriptfile, const char *targetfile, const int test_only);
 
 struct st_variable{

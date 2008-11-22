@@ -2,13 +2,18 @@
 famicom ROM cartridge dump program - unagi
 emuste.net でおなじみのもののハードドライバ
 
-todo: 
-* 別のハードウェアに対応した場合は PORT_DATA から wait までをヘッダにまとめる
-
+memo:
+* -O0 なら inline asm でも反応できるが、-O2 だと動かない
+ * 予想に反して out は動くが、 in に wait が必要みたい
+* gcc のアセンブラは x86 であろうと src,dst の順で反転している
+* http://download.intel.com/jp/developer/jpdoc/IA32_Arh_Dev_Man_Vol2A_i.pdf
+ * out,in のアドレスに dx を使わないと 8bit アドレスになる
+ * out,in のデータはレジスタでデータ幅が変わる al:8bit, ax:16bit, eax:32bit
 */
 #include "type.h"
 #include "paralellport.h"
 #include "hard_onajimi.h"
+#include "driver_master.h"
 #include "driver_onajimi.h"
 
 static inline void bus_control(int data)
@@ -235,7 +240,7 @@ static void fc_bus_read(long address, long length, u8 *data, int control, int m2
 	control = bit_set(control, BITNUM_CPU_M2);
 }
 
-void cpu_read(long address, long length, u8 *data)
+static void cpu_read(long address, long length, u8 *data)
 {
 	int control = BUS_CONTROL_CPU_READ;
 	if(address & ADDRESS_MASK_A15){
@@ -244,7 +249,7 @@ void cpu_read(long address, long length, u8 *data)
 	fc_bus_read(address, length, data, control, M2_CONTROL_TRUE);
 }
 
-void ppu_read(long address, long length, u8 *data)
+static void ppu_read(long address, long length, u8 *data)
 {
 	fc_bus_read(address, length, data, BUS_CONTROL_PPU_READ, M2_CONTROL_FALSE);
 }
@@ -264,7 +269,7 @@ R/W |HHLLH
 
 H:1, L:0, x:ROMareaaccess時0, それ以外1
 */
-void cpu_write(long address, long data)
+static void cpu_write(long address, long data)
 {
 	int control = BUS_CONTROL_BUS_WRITE;
 	//address設定 + 全てのバスを止める
@@ -287,7 +292,7 @@ void cpu_write(long address, long data)
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
 
-void ppu_write(long address, long data)
+static void ppu_write(long address, long data)
 {
 	int control = BUS_CONTROL_BUS_WRITE;
 
@@ -299,3 +304,12 @@ void ppu_write(long address, long data)
 	bus_control(control);
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
+
+const struct driver DRIVER_ONAJIMI = {
+	name: "onajimi",
+	init: reader_init,
+	cpu_read: cpu_read,
+	ppu_read: ppu_read,
+	cpu_write: cpu_write,
+	ppu_write: ppu_write
+};

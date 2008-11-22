@@ -1,7 +1,8 @@
 #include "type.h"
 #include "paralellport.h"
+#include "driver_master.h"
+#include "driver_hongkongfc.h"
 #include "hard_hongkongfc.h"
-//#include "hongkongfc.h"
 
 enum{
 	PORT_CONTROL_MASK_XOR = 0x03, //bit01 invert
@@ -97,7 +98,11 @@ static const int BUS_CONTROL_BUS_WRITE = (
 	(1 << BITNUM_CPU_RW)
 );
 
-void hk_cpu_read(long address, long length, u8 *data)
+static void hk_init(void)
+{
+}
+
+static void hk_cpu_read(long address, long length, u8 *data)
 {
 	//fc bus 初期化
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_CPU_READ);
@@ -111,7 +116,7 @@ void hk_cpu_read(long address, long length, u8 *data)
 	}
 }
 
-void hk_ppu_read(long address, long length, u8 *data)
+static void hk_ppu_read(long address, long length, u8 *data)
 {
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
@@ -124,7 +129,7 @@ void hk_ppu_read(long address, long length, u8 *data)
 	}
 }
 
-void hk_cpu_write(long address, long data)
+static void hk_cpu_write(long address, long data)
 {
 	int c = BUS_CONTROL_BUS_WRITE;
 	//全てのバスを止める
@@ -155,7 +160,7 @@ void hk_cpu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, BITNUM_WRITEDATA_OUTPUT);
 }
 
-void hk_ppu_write(long address, long data)
+static void hk_ppu_write(long address, long data)
 {
 	int c = BUS_CONTROL_BUS_WRITE;
 	c = bit_clear(c, BITNUM_CPU_M2); //たぶんいる
@@ -170,6 +175,16 @@ void hk_ppu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 
+const struct driver DRIVER_HONGKONGFC = {
+	name: "hongkongfc",
+	init: hk_init,
+	cpu_read: hk_cpu_read,
+	ppu_read: hk_ppu_read,
+	cpu_write: hk_cpu_write,
+	ppu_write: hk_ppu_write
+};
+
+#ifdef TEST
 #include "giveio.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -256,3 +271,4 @@ int main(int c, char **v)
 	}
 	return 0;
 }
+#endif
