@@ -35,7 +35,9 @@ driver_onajimi.o: driver_onajimi.c type.h paralellport.h hard_onajimi.h \
 file.o: file.c file.h type.h
 giveio.o: giveio.c giveio.h
 header.o: header.c type.h file.h header.h
+iodel.o: iodel.c giveio.h
 script.o: script.c type.h file.h driver_master.h giveio.h textutil.h \
   header.h script.h
 textutil.o: textutil.c type.h textutil.h
-unagi.o: unagi.c type.h driver_master.h giveio.h file.h script.h
+unagi.o: unagi.c type.h driver_master.h giveio.h file.h script.h header.h \
+  textutil.h

@@ -206,7 +206,7 @@ int main(int c, char **v)
 		break;
 	usage:
 	default:
-		printf("%s [mode] [mapper script] [target file]\n", v[0]);
+		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
 		return 0;
 	}
