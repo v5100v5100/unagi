@@ -9,21 +9,6 @@ enum{
 	PORT_CONTROL_WRITE
 };
 
-static inline int bit_set(int data, const int bit)
-{
-	data |= 1 << bit;
-	return data;
-}
-
-static inline int bit_clear(int data, const int bit)
-{
-	data &= ~(1 << bit);
-	return data;
-}
-
-void _outp(int, int);
-int _inp(int);
-
 static inline int busy_get(void)
 {
 	int d = _inp(PORT_BUSY);
