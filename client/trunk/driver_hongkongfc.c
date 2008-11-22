@@ -103,7 +103,7 @@ static const int BUS_CONTROL_PPU_READ = (
 	(0 << BITNUM_PPU_SELECT) |
 	(1 << BITNUM_WRITEDATA_OUTPUT) |
 	(0 << BITNUM_WRITEDATA_LATCH) |
-	(1 << BITNUM_CPU_M2) |
+	(0 << BITNUM_CPU_M2) |
 	(1 << BITNUM_CPU_RW)
 );
 static const int BUS_CONTROL_BUS_WRITE = (
@@ -187,6 +187,7 @@ static void hk_ppu_write(long address, long data)
 	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15);
 	data_port_set(c, data); 
 	c = bit_clear(c, BITNUM_PPU_RW);
+	c = bit_set(c, BITNUM_PPU_OUTPUT); //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
 	c = bit_clear(c, BITNUM_PPU_SELECT);
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	data_port_latch(DATA_SELECT_CONTROL, c);
@@ -234,7 +235,6 @@ static void data_show(u8 *d, int length)
 
 int main(int c, char **v)
 {
-//	giveio_stop(GIVEIO_REMOVE);
 	const int gg = giveio_start();
 	switch(gg){
 	case GIVEIO_OPEN:
