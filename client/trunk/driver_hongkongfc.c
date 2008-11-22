@@ -1,3 +1,13 @@
+/*
+famicom ROM cartridge utility - unagi
+hongkong FC driver
+
+仕様不明要素:
+  * 74138 の channel select だが、パラレルポートのデータの方向を変更すると、特定のチャンネルのデータが破壊される
+    * 破壊されるが、破壊先が設定できるらしくそれにした
+  * ROM 読み出しの時に φ2 をあわせるとなぜかバンクが切り替わる
+    * RAM adapter の ROM 部分は読めない
+*/
 #include "type.h"
 #include "paralellport.h"
 #include "driver_master.h"

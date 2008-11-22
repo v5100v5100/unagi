@@ -1,5 +1,5 @@
 /*
-famicom ROM cartridge dump program - unagi
+famicom ROM cartridge utility - unagi
 script engine
 
 todo: 

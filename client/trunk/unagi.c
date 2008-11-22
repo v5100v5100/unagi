@@ -1,6 +1,6 @@
 /*
-famicom ROM cartridge dump program - unagi
-command line interface
+famicom ROM cartridge utility - unagi
+command line interface, config file pharser
 
 todo:
 * test 用の関数などのコマンドライン系統を統一する
@@ -114,6 +114,11 @@ static int config_file_load(struct st_config *c)
 			free(buf);
 			return NG;
 		}
+	}
+	if(c->driver[0] == '\0'){
+		printf("%s hardware not selected.\n", PREFIX_CONFIG_ERROR);
+		free(buf);
+		return NG;
 	}
 	free(buf);
 	return OK;
