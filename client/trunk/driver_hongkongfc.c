@@ -106,15 +106,8 @@ static const int BUS_CONTROL_PPU_READ = (
 	(0 << BITNUM_CPU_M2) |
 	(1 << BITNUM_CPU_RW)
 );
-static const int BUS_CONTROL_BUS_WRITE = (
-	(1 << BITNUM_PPU_OUTPUT) |
-	(1 << BITNUM_PPU_RW) |
-	(1 << BITNUM_PPU_SELECT) |
-	(1 << BITNUM_WRITEDATA_OUTPUT) |
-	(0 << BITNUM_WRITEDATA_LATCH) |
-	(1 << BITNUM_CPU_M2) |
-	(1 << BITNUM_CPU_RW)
-);
+//static const int BUS_CONTROL_BUS_WRITE = BUS_CONTROL_CPU_READ; //エラーになる
+#define BUS_CONTROL_BUS_WRITE BUS_CONTROL_CPU_READ
 
 static void hk_init(void)
 {
