@@ -202,10 +202,6 @@ static const int BUS_CONTROL_BUS_WRITE = (
 	(CPU_READ << BITNUM_CPU_RW)
 );
 
-enum{ 
-	M2_CONTROL_TRUE, M2_CONTROL_FALSE
-};
-
 static void fc_bus_read(long address, long length, u8 *data, int control, int m2_control)
 {
 	address_set(address, control);

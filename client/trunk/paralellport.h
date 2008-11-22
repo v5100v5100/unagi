@@ -17,6 +17,9 @@ enum{
 	ADDRESS_MASK_A0toA14 = 0x7fff,
 	ADDRESS_MASK_A15 = 0x8000
 };
+enum{ 
+	M2_CONTROL_TRUE, M2_CONTROL_FALSE
+};
 
 #if ASM_ENABLE==0
 void _outp(int, int);

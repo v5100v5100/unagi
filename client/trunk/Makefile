@@ -4,12 +4,14 @@ OBJ = \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o driver_hongkongfc.o
 TARGET = unagi.exe
-CFLAGS = -O0 -Wall -g -DDEBUG=1
-#CFLAGS = -O2 -Wall -DDEBUG=0
+#CFLAGS = -O0 -Wall -g -DDEBUG=1
+CFLAGS = -O2 -Wall -DDEBUG=0
 
 all: $(TARGET)
 hk.exe: $(OBJ_HK)
 	gcc -o $@ $(OBJ_HK)
+iodel.exe: iodel.o giveio.o
+	gcc -o $@ iodel.o giveio.o
 clean: 
 	rm -f $(OBJ) $(TARGET)
 $(TARGET): $(OBJ)

@@ -677,6 +677,31 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 /*
 execute() 用サブ関数とデータ
 */
+static int execute_connection_check(const struct driver *d)
+{
+	int ret = OK;
+	const int testsize = 0x80;
+	int testcount = 3;
+	u8 *testbuf[2];
+	testbuf[0] = malloc(testsize);
+	testbuf[1] = malloc(testsize);
+	//master read
+	d->cpu_read(0xfee0, testsize, testbuf[0]);
+	
+	while(testcount != 0){
+		d->cpu_read(0xfee0, testsize, testbuf[1]);
+		if(memcmp(testbuf[0], testbuf[1], testsize) != 0){
+			ret = NG;
+			break;
+		}
+		testcount--;
+	}
+	
+	free(testbuf[0]);
+	free(testbuf[1]);
+	return ret;
+}
+
 enum {PPU_TEST_RAM, PPU_TEST_ROM};
 const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
 #if DEBUG==0
@@ -806,6 +831,10 @@ static int execute(const struct script *s, struct romimage *r)
 	default:
 	case GIVEIO_ERROR:
 		printf("execute error: Can't Access Direct IO %d\n", gg);
+		return NG;
+	}
+	if(execute_connection_check(d) == NG){
+		printf("execute error: maybe connection error.\n");
 		return NG;
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;

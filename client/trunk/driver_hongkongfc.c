@@ -47,7 +47,7 @@ static void address_set(long address)
 	data_port_latch(DATA_SELECT_A7toA0, address & 0xff);
 }
 
-static u8 data_port_get(long address)
+static u8 data_port_get(long address, int m2)
 {
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
 	s = bit_set(s, BITNUM_CONTROL_DATA_LATCH);
@@ -65,7 +65,7 @@ static void data_port_set(int c, long data)
 {
 	data_port_latch(DATA_SELECT_WRITEDATA, data);
 	data_port_latch(DATA_SELECT_CONTROL, c);
-	c = bit_clear(c, BITNUM_WRITEDATA_LATCH);
+	c = bit_set(c, BITNUM_WRITEDATA_LATCH);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 }
 
@@ -109,7 +109,7 @@ static void hk_cpu_read(long address, long length, u8 *data)
 	//A15 を反転し、 /ROMCS にしたものを渡す
 	address ^= ADDRESS_MASK_A15;
 	while(length != 0){
-		*data = data_port_get(address);
+		*data = data_port_get(address, M2_CONTROL_TRUE);
 		address++;
 		data++;
 		length--;
@@ -122,7 +122,7 @@ static void hk_ppu_read(long address, long length, u8 *data)
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
-		*data = data_port_get(address);
+		*data = data_port_get(address, M2_CONTROL_FALSE);
 		address++;
 		data++;
 		length--;
@@ -145,7 +145,7 @@ static void hk_cpu_write(long address, long data)
 	//2 L->H bus:data write
 	//ROM 領域の場合はこのタイミングで /rom を落とす
 	if(address & ADDRESS_MASK_A15){
-		address_set(address & ADDRESS_MASK_A15);
+		address_set(address & ~ADDRESS_MASK_A15);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
 	c = bit_set(c, BITNUM_CPU_M2);
@@ -157,7 +157,7 @@ static void hk_cpu_write(long address, long data)
 	if(address & ADDRESS_MASK_A15){
 		address_set(address | ADDRESS_MASK_A15);
 	}
-	data_port_latch(DATA_SELECT_CONTROL, BITNUM_WRITEDATA_OUTPUT);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 
 static void hk_ppu_write(long address, long data)
