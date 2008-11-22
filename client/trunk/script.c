@@ -12,7 +12,7 @@ todo:
 #include <string.h>
 #include "type.h"
 #include "file.h"
-#include "paralellport.h"
+#include "driver_onajimi.h"
 #include "giveio.h"
 #include "textutil.h"
 #include "header.h"

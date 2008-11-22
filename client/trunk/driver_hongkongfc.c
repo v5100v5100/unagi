@@ -1,6 +1,5 @@
 #include "type.h"
-#include "hongkongfc_hard.h"
-#include "giveio.h"
+#include "hard_hongkongfc.h"
 //#include "hongkongfc.h"
 
 enum{
@@ -195,6 +194,7 @@ void hk_ppu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 
+#include "giveio.h"
 #include <stdio.h>
 #include <stdlib.h>
 static void data_show(u8 *d, int length)

@@ -9,7 +9,7 @@ todo:
 #include <stdio.h>
 #include <stdlib.h>
 #include "type.h"
-#include "paralellport.h"
+#include "driver_onajimi.h"
 #include "giveio.h"
 #include "file.h"
 #include "script.h"

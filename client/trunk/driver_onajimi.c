@@ -16,8 +16,8 @@ memo:
 //#include <dos.h> ?
 //#include <windows.h>
 #include "type.h"
-#include "kairo.h"
-#include "paralellport.h"
+#include "hard_onajimi.h"
+#include "driver_onajimi.h"
 
 #define ASM_ENABLE (0)
 enum{
