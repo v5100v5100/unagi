@@ -1,17 +1,8 @@
 #include "type.h"
+#include "paralellport.h"
 #include "hard_hongkongfc.h"
 //#include "hongkongfc.h"
 
-enum{
-	PORT_DATA = 0x0378,
-	PORT_BUSY,
-	PORT_CONTROL
-};
-enum{
-	ADDRESS_MASK_A0toA12 = 0x1fff,
-	ADDRESS_MASK_A0toA14 = 0x7fff,
-	ADDRESS_MASK_A15 = 0x8000
-};
 enum{
 	PORT_CONTROL_MASK_XOR = 0x03, //bit01 invert
 	PORT_CONTROL_READ = 0,

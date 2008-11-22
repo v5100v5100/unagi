@@ -1,5 +1,5 @@
-#ifndef _KAIRO_H_
-#define _KAIRO_H_
+#ifndef _HARD_ONAJIMI_H_
+#define _HARD_ONAJIMI_H_
 /*
 STROB: CPU/PPU ADDRESS BUS control
 L Address reset, address = 0

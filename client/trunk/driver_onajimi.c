@@ -5,52 +5,11 @@ emuste.net でおなじみのもののハードドライバ
 todo: 
 * 別のハードウェアに対応した場合は PORT_DATA から wait までをヘッダにまとめる
 
-memo:
-* -O0 なら inline asm でも反応できるが、-O2 だと動かない
- * 予想に反して out は動くが、 in に wait が必要みたい
-* gcc のアセンブラは x86 であろうと src,dst の順で反転している
-* http://download.intel.com/jp/developer/jpdoc/IA32_Arh_Dev_Man_Vol2A_i.pdf
- * out,in のアドレスに dx を使わないと 8bit アドレスになる
- * out,in のデータはレジスタでデータ幅が変わる al:8bit, ax:16bit, eax:32bit
 */
-//#include <dos.h> ?
-//#include <windows.h>
 #include "type.h"
+#include "paralellport.h"
 #include "hard_onajimi.h"
 #include "driver_onajimi.h"
-
-#define ASM_ENABLE (0)
-enum{
-	PORT_DATA = 0x0378,
-	PORT_STATUS,
-	PORT_CONTROL
-};
-enum{
-	ADDRESS_MASK_A0toA14 = 0x7fff,
-	ADDRESS_MASK_A15 = 0x8000
-};
-#if ASM_ENABLE==0
-void _outp(int, int);
-int _inp(int);
-#endif
-
-static inline int bit_set(int data, const int bit)
-{
-	data |= 1 << bit;
-	return data;
-}
-
-static inline int bit_clear(int data, const int bit)
-{
-	data &= ~(1 << bit);
-	return data;
-}
-
-static inline void wait(void)
-{
-	//const long waittime = 100000;
-	//SleepEx(20,TRUE);
-}
 
 static inline void bus_control(int data)
 {
@@ -140,10 +99,10 @@ static inline int data_bit_get(void)
 		" movl %1,%%edx\n"
 		" in %%dx,%%al\n"
 		" movl %%eax,%0"
-		:"=q"(data) : "i"(PORT_STATUS) :"%edx", "%eax"
+		:"=q"(data) : "i"(PORT_BUSY) :"%edx", "%eax"
 	);
 #else
-	int data = _inp(PORT_STATUS);
+	int data = _inp(PORT_BUSY);
 #endif
 	data >>= 7;
 	data &= 0x01;

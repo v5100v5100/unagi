@@ -1,5 +1,5 @@
-#ifndef _PARALELLPORT_H
-#define _PARALELLPORT_H
+#ifndef _DRIVER_ONAJIMI_H_
+#define _DRIVER_ONAJIMI_H_
 
 void reader_init(void);
 void cpu_read(long address, long length, u8 *data);
