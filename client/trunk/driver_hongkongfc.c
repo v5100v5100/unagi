@@ -47,12 +47,30 @@ static void address_set(long address)
 	data_port_latch(DATA_SELECT_A7toA0, address & 0xff);
 }
 
-static u8 data_port_get(long address, int m2)
+static u8 data_port_get(long address, int bus, int m2)
 {
+	if(0){ 
+		// at VRC4d
+		//φ2 control を入れると何故かCPUアドレス $8090 でバンクが切り替わる???
+		//PPU area は大丈夫
+		if(address == (0x8090 ^ ADDRESS_MASK_A15)){
+			//debug break point
+		}
+		address_set(address);
+		if(m2 == M2_CONTROL_TRUE){
+			bus = bit_clear(bus, BITNUM_CPU_M2);
+		}
+		data_port_latch(DATA_SELECT_CONTROL, bus);
+		if(m2 == M2_CONTROL_TRUE){
+			bus = bit_set(bus, BITNUM_CPU_M2);
+			data_port_latch(DATA_SELECT_CONTROL, bus);
+		}
+	}else{
+		address_set(address);
+	}
+	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
 	s = bit_set(s, BITNUM_CONTROL_DATA_LATCH);
-	address_set(address);
-	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 	port_control_write(s, PORT_CONTROL_READ);
 	return (u8) _inp(PORT_DATA);
 }
@@ -109,7 +127,7 @@ static void hk_cpu_read(long address, long length, u8 *data)
 	//A15 を反転し、 /ROMCS にしたものを渡す
 	address ^= ADDRESS_MASK_A15;
 	while(length != 0){
-		*data = data_port_get(address, M2_CONTROL_TRUE);
+		*data = data_port_get(address, BUS_CONTROL_CPU_READ, M2_CONTROL_FALSE);
 		address++;
 		data++;
 		length--;
@@ -122,7 +140,7 @@ static void hk_ppu_read(long address, long length, u8 *data)
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
-		*data = data_port_get(address, M2_CONTROL_FALSE);
+		*data = data_port_get(address, BUS_CONTROL_PPU_READ, M2_CONTROL_FALSE);
 		address++;
 		data++;
 		length--;
