@@ -445,7 +445,7 @@ static const char STR_ACCESS_WRITE[] = "write";
 enum{
 	SETTING, DUMP, END
 };
-static int logical_check(const struct script *s, struct romimage *r, const int test)
+static int logical_check(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	long cpu_romsize = 0, cpu_ramsize = 0, ppu_romsize = 0;
 	int setting = SETTING, error = 0;
@@ -507,9 +507,6 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			}else if(is_region_cpurom(address)){
 				cpu_romsize += length;
 			}
-			if(test == 1){
-				logical_print_access(STR_REGION_CPU, STR_ACCESS_READ, address, length);
-			}
 			setting = DUMP;
 			}
 			break;
@@ -527,14 +524,11 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 				logical_print_byteerror(STR_REGION_CPU, data);
 				error += 1;
 			}
-			if(test == 1){
-				logical_print_access(STR_REGION_CPU, STR_ACCESS_WRITE, address, data);
-			}
 			setting = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
-			if(r->mode == MODE_ROM_DUMP){
+			if(c->mode == MODE_ROM_DUMP){
 				printf("%s cannot use %s on ROMDUMP mode\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_RAMRW);
 				error += 1;
 			}
@@ -555,8 +549,8 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 				error += 1;
 			}
 			cpu_ramsize += length;
-			if(r->mode == MODE_RAM_WRITE){
-				r->cpu_ram_write.data = buf_load_full(r->ramfile, &(r->cpu_ram_write.size));
+			if(c->mode == MODE_RAM_WRITE){
+				r->cpu_ram_write.data = buf_load_full(c->ramimage_write, &(r->cpu_ram_write.size));
 				if(r->cpu_ram_write.data == NULL){
 					printf("%s RAM image open error\n.", LOGICAL_ERROR_PREFIX);
 					error += 1;
@@ -594,9 +588,6 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			if(is_region_ppurom(address)){
 				ppu_romsize += length;
 			}
-			if(test == 1){
-				logical_print_access(STR_REGION_PPU, STR_ACCESS_READ, address, length);
-			}
 			setting = DUMP;
 			}
 			break;
@@ -613,9 +604,6 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 			}else if(!is_data_byte(data)){
 				logical_print_byteerror(STR_REGION_PPU, data);
 				error += 1;
-			}
-			if(test == 1){
-				logical_print_access(STR_REGION_PPU, STR_ACCESS_WRITE, address, data);
 			}
 			}
 			break;
@@ -671,6 +659,17 @@ static int logical_check(const struct script *s, struct romimage *r, const int t
 	error += dump_length_conform(OPSTR_CPU_ROMSIZE, cpu_romsize, r->cpu_rom.size);
 	error += dump_length_conform(OPSTR_CPU_RAMSIZE, cpu_ramsize, r->cpu_ram_read.size);
 	error += dump_length_conform(OPSTR_PPU_ROMSIZE, ppu_romsize, r->ppu_rom.size);
+	
+	//command line config override
+	if(c->mirror != CONFIG_OVERRIDE_UNDEF){
+		r->mirror = c->mirror;
+	}
+	if(c->backupram != CONFIG_OVERRIDE_UNDEF){
+		r->backupram = 1;
+	}
+	if(c->mapper != CONFIG_OVERRIDE_UNDEF){
+		r->mappernum = c->mapper;
+	}
 	return error;
 }
 
@@ -682,23 +681,23 @@ static int execute_connection_check(const struct driver *d)
 	int ret = OK;
 	const int testsize = 0x80;
 	int testcount = 3;
-	u8 *testbuf[2];
-	testbuf[0] = malloc(testsize);
-	testbuf[1] = malloc(testsize);
-	//master read
-	d->cpu_read(0xfee0, testsize, testbuf[0]);
+	u8 *master, *reload;
+	master = malloc(testsize);
+	reload = malloc(testsize);
+
+	d->cpu_read(0xfee0, testsize, master);
 	
 	while(testcount != 0){
-		d->cpu_read(0xfee0, testsize, testbuf[1]);
-		if(memcmp(testbuf[0], testbuf[1], testsize) != 0){
+		d->cpu_read(0xfee0, testsize, reload);
+		if(memcmp(master, reload, testsize) != 0){
 			ret = NG;
 			break;
 		}
 		testcount--;
 	}
 	
-	free(testbuf[0]);
-	free(testbuf[1]);
+	free(master);
+	free(reload);
 	return ret;
 }
 
@@ -789,6 +788,7 @@ static void read_result_print(const struct memory *m, long length)
 	checksum_print(m->data, length);
 }
 
+const char EXECUTE_ERROR_PREFIX[] = "execute error:";
 static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, struct memory *r, int mode, long address, long length)
 {
 	if(mode == MODE_RAM_WRITE){
@@ -803,7 +803,7 @@ static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, st
 		}
 	}
 	d->cpu_read(address, length, r->data);
-	if(mode == MODE_RAM_DUMP){
+	if(mode == MODE_RAM_READ){
 		return;
 	}
 	if(memcmp(r->data, w->data, length) == 0){
@@ -813,12 +813,12 @@ static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, st
 	}
 }
 
-static int execute(const struct script *s, struct romimage *r)
+static int execute(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	const struct driver *d;
-	d = driver_get("hongkongfc");
+	d = driver_get(c->driver);
 	if(d == NULL){
-		printf("execute error: driver not found.\n");
+		printf("%s driver not found.\n", EXECUTE_ERROR_PREFIX);
 		return NG;
 	}
 	const int gg = giveio_start();
@@ -830,11 +830,11 @@ static int execute(const struct script *s, struct romimage *r)
 		break;
 	default:
 	case GIVEIO_ERROR:
-		printf("execute error: Can't Access Direct IO %d\n", gg);
+		printf("%s Can't Access Direct IO %d\n", EXECUTE_ERROR_PREFIX, gg);
 		return NG;
 	}
 	if(execute_connection_check(d) == NG){
-		printf("execute error: maybe connection error.\n");
+		printf("%s maybe connection error.\n", EXECUTE_ERROR_PREFIX);
 		return NG;
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
@@ -868,11 +868,11 @@ static int execute(const struct script *s, struct romimage *r)
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
 			const long length = s->value[1];
-			execute_cpu_ramrw(d, &cpu_ram_write, &cpu_ram_read, r->mode, s->value[0], length);
+			execute_cpu_ramrw(d, &cpu_ram_write, &cpu_ram_read, c->mode, s->value[0], length);
 			read_result_print(&cpu_ram_read, length);
 			cpu_ram_read.data += length;
 			cpu_ram_read.offset += length;
-			if(r->mode == MODE_RAM_WRITE){
+			if(c->mode == MODE_RAM_WRITE){
 				cpu_ram_write.data += length;
 				cpu_ram_write.offset += length;
 			}
@@ -929,30 +929,14 @@ static int execute(const struct script *s, struct romimage *r)
 	return OK;
 }
 
-void script_load(const char *inmode, const char *scriptfile, const char *targetfile, const int test_only)
+void script_load(const struct st_config *c)
 {
-	int mode;
-	switch(inmode[0]){
-	case 'd':
-		mode = MODE_ROM_DUMP;
-		break;
-	case 'r':
-		mode = MODE_RAM_DUMP;
-		break;
-	case 'w':
-		mode = MODE_RAM_WRITE;
-		break;
-	default:
-		printf("unknown mode %s\n", inmode);
-		return;
-	}
-	
 	struct script *s;
 	{
 		int scriptsize = 0;
 		char *buf;
 		
-		buf = buf_load_full(scriptfile, &scriptsize);
+		buf = buf_load_full(c->script, &scriptsize);
 		if(buf == NULL){
 			printf("scriptfile open error\n");
 			return;
@@ -1002,14 +986,9 @@ void script_load(const char *inmode, const char *scriptfile, const char *targetf
 		},
 		neshead: NULL,
 		mappernum: 0,
-		mirror: MIRROR_PROGRAMABLE,
-		mode: mode,
-		ramfile: NULL
+		mirror: MIRROR_PROGRAMABLE
 	};
-	if(mode == MODE_RAM_WRITE){
-		r.ramfile = targetfile;
-	}
-	if((logical_check(s, &r, test_only) == 0) && (test_only == 0)){
+	if(logical_check(s, c, &r) == 0){
 		//dump RAM 領域取得
 		if(nesbuffer_malloc(&r) == NG){
 			free(s);
@@ -1019,14 +998,14 @@ void script_load(const char *inmode, const char *scriptfile, const char *targetf
 			return;
 		}
 		//dump
-		if(execute(s, &r) == OK){
+		if(execute(s, c, &r) == OK){
 			//成果出力
-			switch(r.mode){
+			switch(c->mode){
 			case MODE_ROM_DUMP:
-				nesfile_create(&r, targetfile);
+				nesfile_create(&r, c->romimage);
 				break;
-			case MODE_RAM_DUMP:
-				backupram_create(&(r.cpu_ram_read), targetfile);
+			case MODE_RAM_READ:
+				backupram_create(&(r.cpu_ram_read), c->ramimage_read);
 				break;
 			}
 		}

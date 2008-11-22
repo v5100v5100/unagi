@@ -4,7 +4,8 @@
 #include "driver_master.h"
 int ppu_ramtest(const struct driver *d);
 #endif
-void script_load(const char *inmode, const char *scriptfile, const char *targetfile, const int test_only);
+struct st_config;
+void script_load(const struct st_config *config);
 
 struct st_variable{
 	int type;
@@ -32,4 +33,27 @@ enum{
 	EXPRESSION_TYPE_VARIABLE,
 	EXPRESSION_TYPE_VALUE
 };
+
+struct st_config{
+	//override config
+	long mapper;
+	int mirror, backupram;
+	//target filename
+	const char *ramimage_write, *ramimage_read, *romimage;
+	const char *script;
+	char driver[20];
+	//data mode
+	int mode;
+};
+enum{
+	CONFIG_OVERRIDE_UNDEF = 4649,
+	CONFIG_OVERRIDE_TRUE = 1
+};
+
+enum{
+	MODE_ROM_DUMP,
+	MODE_RAM_READ,
+	MODE_RAM_WRITE
+};
+
 #endif

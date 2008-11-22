@@ -8,21 +8,14 @@ struct memory{
 struct romimage{
 	u8 *neshead;
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
-	int mode;
-	const char *ramfile;
-	int mappernum;
-	int mirror;
+	long mappernum;
+	int mirror, backupram;
 };
 
 enum{
 	MIRROR_HORIZONAL = 0,
 	MIRROR_VERTICAL,
 	MIRROR_PROGRAMABLE = MIRROR_HORIZONAL
-};
-enum{
-	MODE_ROM_DUMP,
-	MODE_RAM_DUMP,
-	MODE_RAM_WRITE
 };
 
 int nesbuffer_malloc(struct romimage *r);

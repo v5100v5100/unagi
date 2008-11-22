@@ -8,13 +8,15 @@ todo:
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "type.h"
 #include "driver_master.h"
 #include "giveio.h"
 #include "file.h"
 #include "script.h"
+#include "header.h"
+#include "textutil.h"
 
-#if DEBUG==1
 static void test(const char *drivername, const char *file)
 {
 	const struct driver *d;
@@ -38,7 +40,7 @@ static void test(const char *drivername, const char *file)
 
 	switch(file[0]){
 	case 'p':
-		printf("%d\n", ppu_ramtest(d));
+		//printf("%d\n", ppu_ramtest(d));
 		break;
 	case 'b':{
 		const int testbufsize = 0x100;
@@ -56,25 +58,160 @@ static void test(const char *drivername, const char *file)
 	}
 	return;
 }
-#endif
+
+static int flag_get(const char *flag, struct st_config *c)
+{
+	while(*flag != '\0'){
+		switch(*flag){
+		case 'S': case 's':
+			c->backupram = CONFIG_OVERRIDE_TRUE;
+			break;
+		case 'H': case 'h':
+			c->mirror = MIRROR_HORIZONAL;
+			break;
+		case 'V': case 'v':
+			c->mirror = MIRROR_VERTICAL;
+			break;
+		case '_':
+			break;
+		default:
+			return NG;
+		}
+		flag++;
+	}
+	return OK;
+}
+
+static char PREFIX_CONFIG_ERROR[] = "config error:";
+static int config_file_load(struct st_config *c)
+{
+	char *buf;
+	int size = 0;
+	c->driver[0] = '\0';
+	buf = buf_load_full("unagi.cfg", &size);
+	if(buf == NULL){
+		printf("%s config file open error.\n", PREFIX_CONFIG_ERROR);
+		return NG;
+	}
+	char *text[TEXT_MAXLINE];
+	const int text_num = text_load(buf, size, text);
+	if(text_num == 0){
+		printf("%s script line too much\n", PREFIX_CONFIG_ERROR);
+		free(buf);
+		return NG;
+	}
+	int i;
+	for(i=0; i<text_num; i++){
+		char *word[TEXT_MAXWORD];
+		word_load(text[i], word);
+		if(word[0][0] == '#'){
+			continue;
+		}
+		if(strcmp("DRIVER", word[0]) == 0){
+			strncpy(c->driver, word[1], 20);
+		}else{
+			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
+			free(buf);
+			return NG;
+		}
+	}
+	free(buf);
+	return OK;
+}
+
+static int config_init(int argc, const char *mode, const char *script, const char *file, const char *flag, const char *mapper, struct st_config *c)
+{
+	c->romimage = NULL;
+	c->ramimage_read = NULL;
+	c->ramimage_write = NULL;
+	switch(mode[0]){
+	case 'd':
+		c->mode = MODE_ROM_DUMP;
+		c->romimage = file;
+		break;
+	case 'r':
+		c->mode = MODE_RAM_READ;
+		c->ramimage_read = file;
+		break;
+	case 'w':
+		c->mode = MODE_RAM_WRITE;
+		c->ramimage_write = file;
+		break;
+	default:
+		printf("%s unkown mode %s\n", PREFIX_CONFIG_ERROR, mode);
+		return NG;
+	};
+	switch(c->mode){
+	case MODE_RAM_READ:
+	case MODE_RAM_WRITE:
+		if(argc != 4){
+			printf("%s too many argument.\n", PREFIX_CONFIG_ERROR);
+			return NG;
+		}
+	}
+	
+	c->script = script;
+	c->mapper = CONFIG_OVERRIDE_UNDEF;
+	c->mirror = CONFIG_OVERRIDE_UNDEF;
+	c->backupram = CONFIG_OVERRIDE_UNDEF;
+	c->mapper = CONFIG_OVERRIDE_UNDEF;
+	{
+		int flag_error = OK, mapper_error = OK;
+		switch(argc){
+		case 5:
+			flag_error = flag_get(flag, c);
+			break;
+		case 6:
+			flag_error = flag_get(flag, c);
+			mapper_error = value_get(mapper, &c->mapper);
+			break;
+		}
+		if(flag_error != OK){
+			printf("%s unknown flag %s\n", PREFIX_CONFIG_ERROR, flag);
+			return NG;
+		}
+		if(mapper_error != OK){
+			printf("%s unknown mapper %s\n", PREFIX_CONFIG_ERROR, flag);
+			return NG;
+		}
+	}
+
+	//driver: NULL,
+	if(config_file_load(c) == NG){
+		return NG;
+	}
+	return OK;
+}
 
 int main(int c, char **v)
 {
+	struct st_config config;
+	int config_result;
 	switch(c){
-#if DEBUG==1
 	case 3:
-		test(v[1], v[2]);
+		if(DEBUG==1){
+			test(v[1], v[2]);
+		}else{
+			goto usage;
+		}
+		return 0;
+	case 4: //mode script target
+		config_result = config_init(c, v[1], v[2], v[3], NULL, NULL, &config);
 		break;
-#endif
-	case 4:
-		script_load(v[1], v[2], v[3], 0);
+	case 5: //mode script target flag
+		config_result = config_init(c, v[1], v[2], v[3], v[4], NULL, &config);
 		break;
-	case 5:
-		script_load(v[1], v[2], v[3], 1);
+	case 6: //mode script target flag mapper
+		config_result = config_init(c, v[1], v[2], v[3], v[4], v[5], &config);
 		break;
+	usage:
 	default:
 		printf("%s [mode] [mapper script] [target file]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
+		return 0;
+	}
+	if(config_result == OK){
+		script_load(&config);
 	}
 	return 0;
 }

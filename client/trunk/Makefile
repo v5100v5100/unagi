@@ -4,7 +4,7 @@ OBJ = \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o driver_hongkongfc.o
 TARGET = unagi.exe
-ifeq ($(DEBUG),1)
+ifneq ($(RELEASE),1)
 	CFLAGS = -O0 -Wall -g -DDEBUG=1
 else
 	CFLAGS = -O2 -Wall -DDEBUG=0
@@ -19,7 +19,7 @@ clean:
 	rm -f $(OBJ) $(TARGET)
 $(TARGET): $(OBJ)
 	gcc -o $@ $(OBJ)
-ifneq ($(DEBUG),1)
+ifneq ($(RELEASE),1)
 	strip $@
 endif
 unagi.res.o: unagi.rc unagi.ico

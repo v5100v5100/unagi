@@ -31,7 +31,7 @@ static void nesheader_set(const struct romimage *r, u8 *header)
 	if(r->mirror == MIRROR_VERTICAL){
 		header[6] |= 0x01;
 	}
-	if(r->cpu_ram_read.size != 0){
+	if((r->cpu_ram_read.size != 0) || (r->backupram != 0)){
 		header[6] |= 0x02;
 	}
 	//4 screen ¤ÏÌµ»ë
