@@ -6,7 +6,6 @@ struct memory{
 	u8 *data;
 };
 struct romimage{
-//	u8 *neshead;
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
 	long mappernum;
 	int mirror, backupram;
