@@ -2,6 +2,22 @@
 famicom ROM cartridge utility - unagi
 emuste.net でおなじみのもののハードドライバ
 
+Copyright (C) 2008  sato_tiff
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 memo:
 * -O0 なら inline asm でも反応できるが、-O2 だと動かない
  * 予想に反して out は動くが、 in に wait が必要みたい
@@ -272,13 +288,10 @@ static void cpu_write(long address, long data)
 	address_set(address, control);
 
 	control = bit_clear(control, BITNUM_CPU_M2);
-	//printf("%02x ", (int) data);
 	data_set(control, data);
 
 	control = bit_clear(control, BITNUM_CPU_RW);
-	//bus_control(control); //
 	control = bit_set(control, BITNUM_CPU_M2);
-	//bus_control(control); //
 	if(address & ADDRESS_MASK_A15){
 		control = bit_clear(control, BITNUM_CPU_RAMROM_SELECT);
 	}
@@ -296,7 +309,7 @@ static void ppu_write(long address, long data)
 	bus_control(control);
 	data_set(control, data);
 	control = bit_clear(control, BITNUM_PPU_RW);
-	control = bit_clear(control, BITNUM_PPU_SELECT); //mmc1 はなくてもいけるが mmc3 には必要
+	control = bit_clear(control, BITNUM_PPU_SELECT);
 	bus_control(control);
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }

@@ -2,9 +2,21 @@
 famicom ROM cartridge utility - unagi
 command line interface, config file pharser
 
-todo:
-* test 用の関数などのコマンドライン系統を統一する
-* mirror, battery, mapper number をコマンドラインからも指定できるようにする
+Copyright (C) 2008  sato_tiff
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,7 +94,7 @@ static int flag_get(const char *flag, struct st_config *c)
 	return OK;
 }
 
-static char PREFIX_CONFIG_ERROR[] = "config error:";
+static const char PREFIX_CONFIG_ERROR[] = "config error:";
 static int config_file_load(struct st_config *c)
 {
 	char *buf;
@@ -181,7 +193,6 @@ static int config_init(int argc, const char *mode, const char *script, const cha
 		}
 	}
 
-	//driver: NULL,
 	if(config_file_load(c) == NG){
 		return NG;
 	}
@@ -211,6 +222,7 @@ int main(int c, char **v)
 		break;
 	usage:
 	default:
+		printf("famicom ROM cartridge utility - unagi version 0.5.0\n");
 		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
 		return 0;

@@ -1,9 +1,9 @@
-#ifndef _PARALELL_PORT_INLINE_H_
-#define _PARALELL_PORT_INLINE_H_
 /*
-famicom ROM cartridge dump program - unagi
+famicom ROM cartridge utility - unagi
 パラレルポート共有定義
 */
+#ifndef _PARALELL_PORT_INLINE_H_
+#define _PARALELL_PORT_INLINE_H_
 //#include <dos.h> ?
 //#include <windows.h>
 #define ASM_ENABLE (0)

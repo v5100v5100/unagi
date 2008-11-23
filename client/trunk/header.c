@@ -4,13 +4,13 @@ iNES header/buffer control
 
 todo:
 * buffer の malloc 方法のやり直し?
-* (このソース外の仕事だけど)mirror, battery, mapper number をコマンドラインからも指定できるようにする
 */
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "type.h"
 #include "file.h"
+#include "crc32.h"
 #include "header.h"
 
 enum{
@@ -62,6 +62,17 @@ static void mirroring_fix(struct memory *m, long min)
 	}
 }
 
+//hash は sha1 にしたいが他のデータベースにあわせて crc32 にしとく
+static void rominfo_print(const struct memory *m)
+{
+	if(m->size != 0){
+		const uint32_t crc = crc32_get(m->data, m->size);
+		printf("%s ROM size 0x%06x, crc32 0x%08x\n", m->name, m->size, (const int) crc);
+	}else{
+		printf("%s RAM\n", m->name);
+	}
+}
+
 void nesfile_create(struct romimage *r, const char *romfilename)
 {
 	//RAM adapter bios size 0x2000 は変更しない
@@ -71,14 +82,19 @@ void nesfile_create(struct romimage *r, const char *romfilename)
 	if(r->ppu_rom.size != 0){
 		mirroring_fix(&(r->ppu_rom), CHARCTER_ROM_MIN);
 	}
+	//修正済み ROM 情報表示
+	printf("mapper %d\n", (int) r->mappernum);
+	rominfo_print(&(r->cpu_rom));
+	rominfo_print(&(r->ppu_rom));
 
 	FILE *f;
-	nesheader_set(r, r->neshead);
+	u8 header[NES_HEADER_SIZE];
+	nesheader_set(r, header);
 	f = fopen(romfilename, "wb");
 	fseek(f, 0, SEEK_SET);
 	//RAM adapter bios には NES ヘッダを作らない
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){ 
-		fwrite(r->neshead, sizeof(u8), NES_HEADER_SIZE, f);
+		fwrite(header, sizeof(u8), NES_HEADER_SIZE, f);
 	}
 	fwrite(r->cpu_rom.data, sizeof(u8), r->cpu_rom.size, f);
 	if(r->ppu_rom.size != 0){
@@ -87,43 +103,34 @@ void nesfile_create(struct romimage *r, const char *romfilename)
 	fclose(f);
 }
 
-/*
-NES fileimage がそのまま使えるような領域を確保し、各用途別ポインタを張る
-+0     NESHEADER
-+0x10  Program ROM
-+....  Charcter ROM (ない場合は NULL)
-+....  Backup RAM (ない場合は NULL)
+static inline void memory_malloc(struct memory *m)
+{
+	m->data = NULL;
+	if(m->size != 0){
+		m->data = malloc(m->size);
+	}
+}
 
-NES file 出力時は neshead から ROM サイズ分出力するだけ。
-解放時は nesheader を free するだけ
-*/
 int nesbuffer_malloc(struct romimage *r)
 {
-	u8 *p;
-	const int nessize = NES_HEADER_SIZE + r->cpu_rom.size + r->ppu_rom.size + r->cpu_ram_read.size;
-	r->neshead = malloc(nessize);
-	if(r->neshead == NULL){
-		printf("%s: malloc failed\n", __FUNCTION__);
-		return NG;
-	}
-	p = r->neshead + NES_HEADER_SIZE;
-	if(r->cpu_rom.size != 0){
-		r->cpu_rom.data = p;
-	}
-	p += r->cpu_rom.size;
-	if(r->ppu_rom.size != 0){
-		r->ppu_rom.data = p;
-	}
-	p += r->ppu_rom.size;
-	if(r->cpu_ram_read.size != 0){
-		r->cpu_ram_read.data = p;
-	}
+	memory_malloc(&(r->cpu_rom));
+	memory_malloc(&(r->ppu_rom));
+	memory_malloc(&(r->cpu_ram_read));
 	return OK;
 }
 
-void nesbuffer_free(struct romimage *t)
+static inline void memory_free(struct memory *m)
 {
-	free(t->neshead);
+	if(m->size != 0){
+		free(m->data);
+		m->data = NULL;
+	}
+}
+void nesbuffer_free(struct romimage *r)
+{
+	memory_free(&(r->cpu_rom));
+	memory_free(&(r->ppu_rom));
+	memory_free(&(r->cpu_ram_read));
 }
 
 void backupram_create(const struct memory *r, const char *ramfilename)

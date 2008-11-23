@@ -43,6 +43,7 @@ flag        - 出力するヘッダを設定します。複数の場合はスペースをいれずに        
   S カセットに backup RAM がついている場合
   V スクリプトの設定を無視して mirroring を Vertical にする
   H スクリプトの設定を無視して mirroring を Horizonal にする
+  _ mapper変更だけを適用する場合
 mapper      - スクリプトの設定を無視してマッパ番号を設定します。
 
 == r RAM READ MODE==

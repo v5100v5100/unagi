@@ -2,6 +2,22 @@
 famicom ROM cartridge utility - unagi
 hongkong FC driver
 
+Copyright (C) 2008  sato_tiff
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 仕様不明要素:
   * 74138 の channel select だが、パラレルポートのデータの方向を変更すると、特定のチャンネルのデータが破壊される
     * 破壊されるが、破壊先が設定できるらしくそれにした
@@ -166,7 +182,7 @@ static void hk_cpu_write(long address, long data)
 	//2 L->H bus:data write
 	//ROM 領域の場合はこのタイミングで /rom を落とす
 	if(address & ADDRESS_MASK_A15){
-		address_set(address & ~ADDRESS_MASK_A15);
+		address_set(address & ADDRESS_MASK_A0toA14);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
 	c = bit_set(c, BITNUM_CPU_M2);
