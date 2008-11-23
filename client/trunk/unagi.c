@@ -105,11 +105,13 @@ static int config_file_load(struct st_config *c)
 		printf("%s config file open error.\n", PREFIX_CONFIG_ERROR);
 		return NG;
 	}
-	char *text[TEXT_MAXLINE];
+	char **text;
+	text = malloc(sizeof(char*) * TEXT_MAXLINE);
 	const int text_num = text_load(buf, size, text);
 	if(text_num == 0){
 		printf("%s script line too much\n", PREFIX_CONFIG_ERROR);
 		free(buf);
+		free(text);
 		return NG;
 	}
 	int i;
@@ -124,9 +126,11 @@ static int config_file_load(struct st_config *c)
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
 			free(buf);
+			free(text);
 			return NG;
 		}
 	}
+	free(text);
 	if(c->driver[0] == '\0'){
 		printf("%s hardware not selected.\n", PREFIX_CONFIG_ERROR);
 		free(buf);

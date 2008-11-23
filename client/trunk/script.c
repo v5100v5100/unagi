@@ -955,11 +955,13 @@ void script_load(const struct st_config *c)
 			printf("scriptfile open error\n");
 			return;
 		}
-		char *text[TEXT_MAXLINE];
+		char **text;
+		text = malloc(sizeof(char*) * TEXT_MAXLINE);
 		const int text_num = text_load(buf, scriptsize, text);
 		if(text_num == 0){
 			printf("script line too much\n");
 			free(buf);
+			free(text);
 			return;
 		}
 		s = malloc(sizeof(struct script) * (text_num + 1));
@@ -972,6 +974,7 @@ void script_load(const struct st_config *c)
 		}
 		const int error = syntax_check(text, text_num, s);
 		free(buf);
+		free(text);
 		if(error != 0){
 			free(s);
 			return;
