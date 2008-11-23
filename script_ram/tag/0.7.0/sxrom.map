@@ -1,0 +1,42 @@
+#HVC-SXROM-01
+#SQF-FO, ¸÷±É·Ï
+#CPU_RAMSIZE 0x8000
+CPU_RAMSIZE 0x4000
+DUMP_START
+CPU_WRITE $8000 $80
+#register send %01100
+CPU_WRITE $8000 0
+CPU_WRITE $8000 0
+CPU_WRITE $8000 1
+CPU_WRITE $8000 1
+CPU_WRITE $8000 0
+#enable WRAM CS1, 6pin
+STEP_START i 0 5 1
+	CPU_WRITE $e000 0
+STEP_END
+#http://nesdevwiki.org/wiki/SXROM
+# CHR bank 0 (internal, $A000-$BFFF)
+#4bit0
+#-----
+#PSSxC
+#||| |
+#||| +- Select 4 KB CHR RAM bank at PPU $0000 (ignored in 8 KB mode)
+#|++--- Select 8 KB PRG RAM bank
+#+----- Select 256 KB PRG ROM bank
+#STEP_START i 0 4 1
+#	CPU_WRITE $a000 0
+#	CPU_WRITE $a000 0
+#	CPU_WRITE $a000 i
+#	CPU_WRITE $a000 i >> 1
+#	CPU_WRITE $a000 0
+#	CPU_RAMRW $6000 0x2000
+#STEP_END
+STEP_START i 0 2 1
+	CPU_WRITE $a000 0
+	CPU_WRITE $a000 0
+	CPU_WRITE $a000 0
+	CPU_WRITE $a000 i
+	CPU_WRITE $a000 0
+	CPU_RAMRW $6000 0x2000
+STEP_END
+DUMP_END

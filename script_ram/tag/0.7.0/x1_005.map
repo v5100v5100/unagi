@@ -1,0 +1,9 @@
+#minelvaton saga
+#RAM 領域は $7f00-$7fff の様子
+CPU_RAMSIZE 0x100
+DUMP_START
+#命令を見る限りこれで RAM が使えるはずだが動かなかった
+CPU_WRITE $7ef8 $a3
+CPU_RAMRW $7f00 0x100
+CPU_WRITE $7ef8 0
+DUMP_END

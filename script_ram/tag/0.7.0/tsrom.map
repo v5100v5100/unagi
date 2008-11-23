@@ -1,0 +1,15 @@
+#mmc3 TKROM, TKSROM, TNROM, TSROM
+#http://nesdevwiki.org/wiki/MMC3
+# PRG RAM protect ($A001-$BFFF, odd)
+#7  bit  0
+#---- ----
+#RWxx xxxx
+#||
+#|+-------- Write protection (0: allow writes; 1: deny writes)
+#+--------- Chip enable (0: disable chip; 1: enable chip)
+CPU_RAMSIZE 0x2000
+DUMP_START
+CPU_WRITE $a001 %10000000
+CPU_RAMRW $6000 0x2000
+CPU_WRITE $a001 %01000000
+DUMP_END
