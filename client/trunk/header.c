@@ -1,9 +1,6 @@
 /*
 famicom ROM cartridge utility - unagi
 iNES header/buffer control
-
-todo:
-* buffer の malloc 方法のやり直し?
 */
 #include <string.h>
 #include <stdlib.h>

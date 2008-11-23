@@ -34,7 +34,7 @@ static void test(const char *drivername, const char *file)
 	const struct driver *d;
 	d = driver_get(drivername);
 	if(d == NULL){
-		printf("execute error: driver not found.\n");
+		printf("%s: driver not found\n", __FUNCTION__);
 		return;
 	}
 	const int gg = giveio_start();
@@ -102,7 +102,7 @@ static int config_file_load(struct st_config *c)
 	c->driver[0] = '\0';
 	buf = buf_load_full("unagi.cfg", &size);
 	if(buf == NULL){
-		printf("%s config file open error.\n", PREFIX_CONFIG_ERROR);
+		printf("%s config file open error\n", PREFIX_CONFIG_ERROR);
 		return NG;
 	}
 	char **text;
@@ -132,7 +132,7 @@ static int config_file_load(struct st_config *c)
 	}
 	free(text);
 	if(c->driver[0] == '\0'){
-		printf("%s hardware not selected.\n", PREFIX_CONFIG_ERROR);
+		printf("%s hardware not selected\n", PREFIX_CONFIG_ERROR);
 		free(buf);
 		return NG;
 	}
@@ -166,7 +166,7 @@ static int config_init(int argc, const char *mode, const char *script, const cha
 	case MODE_RAM_READ:
 	case MODE_RAM_WRITE:
 		if(argc != 4){
-			printf("%s too many argument.\n", PREFIX_CONFIG_ERROR);
+			printf("%s too many argument\n", PREFIX_CONFIG_ERROR);
 			return NG;
 		}
 	}

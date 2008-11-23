@@ -566,10 +566,10 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			if(c->mode == MODE_RAM_WRITE){
 				r->cpu_ram_write.data = buf_load_full(c->ramimage_write, &(r->cpu_ram_write.size));
 				if(r->cpu_ram_write.data == NULL){
-					printf("%s RAM image open error\n.", LOGICAL_ERROR_PREFIX);
+					printf("%s RAM image open error\n", LOGICAL_ERROR_PREFIX);
 					error += 1;
 				}else if(r->cpu_ram_read.size != r->cpu_ram_write.size){
-					printf("%s RAM image size is not same.\n", LOGICAL_ERROR_PREFIX);
+					printf("%s RAM image size is not same\n", LOGICAL_ERROR_PREFIX);
 					free(r->cpu_ram_write.data);
 					r->cpu_ram_write.data = NULL;
 					error += 1;
@@ -821,9 +821,9 @@ static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, st
 		return;
 	}
 	if(memcmp(r->data, w->data, length) == 0){
-		printf("RAM data write success.\n");
+		printf("RAM data write success\n");
 	}else{
-		printf("RAM data write failed.\n");
+		printf("RAM data write failed\n");
 	}
 }
 
@@ -832,7 +832,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	const struct driver *d;
 	d = driver_get(c->driver);
 	if(d == NULL){
-		printf("%s driver not found.\n", EXECUTE_ERROR_PREFIX);
+		printf("%s driver not found\n", EXECUTE_ERROR_PREFIX);
 		return NG;
 	}
 	const int gg = giveio_start();
@@ -848,7 +848,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		return NG;
 	}
 	if(execute_connection_check(d) == NG){
-		printf("%s maybe connection error.\n", EXECUTE_ERROR_PREFIX);
+		printf("%s maybe connection error\n", EXECUTE_ERROR_PREFIX);
 		return NG;
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
