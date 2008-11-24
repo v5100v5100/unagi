@@ -1,8 +1,0 @@
-#ifndef _TYPE_H_
-#define _TYPE_H_
-#include <stdint.h>
-typedef uint8_t u8;
-enum{
-	OK = 0, NG
-};
-#endif
