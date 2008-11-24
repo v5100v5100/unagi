@@ -851,11 +851,9 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		printf("%s Can't Access Direct IO %d\n", EXECUTE_ERROR_PREFIX, gg);
 		return NG;
 	}
-	if(c->mirror != 0){
 	if(execute_connection_check(d) == NG){
 		printf("%s maybe connection error\n", EXECUTE_ERROR_PREFIX);
 		return NG;
-	}
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
 	cpu_rom = r->cpu_rom;
