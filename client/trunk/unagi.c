@@ -226,7 +226,7 @@ int main(int c, char **v)
 		break;
 	usage:
 	default:
-		printf("famicom ROM cartridge utility - unagi version 0.5.0\n");
+		printf("famicom ROM cartridge utility - unagi version 0.5.1\n");
 		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
 		return 0;

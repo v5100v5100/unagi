@@ -1,5 +1,5 @@
 famicom ROM cartridge utility - unagi
-client version 0.5.0
+client version 0.5.1
 by sato_tiff, sato at kitanaka.net
 公式サイト http://sourceforge.jp/projects/unagi/
 
@@ -79,8 +79,6 @@ GNU Lesser General Public License v2
 --謝辞--
 * 資料提供をしてくれた color さん, VirtuaNES のソース, nesdev
 * GIVEIO.SYSアクセスライブラリのさとうさん
-* ハードウェアを貸してくれたカシオンさん (敬称を付けなかったら脅しの
-  メールが来ました。)
+* ハードウェアを貸してくれたカシオン
 * アイコンを描いてくれたひろひろきさん
-* プログラミング環境の mingw と rxvt (敬称を付けなくても脅しはきません
-  でした)
+* プログラミング環境の mingw と rxvt
