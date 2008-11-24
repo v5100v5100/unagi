@@ -134,9 +134,22 @@ static const int BUS_CONTROL_PPU_READ = (
 );
 //static const int BUS_CONTROL_BUS_WRITE = BUS_CONTROL_CPU_READ; //エラーになる
 #define BUS_CONTROL_BUS_WRITE BUS_CONTROL_CPU_READ
-
+/*
+namcot の SRAM 付カートリッジはφ2を0x80回上げると出力が安定する
+RAM アダプタも同様??
+不安定時は CPU と PPU の data が混合されている物がでている気がする
+*/
 static void hk_init(void)
 {
+	int c = BUS_CONTROL_CPU_READ;
+	int i = 0x80;
+	while(i != 0){
+		c = bit_set(c, BITNUM_CPU_M2);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		c = bit_clear(c, BITNUM_CPU_M2);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		i--;
+	}
 }
 
 static void hk_cpu_read(long address, long length, u8 *data)

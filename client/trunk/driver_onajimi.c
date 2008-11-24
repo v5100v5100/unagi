@@ -185,10 +185,23 @@ static const int BUS_CONTROL_INIT = (
 	(CPU_RAM_SELECT << BITNUM_CPU_RAMROM_SELECT) |
 	(CPU_READ << BITNUM_CPU_RW)
 );
-void reader_init(void)
+static void reader_init(void)
 {
-	bus_control(BUS_CONTROL_INIT);
+	int c = BUS_CONTROL_INIT;
+	int i = 0x80;
+	bus_control(c);
 	address_reset();
+	/*
+	namcot bus 安定処置
+	driver_onajimi 参照
+	*/
+	while(i != 0){
+		c = bit_set(c, BITNUM_CPU_M2);
+		bus_control(c);
+		c = bit_clear(c, BITNUM_CPU_M2);
+		bus_control(c);
+		i--;
+	}
 }
 
 static const int BUS_CONTROL_CPU_READ = (
