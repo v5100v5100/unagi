@@ -579,7 +579,11 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMTEST:
-			//logical check ではなにもしない
+			//ループ内部に入ってたらエラー
+			if(variable_num != 0){
+				printf("%s PPU_RAMTEST must use outside loop\n", LOGICAL_ERROR_PREFIX);
+				error += 1;
+			}
 			break;
 		case SCRIPT_OPCODE_PPU_READ:{
 			const long address = s->value[0];
@@ -847,9 +851,11 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		printf("%s Can't Access Direct IO %d\n", EXECUTE_ERROR_PREFIX, gg);
 		return NG;
 	}
+	if(c->mirror != 0){
 	if(execute_connection_check(d) == NG){
 		printf("%s maybe connection error\n", EXECUTE_ERROR_PREFIX);
 		return NG;
+	}
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
 	cpu_rom = r->cpu_rom;
