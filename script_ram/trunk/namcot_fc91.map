@@ -1,0 +1,11 @@
+#family curcit 91
+#$6000- mirror
+#$6800- mirror
+#$7000- mirror
+#$7800-$7fff workram
+CPU_RAMSIZE 0x800
+DUMP_START
+CPU_WRITE $c000 1
+CPU_RAMRW $7800 0x800
+CPU_WRITE $c000 0
+DUMP_END
