@@ -3,12 +3,21 @@
 #include "driver_onajimi.h"
 #include "driver_hongkongfc.h"
 
+//これを rodata にしたいけど const の付け方が分からん
+static const struct driver *DRIVER_LIST[] = {
+	&DRIVER_ONAJIMI, &DRIVER_HONGKONGFC,
+	NULL
+};
+
 const struct driver *driver_get(const char *name)
 {
-	if(strcmp(name, DRIVER_ONAJIMI.name) == 0){
-		return &DRIVER_ONAJIMI;
-	}else if(strcmp(name, DRIVER_HONGKONGFC.name) == 0){
-		return &DRIVER_HONGKONGFC;
+	const struct driver **d;
+	d = DRIVER_LIST;
+	while(*d != NULL){
+		if(strcmp(name, (*d)->name) == 0){
+			return *d;
+		}
+		d++;
 	}
 	return NULL;
 }
