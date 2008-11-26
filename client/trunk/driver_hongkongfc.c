@@ -57,7 +57,7 @@ static inline void port_control_write(int s, int rw)
 	_outp(PORT_CONTROL, s);
 }
 
-static void data_port_latch(int select, long data)
+static inline void data_port_latch(int select, long data)
 {
 	select <<= BITNUM_CONTROL_DATA_SELECT;
 	select = bit_set(select, BITNUM_CONTROL_DATA_LATCH);
@@ -67,13 +67,36 @@ static void data_port_latch(int select, long data)
 	port_control_write(select, PORT_CONTROL_WRITE);
 }
 
-static void address_set(long address)
+enum{ ADDRESS_RESET, ADDRESS_SET};
+/*これもポート破壊が起こるのかちゃんと動かない
+static inline void address_set(long address, int reset)
 {
-	data_port_latch(DATA_SELECT_A15toA8, address >> 8);
-	data_port_latch(DATA_SELECT_A7toA0, address & 0xff);
+	static long last_address_h, last_address_l;
+	long address_h = address >> 8;
+	long address_l = address & 0xff;
+	if(reset == ADDRESS_RESET){
+		data_port_latch(DATA_SELECT_A15toA8, address_h);
+		data_port_latch(DATA_SELECT_A7toA0, address_l);
+	}else{
+		if(last_address_h != address_h){
+			data_port_latch(DATA_SELECT_A15toA8, address_h);
+		}
+		if(last_address_l != address_l){
+			data_port_latch(DATA_SELECT_A7toA0, address_l);
+		}
+	}
+	last_address_h = address_h;
+	last_address_l = address_l;
 }
-
-static u8 data_port_get(long address, int bus, int m2)
+*/
+static inline void address_set(long address, int reset)
+{
+	long address_h = address >> 8;
+	long address_l = address & 0xff;
+	data_port_latch(DATA_SELECT_A15toA8, address_h);
+	data_port_latch(DATA_SELECT_A7toA0, address_l);
+}
+static inline u8 data_port_get(long address, int bus, int m2)
 {
 	if(0){ 
 		// at VRC4d
@@ -82,7 +105,7 @@ static u8 data_port_get(long address, int bus, int m2)
 		if(address == (0x8090 ^ ADDRESS_MASK_A15)){
 			//debug break point
 		}
-		address_set(address);
+		address_set(address, ADDRESS_SET);
 		if(m2 == M2_CONTROL_TRUE){
 			bus = bit_clear(bus, BITNUM_CPU_M2);
 		}
@@ -92,7 +115,7 @@ static u8 data_port_get(long address, int bus, int m2)
 			data_port_latch(DATA_SELECT_CONTROL, bus);
 		}
 	}else{
-		address_set(address);
+		address_set(address, ADDRESS_SET);
 	}
 	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
@@ -150,6 +173,9 @@ static void hk_init(void)
 		data_port_latch(DATA_SELECT_CONTROL, c);
 		i--;
 	}
+	if(0){
+		address_set(0, ADDRESS_RESET);
+	}
 }
 
 static void hk_cpu_read(long address, long length, u8 *data)
@@ -185,7 +211,7 @@ static void hk_cpu_write(long address, long data)
 	//全てのバスを止める
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	// /rom を H にしてバスを止める
-	address_set(address | ADDRESS_MASK_A15);
+	address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
 	
 	//1 H->L bus:data set, mapper:address get
 	c = bit_clear(c, BITNUM_CPU_M2);
@@ -195,7 +221,7 @@ static void hk_cpu_write(long address, long data)
 	//2 L->H bus:data write
 	//ROM 領域の場合はこのタイミングで /rom を落とす
 	if(address & ADDRESS_MASK_A15){
-		address_set(address & ADDRESS_MASK_A0toA14);
+		address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_SET);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
 	c = bit_set(c, BITNUM_CPU_M2);
@@ -205,7 +231,7 @@ static void hk_cpu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//4 L->H mapper: data get, bus:close
 	if(address & ADDRESS_MASK_A15){
-		address_set(address | ADDRESS_MASK_A15);
+		address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
 	}
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
@@ -216,7 +242,7 @@ static void hk_ppu_write(long address, long data)
 	c = bit_clear(c, BITNUM_CPU_M2); //たぶんいる
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//cpu rom を止めたアドレスを渡す
-	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15);
+	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15, ADDRESS_SET);
 	data_port_set(c, data); 
 	c = bit_clear(c, BITNUM_PPU_RW);
 	c = bit_set(c, BITNUM_PPU_OUTPUT); //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
@@ -289,7 +315,7 @@ int main(int c, char **v)
 		break;
 	case 'c':
 		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_CPU_READ);
-		address_set(d ^ ADDRESS_MASK_A15);
+		address_set(d ^ ADDRESS_MASK_A15, ADDRESS_RESET);
 		port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 		port_control_write(DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_READ);
 		printf("%02x\n", _inp(PORT_DATA));
@@ -303,7 +329,7 @@ int main(int c, char **v)
 		break;
 	case 'p':
 		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
-		address_set(d | ADDRESS_MASK_A15);
+		address_set(d | ADDRESS_MASK_A15, ADDRESS_RESET);
 		port_control_write(DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_READ);
 		printf("%02x\n", _inp(PORT_DATA));
 		break;

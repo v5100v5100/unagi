@@ -4,10 +4,14 @@ OBJ = \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o driver_hongkongfc.o
 TARGET = unagi.exe
-ifneq ($(RELEASE),1)
-	CFLAGS = -O0 -Wall -g -DDEBUG=1
-else
+ifeq ($(RELEASE),1)
 	CFLAGS = -O2 -Wall -DDEBUG=0
+else
+	CFLAGS = -O0 -Wall -g -DDEBUG=1
+endif
+ifeq ($(PROFILE),1)
+	CFLAGS = -O2 -Wall -pg -DDEBUG=0
+	LDFLAG = -pg
 endif
 
 all: $(TARGET) unagi.d
@@ -20,7 +24,7 @@ iodel.exe: iodel.o giveio.o
 clean: 
 	rm -f $(OBJ) $(TARGET) unagi.d
 $(TARGET): $(OBJ)
-	gcc -o $@ $(OBJ)
+	gcc $(LDFLAG) -o $@ $(OBJ)
 ifeq ($(RELEASE),1)
 	strip $@
 endif

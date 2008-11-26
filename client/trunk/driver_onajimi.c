@@ -133,7 +133,7 @@ static inline int data_bit_get(void)
 /* 
 L->H ¤Çshift 
 */
-static void data_shift(int control)
+static inline void data_shift(int control)
 {
 	control = bit_clear(control, BITNUM_DATA_SHIFT_RIGHT);
 	bus_control(control);
