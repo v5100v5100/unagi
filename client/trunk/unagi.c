@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <string.h>
 #include "type.h"
 #include "driver_master.h"
+#include "flashmemory.h"
 #include "giveio.h"
 #include "file.h"
 #include "script.h"
@@ -34,7 +35,7 @@ static void test(const char *drivername, const char *file)
 	const struct reader_driver *d;
 	d = reader_driver_get(drivername);
 	if(d == NULL){
-		printf("%s: driver not found\n", __FUNCTION__);
+		printf("%s: reader driver not found\n", __FUNCTION__);
 		return;
 	}
 	const int gg = giveio_start();
@@ -63,6 +64,28 @@ static void test(const char *drivername, const char *file)
 			printf("%02x ", testbuf[i]);
 		}
 		}break;
+	case 'f':{
+		
+		}
+		break;
+	case 'e':{
+		const struct flash_driver *f;
+		const long address_2aaa = 0x8000 + 0x2aaa;
+		const long address_5555 = 0x8000 + 0x5000;
+		f = flash_driver_get("W49F002");
+		if(f == NULL){
+			printf("%s: flash driver not found\n", __FUNCTION__);
+			break;
+		}
+		d->cpu_6502_write(0x8000, 0);
+		d->cpu_6502_write(0xc000, 2);
+		if(f->productid_check(d, f, 0, address_2aaa, address_5555) == NG){
+			printf("product id error\n");
+			break;
+		}
+		f->erase(d, address_2aaa, address_5555);
+		}
+		break;
 	}
 	
 	if(gg != GIVEIO_WIN95){
@@ -226,7 +249,7 @@ int main(int c, char **v)
 		break;
 	usage:
 	default:
-		printf("famicom ROM cartridge utility - unagi version 0.5.1\n");
+		printf("famicom ROM cartridge utility - unagi version 0.5.2\n");
 		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
 		return 0;

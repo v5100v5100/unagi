@@ -145,15 +145,6 @@ static int productid_check(const struct reader_driver *d, const struct flash_dri
 }
 
 /*
----- erase ----
-*/
-static void flash_erase(const struct reader_driver *d, long address_2aaa, long address_5555)
-{
-	task_set(d, ERASE, address_2aaa, address_5555);
-	Sleep(200); //Tec 0.2 sec
-}
-
-/*
 ---- toggle check ----
 databit6
 */
@@ -196,6 +187,16 @@ static int polling_check(const struct reader_driver *d, long address, u8 truedat
 		retry++;
 	}
 	return NG;
+}
+
+/*
+---- erase ----
+*/
+static void flash_erase(const struct reader_driver *d, long address_2aaa, long address_5555)
+{
+	task_set(d, ERASE, address_2aaa, address_5555);
+	toggle_check(d, address_2aaa);
+	//Sleep(200); //Tec 0.2 sec
 }
 
 /*
