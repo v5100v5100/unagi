@@ -52,9 +52,6 @@ static void test(const char *drivername, const char *file)
 	}
 
 	switch(file[0]){
-	case 'p':
-		//printf("%d\n", ppu_ramtest(d));
-		break;
 	case 'b':{
 		const int testbufsize = 0x100;
 		u8 testbuf[testbufsize];
@@ -66,12 +63,49 @@ static void test(const char *drivername, const char *file)
 		}break;
 	case 'f':{
 		
+		const struct flash_driver *f;
+		const long address_2aaa = 0x8000 + 0x2aaa;
+		const long address_5555 = 0x8000 + 0x5555;
+		const long length = 0x400;
+		f = flash_driver_get("W49F002");
+		if(f == NULL){
+			printf("%s: flash driver not found\n", __FUNCTION__);
+			break;
+		}
+		u8 *data;
+		int size;
+		data = buf_load_full(file, &size);
+		if(data == NULL){
+			break;
+		}
+		d->cpu_6502_write(0x8000, 0);
+		d->cpu_6502_write(0xc000, 2);
+		f->write(d, 0x8000, data, length, address_2aaa, address_5555);
+		free(data);
 		}
 		break;
 	case 'e':{
 		const struct flash_driver *f;
 		const long address_2aaa = 0x8000 + 0x2aaa;
-		const long address_5555 = 0x8000 + 0x5000;
+		const long address_5555 = 0x8000 + 0x5555;
+		f = flash_driver_get("W49F002");
+		if(f == NULL){
+			printf("%s: flash driver not found\n", __FUNCTION__);
+			break;
+		}
+		d->cpu_6502_write(0x8000, 0);
+		d->cpu_6502_write(0xc000, 2);
+/*		if(f->productid_check(d, f, 0, address_2aaa, address_5555) == NG){
+			printf("product id error\n");
+			break;
+		}*/
+		f->erase(d, address_2aaa, address_5555);
+		}
+		break;
+	case 'p':{
+		const struct flash_driver *f;
+		const long address_2aaa = 0x8000 + 0x2aaa;
+		const long address_5555 = 0x8000 + 0x5555;
 		f = flash_driver_get("W49F002");
 		if(f == NULL){
 			printf("%s: flash driver not found\n", __FUNCTION__);
@@ -81,11 +115,9 @@ static void test(const char *drivername, const char *file)
 		d->cpu_6502_write(0xc000, 2);
 		if(f->productid_check(d, f, 0, address_2aaa, address_5555) == NG){
 			printf("product id error\n");
-			break;
-		}
-		f->erase(d, address_2aaa, address_5555);
 		}
 		break;
+		}
 	}
 	
 	if(gg != GIVEIO_WIN95){

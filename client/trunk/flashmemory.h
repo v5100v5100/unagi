@@ -31,7 +31,7 @@ struct flash_driver{
 	u8 id_manufacurer, id_device;
 	int (*productid_check)(const struct reader_driver *d, const struct flash_driver *f, long address_0000, long address_2aaa, long address_5555);
 	void (*erase)(const struct reader_driver *d, long address_2aaa, long address_5555);
-	void (*write)(const struct reader_driver *d, long address, const u8 *data, long length, long address_2aaa, long address_5555);
+	void (*write)(const struct reader_driver *d, long address, const const u8 *data, long length, long address_2aaa, long address_5555);
 };
 const struct flash_driver *flash_driver_get(const char *name);
 #endif

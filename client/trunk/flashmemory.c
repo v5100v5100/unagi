@@ -131,9 +131,9 @@ static void task_set(const struct reader_driver *d, const struct flash_task *t, 
 */
 static int productid_check(const struct reader_driver *d, const struct flash_driver *f, long address_0000, long address_2aaa, long address_5555)
 {
-	u8 data[2];
+	u8 data[3];
 	task_set(d, PRODUCTID_ENTRY, address_2aaa, address_5555);
-	d->cpu_read(address_0000, 2, data);
+	d->cpu_read(address_0000, 3, data);
 	task_set(d, PRODUCTID_EXIT, address_2aaa, address_5555);
 	if(f->id_manufacurer != data[0]){
 		return NG;
@@ -208,9 +208,24 @@ static int program_byte(const struct reader_driver *d, long address, const u8 *d
 		if(*data != 0xff){
 			task_set(d, PROTECT_DISABLE, address_2aaa, address_5555);
 			d->cpu_flash_write(address, *data);
+			if(toggle_check(d, address) == NG){
+				if(DEBUG == 1){
+					printf("%s NG\n", __FUNCTION__);
+				}
+				return NG;
+			}
+			if(0){
+			u8 putdata;
+			d->cpu_read(address, 1, &putdata);
+			if(putdata != *data){
+				printf("%s %06x retry\n", __FUNCTION__, (int) address);
+				continue;
+			}
+			}
 		}
-		if(toggle_check(d, address) == NG){
-			return NG;
+		if((DEBUG == 1) && (address & 0x1f) == 0){
+			printf("%s %06x\n", __FUNCTION__, (int) address);
+			fflush(stdout);
 		}
 		address++;
 		data++;

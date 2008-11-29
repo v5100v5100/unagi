@@ -327,8 +327,33 @@ static void ppu_write(long address, long data)
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
 
+static const int BUS_CONTROL_CPU_FLASH_WRITE = (
+	ADDRESS_NOP | DATA_SHIFT_NOP |
+	(DATA_DIRECTION_READ << BITNUM_DATA_DIRECTION) |
+	(PPU_DISABLE << BITNUM_PPU_SELECT) |
+	(PPU_READ__CPU_ENABLE << BITNUM_CPU_M2) | //H
+	(CPU_RAM_SELECT << BITNUM_CPU_RAMROM_SELECT) |
+	(CPU_READ << BITNUM_CPU_RW)
+);
+
 static void cpu_flash_write(long address, long data)
 {
+	int control = BUS_CONTROL_BUS_WRITE;
+	control = bit_clear(control, BITNUM_CPU_M2);
+	address_set(address, control);
+	
+	//WE down
+	control = bit_clear(control, BITNUM_CPU_RW);
+	data_set(control, data);
+	//CS down
+	control = bit_clear(control, BITNUM_CPU_RAMROM_SELECT);
+	bus_control(control);
+	//CS up
+	control = bit_set(control, BITNUM_CPU_RAMROM_SELECT);
+	bus_control(control);
+	//WE up
+	control = bit_set(control, BITNUM_CPU_RW);
+	bus_control(control);
 }
 
 const struct reader_driver DRIVER_ONAJIMI = {
