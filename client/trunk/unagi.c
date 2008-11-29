@@ -31,8 +31,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 static void test(const char *drivername, const char *file)
 {
-	const struct driver *d;
-	d = driver_get(drivername);
+	const struct reader_driver *d;
+	d = reader_driver_get(drivername);
 	if(d == NULL){
 		printf("%s: driver not found\n", __FUNCTION__);
 		return;

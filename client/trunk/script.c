@@ -694,7 +694,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 /*
 execute() 用サブ関数とデータ
 */
-static int execute_connection_check(const struct driver *d)
+static int execute_connection_check(const struct reader_driver *d)
 {
 	int ret = OK;
 	const int testsize = 0x80;
@@ -724,7 +724,7 @@ const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
 #if DEBUG==0
 static 
 #endif
-int ppu_ramtest(const struct driver *d)
+int ppu_ramtest(const struct reader_driver *d)
 {
 	const int length = sizeof(PPU_TEST_DATA);
 	const long testaddr = 123;
@@ -807,7 +807,7 @@ static void read_result_print(const struct memory *m, long length)
 }
 
 const char EXECUTE_ERROR_PREFIX[] = "execute error:";
-static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, struct memory *r, int mode, long address, long length)
+static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *w, struct memory *r, int mode, long address, long length)
 {
 	if(mode == MODE_RAM_WRITE){
 		const u8 *writedata;
@@ -815,7 +815,7 @@ static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, st
 		long l = length;
 		writedata = w->data;
 		while(l != 0){
-			d->cpu_write(a++, *writedata);
+			d->cpu_6502_write(a++, *writedata);
 			writedata += 1;
 			l--;
 		}
@@ -833,8 +833,8 @@ static void execute_cpu_ramrw(const struct driver *d, const struct memory *w, st
 
 static int execute(const struct script *s, const struct st_config *c, struct romimage *r)
 {
-	const struct driver *d;
-	d = driver_get(c->driver);
+	const struct reader_driver *d;
+	d = reader_driver_get(c->driver);
 	if(d == NULL){
 		printf("%s driver not found\n", EXECUTE_ERROR_PREFIX);
 		return NG;
@@ -881,7 +881,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_CPU_WRITE:{
 			long data;
 			expression_calc(&s->expression, &data);
-			d->cpu_write(s->value[0], data);
+			d->cpu_6502_write(s->value[0], data);
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{

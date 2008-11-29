@@ -1,11 +1,12 @@
 OBJ = \
 	unagi.o script.o header.o crc32.o \
 	driver_master.o driver_onajimi.o driver_hongkongfc.o \
+	flashmemory.o \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o driver_hongkongfc.o
 TARGET = unagi.exe
 ifeq ($(RELEASE),1)
-	CFLAGS = -O2 -Wall -DDEBUG=0
+	CFLAGS = -O2 -Wall -DDEBUG=0 -DNDEBUG
 else
 	CFLAGS = -O0 -Wall -g -DDEBUG=1
 endif

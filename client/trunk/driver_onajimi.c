@@ -294,7 +294,7 @@ R/W |HHLLH
 
 H:1, L:0, x:ROMareaaccess時0, それ以外1
 */
-static void cpu_write(long address, long data)
+static void cpu_6502_write(long address, long data)
 {
 	int control = BUS_CONTROL_BUS_WRITE;
 	//address設定 + 全てのバスを止める
@@ -327,11 +327,16 @@ static void ppu_write(long address, long data)
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
 
-const struct driver DRIVER_ONAJIMI = {
+static void cpu_flash_write(long address, long data)
+{
+}
+
+const struct reader_driver DRIVER_ONAJIMI = {
 	name: "onajimi",
 	init: reader_init,
 	cpu_read: cpu_read,
 	ppu_read: ppu_read,
-	cpu_write: cpu_write,
+	cpu_6502_write: cpu_6502_write,
+	cpu_flash_write: cpu_flash_write,
 	ppu_write: ppu_write
 };

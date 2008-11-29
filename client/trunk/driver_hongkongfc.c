@@ -21,8 +21,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 仕様不明要素:
   * 74138 の channel select だが、パラレルポートのデータの方向を変更すると、特定のチャンネルのデータが破壊される
     * 破壊されるが、破壊先が設定できるらしくそれにした
-  * ROM 読み出しの時に φ2 をあわせるとなぜかバンクが切り替わる
-    * RAM adapter の ROM 部分は読めない
 */
 #include "type.h"
 #include "paralellport.h"
@@ -67,7 +65,7 @@ static inline void data_port_latch(int select, long data)
 	port_control_write(select, PORT_CONTROL_WRITE);
 }
 
-enum{ ADDRESS_RESET, ADDRESS_SET};
+enum{ADDRESS_RESET, ADDRESS_SET};
 /*これもポート破壊が起こるのかちゃんと動かない
 static inline void address_set(long address, int reset)
 {
@@ -205,7 +203,7 @@ static void hk_ppu_read(long address, long length, u8 *data)
 	}
 }
 
-static void hk_cpu_write(long address, long data)
+static void hk_cpu_6502_write(long address, long data)
 {
 	int c = BUS_CONTROL_BUS_WRITE;
 	//全てのバスを止める
@@ -252,13 +250,55 @@ static void hk_ppu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 
-const struct driver DRIVER_HONGKONGFC = {
+static const int FLASH_CPU_WRITE = (
+	(1 << BITNUM_PPU_OUTPUT) |
+	(1 << BITNUM_PPU_RW) |
+	(1 << BITNUM_PPU_SELECT) |
+	(1 << BITNUM_WRITEDATA_OUTPUT) |
+	(0 << BITNUM_WRITEDATA_LATCH) |
+	(0 << BITNUM_CPU_M2) |
+	(1 << BITNUM_CPU_RW)
+);
+
+static void hk_cpu_flash_write(long address, long data)
+{
+	int c = FLASH_CPU_WRITE;
+	//全てのバスを止める
+	data_port_latch(DATA_SELECT_CONTROL, c);
+	address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
+	data_port_set(c, data);
+/*
+W29C020
+During the byte-load cycle, the addresses are latched by the falling 
+edge of either CE or WE,whichever occurs last. The data are latched 
+by the rising edge of either CE or WE, whicheveroccurs first.
+*/
+/*
+W49F002
+#CS or #WE が降りたときに address latch
+#CS or #WE が上がったときに data latch
+*/
+	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
+	//WE down
+	c = bit_clear(c, BITNUM_CPU_RW);
+//	c = bit_clear(c, BITNUM_CPU_M2);
+	data_port_latch(DATA_SELECT_CONTROL, c);
+	//CS down
+	address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_SET);
+	//CS up
+	address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
+	//WE up
+	data_port_latch(DATA_SELECT_CONTROL, FLASH_CPU_WRITE);
+}
+
+const struct reader_driver DRIVER_HONGKONGFC = {
 	name: "hongkongfc",
 	init: hk_init,
 	cpu_read: hk_cpu_read,
 	ppu_read: hk_ppu_read,
-	cpu_write: hk_cpu_write,
-	ppu_write: hk_ppu_write
+	cpu_6502_write: hk_cpu_6502_write,
+	ppu_write: hk_ppu_write,
+	cpu_flash_write: hk_cpu_flash_write
 };
 
 #ifdef TEST
