@@ -25,13 +25,22 @@ flashmemory.c ¤À¤±¤Î·Ù¹ð
 #ifndef _FLASHMEMORY_H_
 #define _FLASHMEMORY_H_
 #include "driver_master.h"
+struct flash_order{
+	long address, length;
+	const u8 *data;
+	long task_0000, task_2aaa, task_5555;
+	void (*flash_write)(long address, long data);
+	void (*read)(long address, long length, u8 *data);
+};
+
 struct flash_driver{
 	const char *name;
 	long capacity;
 	u8 id_manufacurer, id_device;
-	int (*productid_check)(const struct reader_driver *d, const struct flash_driver *f, long address_0000, long address_2aaa, long address_5555);
-	void (*erase)(const struct reader_driver *d, long address_2aaa, long address_5555);
-	void (*write)(const struct reader_driver *d, long address, const const u8 *data, long length, long address_2aaa, long address_5555);
+	int (*productid_check)(const struct flash_order *d, const struct flash_driver *f);
+	void (*erase)(const struct flash_order *d);
+	void (*write)(const struct flash_order *d);
 };
+
 const struct flash_driver *flash_driver_get(const char *name);
 #endif

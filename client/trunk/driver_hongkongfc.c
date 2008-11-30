@@ -234,6 +234,7 @@ static void hk_cpu_6502_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 
+//onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
 static void hk_ppu_write(long address, long data)
 {
 	int c = BUS_CONTROL_BUS_WRITE;
@@ -242,11 +243,17 @@ static void hk_ppu_write(long address, long data)
 	//cpu rom を止めたアドレスを渡す
 	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15, ADDRESS_SET);
 	data_port_set(c, data); 
-	c = bit_clear(c, BITNUM_PPU_RW);
-	c = bit_set(c, BITNUM_PPU_OUTPUT); //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
-	c = bit_clear(c, BITNUM_PPU_SELECT);
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
+	//WE down
+	c = bit_clear(c, BITNUM_PPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
+	//CS down
+	c = bit_clear(c, BITNUM_PPU_SELECT);
+	data_port_latch(DATA_SELECT_CONTROL, c);
+	//CS up
+	c = bit_set(c, BITNUM_PPU_SELECT);
+	data_port_latch(DATA_SELECT_CONTROL, c);
+	//WE up
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 
