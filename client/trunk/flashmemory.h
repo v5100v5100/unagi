@@ -24,7 +24,6 @@ flashmemory.c ¤À¤±¤Î·Ù¹ð
 */
 #ifndef _FLASHMEMORY_H_
 #define _FLASHMEMORY_H_
-#include "driver_master.h"
 struct flash_order{
 	long address, length;
 	const u8 *data;
