@@ -27,7 +27,7 @@ flashmemory.c だけの警告
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
-#include "driver_master.h"
+#include "type.h"
 #include "flashmemory.h"
 /*
 driver for Winbond W29C020, W49F002
@@ -97,6 +97,18 @@ static const struct flash_task PROTECT_ENABLE[] = {
 	{0x5555, 0x20},
 	{flash_task_end, 0}
 };
+//boot lock lockout enable をいれないとバンク切り替えをすると
+//先頭の0x100byteぐらいが書き換えられる?
+static const struct flash_task BOOTBLOCK_FIRST[] = {
+	{0x5555, 0xaa},
+	{0x2aaa, 0x55},
+	{0x5555, 0x80},
+	{0x5555, 0xaa},
+	{0x2aaa, 0x55},
+	{0x5555, 0x40},
+	{0x0000, 0},
+	{flash_task_end, 0}
+};
 static const struct flash_task ERASE[] = {
 	{0x5555, 0xaa},
 	{0x2aaa, 0x55},
@@ -110,18 +122,21 @@ static const struct flash_task ERASE[] = {
 static void task_set(const struct flash_order *d, const struct flash_task *t)
 {
 	while(t->address != flash_task_end){
-		long cpu_address = 0;
+		long logical_address = 0;
 		switch(t->address){
+		case 0:
+			logical_address = d->task_0000;
+			break;
 		case 0x2aaa:
-			cpu_address = d->task_2aaa;
+			logical_address = d->task_2aaa;
 			break;
 		case 0x5555:
-			cpu_address = d->task_5555;
+			logical_address = d->task_5555;
 			break;
 		default:
 			assert(0);
 		}
-		d->flash_write(cpu_address, t->data);
+		d->flash_write(logical_address, t->data);
 		t++;
 	}
 }
@@ -236,6 +251,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 
 static int program_pagewrite(const struct flash_order *d, long address, const u8 *data, long length)
 {
+	const long toggle_address = address;
 	task_set(d, PROTECT_DISABLE);
 	while(length != 0){
 		d->flash_write(address, *data);
@@ -243,8 +259,11 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 		data++;
 		length--;
 	}
-	Sleep(1);
-	return toggle_check(d, d->address);
+	Sleep(15);
+	int ret = toggle_check(d, toggle_address);
+	//task_set(d, PROTECT_ENABLE);
+	//Sleep(15);
+	return ret;
 }
 
 /*
@@ -253,12 +272,18 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 static void compare(const struct flash_order *d, long address, const u8 *data, long length)
 {
 	u8 *romdata, *r;
+	int count = 0;
 	romdata = malloc(length);
 	d->read(address, length, romdata);
 	r = romdata;
 	while(length != 0){
 		if(*r != *data){
-			printf("%06x\n", (int)address);
+			char safix = ' ';
+			if((count & 7) == 7){
+				safix = '\n';
+			}
+			count++;
+			printf("%06x%c", (int)address, safix);
 		}
 		r++;
 		data++;
@@ -279,23 +304,39 @@ static void w49f002_write(const struct flash_order *d)
 
 static void w29c020_write(const struct flash_order *d)
 {
+	const long pagesize = 0x80;
+	int retry = 0;
 	{
-		const long pagesize = 0x80;
 		long a = d->address;
 		long i = d->length;
 		const u8 *dd;
+		u8 *cmp;
+
 		dd = d->data;
-		while(i >= 0){
-			int result = program_pagewrite(d, a, dd, d->length);
+		cmp = malloc(pagesize);
+		while(i != 0){
+			int result = program_pagewrite(d, a, dd, pagesize);
 			if(result == NG){
+				printf("%s: write error\n", __FUNCTION__);
+				free(cmp);
 				return;
 			}
-			a += pagesize;
-			dd += pagesize;
-			i -= pagesize;
+			d->read(a, pagesize, cmp);
+			if(memcmp(cmp, dd, pagesize) == 0){
+				a += pagesize;
+				dd += pagesize;
+				i -= pagesize;
+			}else{
+				retry++;
+			}
 		}
+		free(cmp);
 	}
+
+	printf("write ok. retry %d\n", retry);
 	compare(d, d->address, d->data, d->length);
+	task_set(d, BOOTBLOCK_FIRST);
+	Sleep(10);
 }
 
 /*

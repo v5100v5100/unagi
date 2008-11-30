@@ -36,7 +36,10 @@ static void nesheader_set(const struct romimage *r, u8 *header)
 	header[7] |= r->mappernum & 0xf0;
 }
 
-static void mirroring_fix(struct memory *m, long min)
+/*
+return値: error count
+*/
+static int mirroring_fix(struct memory *m, long min)
 {
 	long mirror_size = m->size / 2;
 	while(mirror_size >= min){
@@ -49,14 +52,25 @@ static void mirroring_fix(struct memory *m, long min)
 				printf("mirroring %s rom fixed\n", m->name);
 				m->size = ret;
 			}
-			return;
+			return 0;
 		}
 		mirror_size /= 2;
 	}
-	if(m->size != min){
+	
+	u8 *ffdata;
+	int ret = 0;
+	ffdata = malloc(min);
+	memset(ffdata, 0xff, min);
+	if(memcmp(ffdata, m->data, min) == 0){
+		printf("error: data is all 0xff\n");
+		ret = 1;
+	}else if(m->size != min){
 		printf("mirroring %s rom fixed\n", m->name);
 		m->size = min;
 	}
+	free(ffdata);
+	
+	return ret;
 }
 
 //hash は sha1 にしたいが他のデータベースにあわせて crc32 にしとく
@@ -72,13 +86,17 @@ static void rominfo_print(const struct memory *m)
 
 void nesfile_create(struct romimage *r, const char *romfilename)
 {
+	int error = 0;
 	//RAM adapter bios size 0x2000 は変更しない
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){
-		mirroring_fix(&(r->cpu_rom), PROGRAM_ROM_MIN);
+		error += mirroring_fix(&(r->cpu_rom), PROGRAM_ROM_MIN);
 	}
 	if(r->ppu_rom.size != 0){
-		mirroring_fix(&(r->ppu_rom), CHARCTER_ROM_MIN);
+		error += mirroring_fix(&(r->ppu_rom), CHARCTER_ROM_MIN);
 	}
+	/*if(error != 0){
+		return;
+	}*/
 	//修正済み ROM 情報表示
 	printf("mapper %d\n", (int) r->mappernum);
 	rominfo_print(&(r->cpu_rom));
