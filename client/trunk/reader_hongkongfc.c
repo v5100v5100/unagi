@@ -24,8 +24,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 #include "type.h"
 #include "paralellport.h"
-#include "driver_master.h"
-#include "driver_hongkongfc.h"
+#include "reader_master.h"
+#include "reader_hongkongfc.h"
 #include "hard_hongkongfc.h"
 
 enum{

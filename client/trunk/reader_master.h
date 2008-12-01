@@ -1,5 +1,5 @@
-#ifndef _DRIVER_MASTER_H_
-#define _DRIVER_MASTER_H_
+#ifndef _READER_MASTER_H_
+#define _READER_MASTER_H_
 #include "type.h"
 struct reader_driver{
 	void (*init)(void);

@@ -26,7 +26,7 @@ todo:
 #include <string.h>
 #include "type.h"
 #include "file.h"
-#include "driver_master.h"
+#include "reader_master.h"
 #include "giveio.h"
 #include "textutil.h"
 #include "header.h"

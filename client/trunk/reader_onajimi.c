@@ -29,8 +29,8 @@ memo:
 #include "type.h"
 #include "paralellport.h"
 #include "hard_onajimi.h"
-#include "driver_master.h"
-#include "driver_onajimi.h"
+#include "reader_master.h"
+#include "reader_onajimi.h"
 
 static inline void bus_control(int data)
 {

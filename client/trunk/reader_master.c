@@ -1,7 +1,7 @@
 #include <string.h>
-#include "driver_master.h"
-#include "driver_onajimi.h"
-#include "driver_hongkongfc.h"
+#include "reader_master.h"
+#include "reader_onajimi.h"
+#include "reader_hongkongfc.h"
 
 //これを rodata にしたいけど const の付け方が分からん
 static const struct reader_driver *DRIVER_LIST[] = {
