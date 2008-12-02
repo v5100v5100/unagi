@@ -6,15 +6,17 @@ OBJ = \
 OBJ_HK = giveio.o reader_hongkongfc.o
 TARGET = unagi.exe
 CFLAGS = -Wall -Werror -Wmissing-declarations #-Wcast-qual
+#else if が使えればもうちょい見やすくなるのに...
 ifeq ($(RELEASE),1)
 	CFLAGS += -O2 -DDEBUG=0 -DNDEBUG -fomit-frame-pointer 
 else
-	OBJ += client_test.o
-	CFLAGS += -O0 -g -DDEBUG=1
-endif
-ifeq ($(PROFILE),1)
-	CFLAGS += -O2 -pg -DDEBUG=0
-	LDFLAG = -pg
+	ifeq ($(PROFILE),1)
+		CFLAGS += -O2 -pg -DDEBUG=0
+		LDFLAG = -pg
+	else
+		OBJ += client_test.o
+		CFLAGS += -O0 -g -DDEBUG=1
+	endif
 endif
 
 all: $(TARGET) unagi.d
