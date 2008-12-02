@@ -40,70 +40,73 @@ struct flash_task{
 	long address, data;
 };
 enum{
-	flash_task_end = 0x46494649
+	ADDRESS_0000 = 0,
+	ADDRESS_2AAA = 0x2aaa,
+	ADDRESS_5555 = 0x5555,
+	FLASH_COMMAND_END
 };
 static const struct flash_task PRODUCTID_ENTRY[] = {
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x90},
-	{flash_task_end, 0}
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x90},
+	{FLASH_COMMAND_END, 0}
 };
 static const struct flash_task PRODUCTID_EXIT[] = {
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0xf0},
-	{flash_task_end, 0}
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0xf0},
+	{FLASH_COMMAND_END, 0}
 };
 static const struct flash_task PROTECT_DISABLE[] = {
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0xa0},
-	{flash_task_end, 0}
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0xa0},
+	{FLASH_COMMAND_END, 0}
 };
 static const struct flash_task PROTECT_ENABLE[] = {
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x80},
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x20},
-	{flash_task_end, 0}
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x80},
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x20},
+	{FLASH_COMMAND_END, 0}
 };
 //boot lock lockout enable をいれないとバンク切り替えをすると
 //先頭の0x100byteぐらいが書き換えられる?
 static const struct flash_task BOOTBLOCK_FIRST[] = {
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x80},
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x40},
-	{0x0000, 0},
-	{flash_task_end, 0}
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x80},
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x40},
+	{ADDRESS_0000, 0},
+	{FLASH_COMMAND_END, 0}
 };
 static const struct flash_task ERASE[] = {
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x80},
-	{0x5555, 0xaa},
-	{0x2aaa, 0x55},
-	{0x5555, 0x10},
-	{flash_task_end, 0}
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x80},
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x10},
+	{FLASH_COMMAND_END, 0}
 };
 
-static void task_set(const struct flash_order *d, const struct flash_task *t)
+static void command_set(const struct flash_order *d, const struct flash_task *t)
 {
-	while(t->address != flash_task_end){
+	while(t->address != FLASH_COMMAND_END){
 		long logical_address = 0;
 		switch(t->address){
-		case 0:
-			logical_address = d->task_0000;
+		case ADDRESS_0000: //bank によっては設定できないかも?
+			logical_address = d->command_0000;
 			break;
-		case 0x2aaa:
-			logical_address = d->task_2aaa;
+		case ADDRESS_2AAA:
+			logical_address = d->command_2aaa;
 			break;
-		case 0x5555:
-			logical_address = d->task_5555;
+		case ADDRESS_5555:
+			logical_address = d->command_5555;
 			break;
 		default:
 			assert(0);
@@ -119,9 +122,9 @@ static void task_set(const struct flash_order *d, const struct flash_task *t)
 static int productid_check(const struct flash_order *d, const struct flash_driver *f)
 {
 	u8 data[3];
-	task_set(d, PRODUCTID_ENTRY);
-	d->read(d->task_0000, 3, data);
-	task_set(d, PRODUCTID_EXIT);
+	command_set(d, PRODUCTID_ENTRY);
+	d->read(d->command_0000, 3, data);
+	command_set(d, PRODUCTID_EXIT);
 	if(f->id_manufacurer != data[0]){
 		return NG;
 	}
@@ -181,8 +184,8 @@ static int polling_check(const struct flash_order *d, long address, u8 truedata)
 */
 static void flash_erase(const struct flash_order *d)
 {
-	task_set(d, ERASE);
-	toggle_check(d, d->task_2aaa);
+	command_set(d, ERASE);
+	toggle_check(d, d->command_2aaa);
 	//Sleep(200); //Tec 0.2 sec
 }
 
@@ -193,7 +196,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 {
 	while(length != 0){
 		if(*data != 0xff){
-			task_set(d, PROTECT_DISABLE);
+			command_set(d, PROTECT_DISABLE);
 			d->flash_write(address, *data);
 			if(toggle_check(d, address) == NG){
 				if(DEBUG == 1){
@@ -224,7 +227,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 static int program_pagewrite(const struct flash_order *d, long address, const u8 *data, long length)
 {
 	const long toggle_address = address;
-	task_set(d, PROTECT_DISABLE);
+	command_set(d, PROTECT_DISABLE);
 	while(length != 0){
 		d->flash_write(address, *data);
 		address++;
@@ -239,7 +242,7 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 		polling_check(d, address - 1, *data);
 	}
 
-	//task_set(d, PROTECT_ENABLE);
+	//command_set(d, PROTECT_ENABLE);
 	//Sleep(15);
 	return ret;
 }
@@ -313,7 +316,7 @@ static void w29c020_write(const struct flash_order *d)
 
 	printf("write ok. retry %d\n", retry);
 	compare(d, d->address, d->data, d->length);
-	task_set(d, BOOTBLOCK_FIRST);
+	command_set(d, BOOTBLOCK_FIRST);
 	Sleep(10);
 }
 

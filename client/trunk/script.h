@@ -41,7 +41,8 @@ struct st_config{
 	//target filename
 	const char *ramimage_write, *ramimage_read, *romimage;
 	const char *script;
-	const struct reader_driver *driver;
+	const struct reader_driver *reader;
+	const struct flash_driver *cpu_flash_driver, *ppu_flash_driver;
 	//data mode
 	int mode;
 };

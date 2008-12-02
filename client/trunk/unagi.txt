@@ -2,6 +2,7 @@ famicom ROM cartridge utility - unagi
 client version 0.5.1
 by sato_tiff, sato at kitanaka.net
 公式サイト http://sourceforge.jp/projects/unagi/
+掲示板     http://unagi.sourceforge.jp/t/bbs.html
 
 --はじめに--
 famicom ROM cartridge のデータ転送を行います。 ハードウェアは国内で有
@@ -33,7 +34,7 @@ cmd.exe, rxvt などのコマンドラインシェル
 
 --コマンドライン引数--
 unagi.exe [mode] [script file] [target file] ...
-== d ROM DUMP MODE==
+== d ROM DUMP MODE ==
 ROM イメージを作成します。
 unagi.exe d [script file] [dump file] [flag] [mapper]
 script file - 対応するマッパの ROM スクリプトファイルを指定します。
@@ -46,13 +47,13 @@ flag        - 出力するヘッダを設定します。複数の場合はスペースをいれずに        
   _ mapper変更だけを適用する場合
 mapper      - スクリプトの設定を無視してマッパ番号を設定します。
 
-== r RAM READ MODE==
+== r RAM READ MODE ==
 バックアップ RAM イメージを PC 上に作成します。
 unagi.exe r [script file] [dump file]
 script file - 対応するマッパの RAM スクリプトファイルを指定します。
 dump file   - 出力する RAM イメージファイルを指定します。
 
-== w RAM WRITE MODE==
+== w RAM WRITE MODE ==
 バックアップ RAM イメージをカートリッジへ転送します。
 unagi.exe w [script file] [ram file]
 script file - 対応するマッパの RAM スクリプトファイルを指定します。
@@ -75,6 +76,11 @@ GNU Lesser General Public License v2
 - GIVEIO.SYS
 配布パッケージにも含めませんし、作者が誰なのかもわからないのでパッケー
 ジに含めないでください。
+
+- client_test.c
+実験的なソースが入っているのと、なくても RELEASE ビルドは可能なこと、
+無断転用でのトラブルを防ぐために非公開にしました。個別に要望があれば
+ソースは公開します。
 
 --謝辞--
 * 資料提供をしてくれた color さん, VirtuaNES のソース, nesdev

@@ -1,5 +1,6 @@
 #ifndef _HEADER_H_
 #define _HEADER_H_
+#include "flashmemory.h"
 struct memory{
 	const char *name;
 	int size, offset;
@@ -7,6 +8,7 @@ struct memory{
 };
 struct romimage{
 	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
+	struct flash_order cpu_flash, ppu_flash;
 	long mappernum;
 	int mirror, backupram;
 };

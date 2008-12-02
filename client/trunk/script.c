@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 todo: 
 * 変数管理のグローバル値を、logical_test(), excute() ローカルにしたい
 */
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -410,8 +411,58 @@ static const char STR_ACCESS_READ[] = "read";
 static const char STR_ACCESS_WRITE[] = "write";
 
 enum{
-	SETTING, DUMP, END
+	SETTING, DUMP, END, AREA_CPU, AREA_PPU
 };
+static int command_mask(const int region, long address, long offset, long size, long *data)
+{
+	switch(region){
+	case AREA_CPU:
+		switch(offset){
+		case 0x8000: case 0xa000: case 0xc000:
+			break;
+		default:
+			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			return NG;
+		}
+		switch(size){
+		case 0x2000: case 0x4000: case 0x8000:
+			break;
+		default:
+			printf("%s %s_COMMAND area mask error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			return NG;
+		}
+		break;
+	case AREA_PPU:
+		switch(offset){
+		case 0x0000: case 0x0200: case 0x0400: case 0x0800:
+		case 0x1000: case 0x1200: case 0x1400: case 0x1800:
+			break;
+		default:
+			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			return NG;
+		}
+		switch(size){
+		case 0x0400: case 0x0800: case 0x1000: case 0x2000: 
+			break;
+		default:
+			printf("%s %s_COMMAND area mask error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			return NG;
+		}
+		break;
+	default:
+		assert(0);
+	}
+	switch(address){
+	case 0: case 0x2aaa: case 0x5555:
+		break;
+	default:
+		assert(0);
+	}
+	long mask = size - 1;
+	*data = (address & mask) | offset;
+	return OK;
+}
+
 static int logical_check(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	long cpu_romsize = 0, cpu_ramsize = 0, ppu_romsize = 0;
@@ -440,8 +491,38 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			r->cpu_ram_read.size = s->value[0];
 			r->cpu_ram_write.size = s->value[0];
 			break;
+		case SCRIPT_OPCODE_CPU_COMMAND_0000:
+			if(command_mask(AREA_CPU, 0, s->value[0], s->value[1], &(r->cpu_flash.command_0000)) == NG){
+				error += 1;
+			}
+			break;
+		case SCRIPT_OPCODE_CPU_COMMAND_2AAA:
+			if(command_mask(AREA_CPU, 0x2aaa, s->value[0], s->value[1], &(r->cpu_flash.command_2aaa)) == NG){
+				error += 1;
+			}
+			break;
+		case SCRIPT_OPCODE_CPU_COMMAND_5555:
+			if(command_mask(AREA_CPU, 0x5555, s->value[0], s->value[1], &(r->cpu_flash.command_5555)) == NG){
+				error += 1;
+			}
+			break;
 		case SCRIPT_OPCODE_PPU_ROMSIZE:
 			r->ppu_rom.size = s->value[0];
+			break;
+		case SCRIPT_OPCODE_PPU_COMMAND_0000:
+			if(command_mask(AREA_PPU, 0, s->value[0], s->value[1], &(r->ppu_flash.command_0000)) == NG){
+				error += 1;
+			}
+			break;
+		case SCRIPT_OPCODE_PPU_COMMAND_2AAA:
+			if(command_mask(AREA_PPU, 0x2aaa, s->value[0], s->value[1], &(r->ppu_flash.command_2aaa)) == NG){
+				error += 1;
+			}
+			break;
+		case SCRIPT_OPCODE_PPU_COMMAND_5555:
+			if(command_mask(AREA_PPU, 0x5555, s->value[0], s->value[1], &(r->ppu_flash.command_5555)) == NG){
+				error += 1;
+			}
 			break;
 		case SCRIPT_OPCODE_DUMP_START:
 			setting = DUMP;
@@ -495,10 +576,6 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
-			if(c->mode == MODE_ROM_DUMP){
-				printf("%s cannot use %s on ROMDUMP mode\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_RAMRW);
-				error += 1;
-			}
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
@@ -528,6 +605,27 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 					error += 1;
 				}
 			}
+			setting = DUMP;
+			}
+			break;
+		case SCRIPT_OPCODE_CPU_PROGRAM:{
+			const long address = s->value[0];
+			const long length = s->value[1];
+			const long end = address + length - 1;
+			//length filter.
+			if(!is_range(length, 0x80, 0x2000)){
+				logical_print_illgallength(STR_REGION_CPU, length);
+				error += 1;
+			}
+			//address filter
+			else if(!is_region_cpurom(address)){
+				logical_print_illgalarea(STR_REGION_CPU, address);
+				error += 1;
+			}else if(end >= 0x10000){
+				logical_print_overdump(STR_REGION_CPU, address, end);
+				error += 1;
+			}
+			cpu_romsize += length;
 			setting = DUMP;
 			}
 			break;
@@ -787,7 +885,7 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 static int execute(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	const struct reader_driver *d;
-	d = c->driver;
+	d = c->reader;
 	const int gg = giveio_start();
 	switch(gg){
 	case GIVEIO_OPEN:
@@ -843,6 +941,17 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				cpu_ram_write.data += length;
 				cpu_ram_write.offset += length;
 			}
+			}
+			break;
+		case SCRIPT_OPCODE_CPU_PROGRAM:{
+			struct flash_order *order;
+			order = &(r->cpu_flash);
+			order->address = s->value[0];
+			order->length = s->value[1];
+			order->data = cpu_rom.data;
+			c->cpu_flash_driver->write(order);
+			cpu_rom.data += order->length;
+			cpu_rom.offset += order->length;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMTEST:

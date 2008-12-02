@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "script.h"
 #include "header.h"
 #include "textutil.h"
+#include "flashmemory.h"
 #include "client_test.h"
 
 static int flag_get(const char *flag, struct st_config *c)
@@ -58,7 +59,7 @@ static int config_file_load(struct st_config *c)
 {
 	char *buf;
 	int size = 0;
-	c->driver = NULL;
+	c->reader = NULL;
 	buf = buf_load_full("unagi.cfg", &size);
 	if(buf == NULL){
 		printf("%s config file open error\n", PREFIX_CONFIG_ERROR);
@@ -81,7 +82,7 @@ static int config_file_load(struct st_config *c)
 			continue;
 		}
 		if(strcmp("DRIVER", word[0]) == 0){
-			c->driver = reader_driver_get(word[1]);
+			c->reader = reader_driver_get(word[1]);
 			break;
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
@@ -92,7 +93,7 @@ static int config_file_load(struct st_config *c)
 	}
 	
 	free(text);
-	if(c->driver == NULL){
+	if(c->reader == NULL){
 		printf("%s hardware not selected or not found\n", PREFIX_CONFIG_ERROR);
 		free(buf);
 		return NG;
@@ -101,11 +102,22 @@ static int config_file_load(struct st_config *c)
 	return OK;
 }
 
+static int flash_pointer_init(const char *device, const struct flash_driver **f)
+{
+	*f = flash_driver_get(device);
+	if(*f == NULL){
+		printf("%s unknown flash device %s\n", PREFIX_CONFIG_ERROR, device);
+		return NG;
+	}
+	return OK;
+}
+
 static int config_init(int argc, const char *mode, const char *script, const char *file, const char *flag, const char *mapper, struct st_config *c)
 {
 	c->romimage = NULL;
 	c->ramimage_read = NULL;
 	c->ramimage_write = NULL;
+	//mode 別 target file 初期化
 	switch(mode[0]){
 	case 'd':
 		c->mode = MODE_ROM_DUMP;
@@ -119,25 +131,22 @@ static int config_init(int argc, const char *mode, const char *script, const cha
 		c->mode = MODE_RAM_WRITE;
 		c->ramimage_write = file;
 		break;
+	case 'f':
+		c->mode = MODE_ROM_PROGRAM;
+		c->romimage = file;
+		break;
 	default:
 		printf("%s unkown mode %s\n", PREFIX_CONFIG_ERROR, mode);
 		return NG;
 	};
-	switch(c->mode){
-	case MODE_RAM_READ:
-	case MODE_RAM_WRITE:
-		if(argc != 4){
-			printf("%s too many argument\n", PREFIX_CONFIG_ERROR);
-			return NG;
-		}
-	}
-	
+	//mode 別 argc check. ここに来る argc は 4.5.6 が保証されている
 	c->script = script;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
 	c->mirror = CONFIG_OVERRIDE_UNDEF;
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
-	{
+	switch(c->mode){
+	case MODE_ROM_DUMP:{
 		int flag_error = OK, mapper_error = OK;
 		switch(argc){
 		case 5:
@@ -156,6 +165,40 @@ static int config_init(int argc, const char *mode, const char *script, const cha
 			printf("%s unknown mapper %s\n", PREFIX_CONFIG_ERROR, flag);
 			return NG;
 		}
+		}break;
+	case MODE_RAM_READ:
+	case MODE_RAM_WRITE:
+		if(argc != 4){
+			printf("%s too many argument\n", PREFIX_CONFIG_ERROR);
+			return NG;
+		}
+		break;
+	case MODE_ROM_PROGRAM:
+		switch(argc){
+		case 4:
+			printf("%s few argument\n", PREFIX_CONFIG_ERROR);
+			return NG;
+		case 5:
+			//flag って変数名はまずい
+			if(flash_pointer_init(flag, &(c->cpu_flash_driver)) == NG){
+				return NG;
+			}
+			c->ppu_flash_driver = NULL;
+			break;
+		case 6:
+			//flag, mapper ... 同様
+			if(flash_pointer_init(flag, &(c->cpu_flash_driver)) == NG){
+				return NG;
+			}
+			if(flash_pointer_init(mapper, &(c->ppu_flash_driver)) == NG){
+				return NG;
+			}
+			break;
+		default:
+			printf("%s too many argument\n", PREFIX_CONFIG_ERROR);
+			return NG;
+		}
+		break;
 	}
 
 	if(config_file_load(c) == NG){
@@ -179,10 +222,14 @@ int main(int c, char **v)
 	case 4: //mode script target
 		config_result = config_init(c, v[1], v[2], v[3], NULL, NULL, &config);
 		break;
-	case 5: //mode script target flag
+	case 5:
+		//mode script target flag
+		//mode script target cpu_flash_device
 		config_result = config_init(c, v[1], v[2], v[3], v[4], NULL, &config);
 		break;
-	case 6: //mode script target flag mapper
+	case 6:
+		//mode script target flag mapper
+		//mode script target cpu_flash_device ppu_flash_device
 		config_result = config_init(c, v[1], v[2], v[3], v[4], v[5], &config);
 		break;
 	usage:

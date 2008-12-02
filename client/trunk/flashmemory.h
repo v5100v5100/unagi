@@ -27,7 +27,7 @@ flashmemory.c ¤À¤±¤Î·Ù¹ð
 struct flash_order{
 	long address, length;
 	const u8 *data;
-	long task_0000, task_2aaa, task_5555;
+	long command_0000, command_2aaa, command_5555;
 	void (*flash_write)(long address, long data);
 	void (*read)(long address, long length, u8 *data);
 };

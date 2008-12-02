@@ -141,10 +141,25 @@ int value_get(const char *str, long *val)
 		break;
 	}
 	//この時点での str は 数字の先頭としてた場所
-	char *error[10];
-	*val = strtol(str, error, base);
-	if(error[0][0] != '\0'){
-		return NG;
+	char *error;
+	*val = strtol(str, &error, base);
+	if(error[0] != '\0'){
+		//x01
+		//4M\0
+		if((error[1] == '\0') && (base == 10)){
+			switch(error[0]){
+			/*case 'K': いくつだっけ?
+				*val *= 0x400;
+				break;*/
+			case 'M':
+				*val *= 0x20000;
+				break;
+			default:
+				return NG;
+			}
+		}else{
+			return NG;
+		}
 	}
 	
 	if(sign == -1){
