@@ -20,6 +20,8 @@ else
 endif
 
 all: $(TARGET) unagi.d
+client_test.o: test/client_test.c
+	gcc $(CFLAGS) -I. -c -o $@ $<
 unagi.d:
 	gcc -MM *.c > $@
 hk.exe: $(OBJ_HK)
