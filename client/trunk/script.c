@@ -47,65 +47,7 @@ STEP_START variable start end step -> for(i=start;i<end;i+=step)
 STEP_END
 DUMP_END
 */
-struct script_syntax{
-	const char *name;
-	int script_opcode;
-	int argc, compare;
-	int argv_type[4];
-};
-enum{
-	SYNTAX_ARGVTYPE_NULL,
-	SYNTAX_ARGVTYPE_VALUE,
-	SYNTAX_ARGVTYPE_HV,
-	SYNTAX_ARGVTYPE_EXPRESSION,
-	SYNTAX_ARGVTYPE_VARIABLE
-};
-enum{
-	SYNTAX_COMPARE_EQ,
-	SYNTAX_COMPARE_GT
-};
-enum{
-	SCRIPT_OPCODE_MAPPER,
-	SCRIPT_OPCODE_MIRROR,
-	SCRIPT_OPCODE_CPU_ROMSIZE,
-	SCRIPT_OPCODE_CPU_RAMSIZE,
-	SCRIPT_OPCODE_PPU_ROMSIZE,
-	SCRIPT_OPCODE_DUMP_START,
-	SCRIPT_OPCODE_CPU_READ,
-	SCRIPT_OPCODE_CPU_WRITE,
-	SCRIPT_OPCODE_CPU_RAMRW,
-	SCRIPT_OPCODE_PPU_RAMTEST,
-	SCRIPT_OPCODE_PPU_READ,
-	SCRIPT_OPCODE_PPU_WRITE,
-	SCRIPT_OPCODE_STEP_START,
-	SCRIPT_OPCODE_STEP_END,
-	SCRIPT_OPCODE_DUMP_END,
-	SCRIPT_OPCODE_COMMENT,
-	SCRIPT_OPCODE_NUM
-};
-static const char OPSTR_CPU_ROMSIZE[] = "CPU_ROMSIZE";
-static const char OPSTR_CPU_RAMSIZE[] = "CPU_RAMSIZE";
-static const char OPSTR_PPU_ROMSIZE[] = "PPU_ROMSIZE";
-static const char OPSTR_CPU_RAMRW[] = "CPU_RAMRW";
-static const struct script_syntax SCRIPT_SYNTAX[] = {
-	{"MAPPER", SCRIPT_OPCODE_MAPPER, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"MIRROR", SCRIPT_OPCODE_MIRROR, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_HV, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{OPSTR_CPU_ROMSIZE, SCRIPT_OPCODE_CPU_ROMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{OPSTR_CPU_RAMSIZE, SCRIPT_OPCODE_CPU_RAMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{OPSTR_PPU_ROMSIZE, SCRIPT_OPCODE_PPU_ROMSIZE, 1, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"DUMP_START", SCRIPT_OPCODE_DUMP_START, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"CPU_READ", SCRIPT_OPCODE_CPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"CPU_WRITE", SCRIPT_OPCODE_CPU_WRITE, 2, SYNTAX_COMPARE_GT, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION}},
-	{OPSTR_CPU_RAMRW, SCRIPT_OPCODE_CPU_RAMRW, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"PPU_RAMTEST", SCRIPT_OPCODE_PPU_RAMTEST, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"PPU_READ", SCRIPT_OPCODE_PPU_READ, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-#if OP_PPU_WRITE_ENABLE==1
-	{"PPU_WRITE", SCRIPT_OPCODE_PPU_WRITE, 2, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-#endif
-	{"STEP_START", SCRIPT_OPCODE_STEP_START, 4, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_VARIABLE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE}},
-	{"STEP_END", SCRIPT_OPCODE_STEP_END, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}},
-	{"DUMP_END", SCRIPT_OPCODE_DUMP_END, 0, SYNTAX_COMPARE_EQ, {SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL}}
-};
+#include "syntax.h"
 
 //変数管理
 struct variable_manage{
@@ -284,7 +226,10 @@ static int syntax_check_expression(char **word, int word_num, struct st_expressi
 
 static const char SYNTAX_ERROR_PREFIX[] = "syntax error:";
 
-static int syntax_check_phase(char **word, int word_num, struct script *s)
+/*
+return: error count, ここでは 0 or 1
+*/
+static int syntax_check_phase(char **word, int word_num, struct script *s, const int mode)
 {
 	int i = sizeof(SCRIPT_SYNTAX) / sizeof(SCRIPT_SYNTAX[0]);
 	const struct script_syntax *syntax;
@@ -294,6 +239,10 @@ static int syntax_check_phase(char **word, int word_num, struct script *s)
 			int j;
 			
 			s->opcode = syntax->script_opcode;
+			if((mode & syntax->permittion) == 0){
+				printf("%s opcode %s not allowed on current mode\n", SYNTAX_ERROR_PREFIX, syntax->name);
+				return 1;
+			};
 			{
 				int compare = 0;
 				switch(syntax->compare){
@@ -369,10 +318,14 @@ static int syntax_check_phase(char **word, int word_num, struct script *s)
 	return 1;
 }
 
-static int syntax_check(char **text, int text_num, struct script *s)
+/*
+return: error count
+*/
+static int syntax_check(char **text, int text_num, struct script *s, int mode)
 {
 	int error = 0;
 	int i;
+	mode = 1<< mode; //permittion は bitflag なのでここで変換する
 	variable_init_all();
 	for(i = 0; i < text_num; i++){
 		char *word[TEXT_MAXWORD];
@@ -380,7 +333,7 @@ static int syntax_check(char **text, int text_num, struct script *s)
 		if(word[0][0] == '#'){
 			s->opcode = SCRIPT_OPCODE_COMMENT;
 		}else{
-			error += syntax_check_phase(word, n, s);
+			error += syntax_check_phase(word, n, s, mode);
 		}
 		s++;
 	}
@@ -834,11 +787,7 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 static int execute(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	const struct reader_driver *d;
-	d = reader_driver_get(c->driver);
-	if(d == NULL){
-		printf("%s driver not found\n", EXECUTE_ERROR_PREFIX);
-		return NG;
-	}
+	d = c->driver;
 	const int gg = giveio_start();
 	switch(gg){
 	case GIVEIO_OPEN:
@@ -976,7 +925,7 @@ void script_load(const struct st_config *c)
 			k += text_num;
 			k->opcode = SCRIPT_OPCODE_DUMP_END;
 		}
-		const int error = syntax_check(text, text_num, s);
+		const int error = syntax_check(text, text_num, s, c->mode);
 		free(buf);
 		free(text);
 		if(error != 0){

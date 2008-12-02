@@ -1,7 +1,7 @@
 #ifndef _SCRIPT_H_
 #define _SCRIPT_H_
-#if DEBUG==1
 #include "reader_master.h"
+#if DEBUG==1
 int ppu_ramtest(const struct reader_driver *d);
 #endif
 struct st_config;
@@ -41,7 +41,7 @@ struct st_config{
 	//target filename
 	const char *ramimage_write, *ramimage_read, *romimage;
 	const char *script;
-	char driver[20];
+	const struct reader_driver *driver;
 	//data mode
 	int mode;
 };
@@ -53,7 +53,8 @@ enum{
 enum{
 	MODE_ROM_DUMP,
 	MODE_RAM_READ,
-	MODE_RAM_WRITE
+	MODE_RAM_WRITE,
+	MODE_ROM_PROGRAM
 };
 
 #endif

@@ -5,10 +5,9 @@ OBJ = \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o reader_hongkongfc.o
 TARGET = unagi.exe
-CFLAGS = -Wall -Werror -Wmissing-declarations \
-	-fomit-frame-pointer #-Wcast-qual
+CFLAGS = -Wall -Werror -Wmissing-declarations #-Wcast-qual
 ifeq ($(RELEASE),1)
-	CFLAGS += -O2 -DDEBUG=0 -DNDEBUG
+	CFLAGS += -O2 -DDEBUG=0 -DNDEBUG -fomit-frame-pointer 
 else
 	OBJ += client_test.o
 	CFLAGS += -O0 -g -DDEBUG=1

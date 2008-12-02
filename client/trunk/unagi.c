@@ -58,7 +58,7 @@ static int config_file_load(struct st_config *c)
 {
 	char *buf;
 	int size = 0;
-	c->driver[0] = '\0';
+	c->driver = NULL;
 	buf = buf_load_full("unagi.cfg", &size);
 	if(buf == NULL){
 		printf("%s config file open error\n", PREFIX_CONFIG_ERROR);
@@ -81,7 +81,8 @@ static int config_file_load(struct st_config *c)
 			continue;
 		}
 		if(strcmp("DRIVER", word[0]) == 0){
-			strncpy(c->driver, word[1], 20);
+			c->driver = reader_driver_get(word[1]);
+			break;
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
 			free(buf);
@@ -89,9 +90,10 @@ static int config_file_load(struct st_config *c)
 			return NG;
 		}
 	}
+	
 	free(text);
-	if(c->driver[0] == '\0'){
-		printf("%s hardware not selected\n", PREFIX_CONFIG_ERROR);
+	if(c->driver == NULL){
+		printf("%s hardware not selected or not found\n", PREFIX_CONFIG_ERROR);
 		free(buf);
 		return NG;
 	}
