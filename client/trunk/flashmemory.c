@@ -33,34 +33,6 @@ flashmemory.c ¤À¤±¤Î·Ù¹ð
 driver for Winbond W29C020, W49F002
 */
 /*
-----memory detail----
-VRC6 CPU memory bank
-cpu address|rom address    |page|task
-$8000-$bfff|0x00000-0x03fff|0   |write (0x2aaa & 0x3fff) + 0x8000
-$c000-$dfff|0x04000-0x05fff|2   |write (0x5555 & 0x1fff) + 0xc000
-$e000-$efff|0x3e000-0x3ffff|fix |boot area
-
-MMC3 CPU memory bank
-cpu address|rom address    |page|task
-$8000-$9fff|0x02000-0x03fff|1   |write (0x2aaa & 0x1fff) + 0x8000
-$a000-$bfff|0x04000-0x05fff|2   |write (0x5555 & 0x1fff) + 0xa000
-$c000-$efff|ËöÈø           |fix |boot area
-
-generic CPU memory bank
-cpu address|rom address    |page|task
-$8000-$9fff|0x02000-0x03fff|1   |write (0x2aaa & 0x1fff) + 0x8000
-$a000-$bfff|0x04000-0x05fff|2   |write (0x5555 & 0x1fff) + 0xa000
-$c000-$dfff|n * 0x2000     |n   |write area
-$e000-$efff|ËöÈø           |fix |boot area, Ì¤»ÈÍÑ
-
-generic PPU memory bank
-ppu address|rom address    |page|task
-$0000-$03ff|0x02800-0x02bff|0x0a|write (0x2aaa & 0x03ff) + 0
-$0400-$07ff|0x05400-0x057ff|0x15|write (0x5555 & 0x03ff) + 0x400
-$0800-$0fff|Ì¤»ÈÍÑ
-$1000-$1fff|n * 0x0400     |n   |write area
-*/
-/*
 JEDEC flash memory command
 http://www.sst.com/downloads/software_driver/SST49LF002A.txt
 */
