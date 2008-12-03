@@ -30,6 +30,7 @@ todo:
 #include "reader_master.h"
 #include "giveio.h"
 #include "textutil.h"
+#include "config.h"
 #include "header.h"
 #include "script.h"
 
@@ -434,8 +435,8 @@ static int command_mask(const int region, long address, long offset, long size, 
 		break;
 	case AREA_PPU:
 		switch(offset){
-		case 0x0000: case 0x0200: case 0x0400: case 0x0800:
-		case 0x1000: case 0x1200: case 0x1400: case 0x1800:
+		case 0x0000: case 0x0400: case 0x0800: case 0x0c00:
+		case 0x1000: case 0x1400: case 0x1800: case 0x1c00:
 			break;
 		default:
 			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
@@ -488,8 +489,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			r->cpu_rom.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_RAMSIZE:
-			r->cpu_ram_read.size = s->value[0];
-			r->cpu_ram_write.size = s->value[0];
+			r->cpu_ram.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_COMMAND_0000:
 			if(command_mask(AREA_CPU, 0, s->value[0], s->value[1], &(r->cpu_flash.command_0000)) == NG){
@@ -594,14 +594,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			cpu_ramsize += length;
 			if(c->mode == MODE_RAM_WRITE){
-				r->cpu_ram_write.data = buf_load_full(c->ramimage_write, &(r->cpu_ram_write.size));
-				if(r->cpu_ram_write.data == NULL){
+				int imagesize;
+				r->cpu_ram.data = buf_load_full(c->ramimage_write, &imagesize);
+				if(r->cpu_ram.data == NULL){
 					printf("%s RAM image open error\n", LOGICAL_ERROR_PREFIX);
 					error += 1;
-				}else if(r->cpu_ram_read.size != r->cpu_ram_write.size){
+				}else if(r->cpu_ram.size != imagesize){
 					printf("%s RAM image size is not same\n", LOGICAL_ERROR_PREFIX);
-					free(r->cpu_ram_write.data);
-					r->cpu_ram_write.data = NULL;
+					free(r->cpu_ram.data);
+					r->cpu_ram.data = NULL;
 					error += 1;
 				}
 			}
@@ -726,7 +727,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	}
 	//dump length conform
 	error += dump_length_conform(OPSTR_CPU_ROMSIZE, cpu_romsize, r->cpu_rom.size);
-	error += dump_length_conform(OPSTR_CPU_RAMSIZE, cpu_ramsize, r->cpu_ram_read.size);
+	error += dump_length_conform(OPSTR_CPU_RAMSIZE, cpu_ramsize, r->cpu_ram.size);
 	error += dump_length_conform(OPSTR_PPU_ROMSIZE, ppu_romsize, r->ppu_rom.size);
 	
 	//command line config override
@@ -848,37 +849,39 @@ static void checksum_print(const u8 *data, long length)
 		length--;
 	}
 	printf(" 0x%06x\n", sum);
-	fflush(stdout);
 }
 
 static void read_result_print(const struct memory *m, long length)
 {
 	readbuffer_print(m, length);
 	checksum_print(m->data, length);
+	fflush(stdout);
 }
 
 const char EXECUTE_ERROR_PREFIX[] = "execute error:";
-static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *w, struct memory *r, int mode, long address, long length)
+static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length)
 {
 	if(mode == MODE_RAM_WRITE){
 		const u8 *writedata;
 		long a = address;
 		long l = length;
-		writedata = w->data;
+		writedata = ram->data;
 		while(l != 0){
 			d->cpu_6502_write(a++, *writedata);
 			writedata += 1;
 			l--;
 		}
-	}
-	d->cpu_read(address, length, r->data);
-	if(mode == MODE_RAM_READ){
-		return;
-	}
-	if(memcmp(r->data, w->data, length) == 0){
-		printf("RAM data write success\n");
+		u8 *compare;
+		compare = malloc(length);
+		d->cpu_read(address, length, compare);
+		if(memcmp(ram->data, compare, length) == 0){
+			printf("RAM data write success\n");
+		}else{
+			printf("RAM data write failed\n");
+		}
+		free(compare);
 	}else{
-		printf("RAM data write failed\n");
+		d->cpu_read(address, length, ram->data);
 	}
 }
 
@@ -902,11 +905,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		printf("%s maybe connection error\n", EXECUTE_ERROR_PREFIX);
 		return NG;
 	}
-	struct memory cpu_rom, ppu_rom, cpu_ram_read, cpu_ram_write;
+	struct memory cpu_rom, ppu_rom, cpu_ram;
 	cpu_rom = r->cpu_rom;
 	ppu_rom = r->ppu_rom;
-	cpu_ram_read = r->cpu_ram_read;
-	cpu_ram_write = r->cpu_ram_write;
+	cpu_ram = r->cpu_ram;
 	
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
@@ -918,7 +920,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			const long length = s->value[1];
 			m = &cpu_rom;
 			if(is_region_cpuram(addr)){
-				m = &cpu_ram_read;
+				m = &cpu_ram;
 			}
 			d->cpu_read(addr, length, m->data);
 			read_result_print(m, length);
@@ -933,14 +935,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
 			const long length = s->value[1];
-			execute_cpu_ramrw(d, &cpu_ram_write, &cpu_ram_read, c->mode, s->value[0], length);
-			read_result_print(&cpu_ram_read, length);
-			cpu_ram_read.data += length;
-			cpu_ram_read.offset += length;
-			if(c->mode == MODE_RAM_WRITE){
-				cpu_ram_write.data += length;
-				cpu_ram_write.offset += length;
-			}
+			execute_cpu_ramrw(d, &cpu_ram, c->mode, s->value[0], length);
+			read_result_print(&cpu_ram, length);
+			cpu_ram.data += length;
+			cpu_ram.offset += length;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_PROGRAM:{
@@ -1053,12 +1051,7 @@ void script_load(const struct st_config *c)
 			data: NULL,
 			name: STR_REGION_PPU
 		},
-		cpu_ram_read: {
-			size: 0, offset: 0,
-			data: NULL,
-			name: STR_REGION_CPU
-		},
-		cpu_ram_write: {
+		cpu_ram: {
 			size: 0, offset: 0,
 			data: NULL,
 			name: STR_REGION_CPU
@@ -1068,10 +1061,10 @@ void script_load(const struct st_config *c)
 	};
 	if(logical_check(s, c, &r) == 0){
 		//dump RAM ÎÎ°è¼èÆÀ
-		if(nesbuffer_malloc(&r) == NG){
+		if(nesbuffer_malloc(&r, c->mode) == NG){
 			free(s);
-			if(r.cpu_ram_write.data != NULL){
-				free(r.cpu_ram_write.data);
+			if((c->mode == MODE_RAM_WRITE) && (r.cpu_ram.data != NULL)){
+				free(r.cpu_ram.data);
 			}
 			return;
 		}
@@ -1083,14 +1076,14 @@ void script_load(const struct st_config *c)
 				nesfile_create(&r, c->romimage);
 				break;
 			case MODE_RAM_READ:
-				backupram_create(&(r.cpu_ram_read), c->ramimage_read);
+				backupram_create(&(r.cpu_ram), c->ramimage_read);
 				break;
 			}
 		}
 		//dump RAM ÎÎ°è²òÊü
-		nesbuffer_free(&r);
-		if(r.cpu_ram_write.data != NULL){
-			free(r.cpu_ram_write.data);
+		nesbuffer_free(&r, c->mode);
+		if((c->mode == MODE_RAM_WRITE) && (r.cpu_ram.data != NULL)){
+			free(r.cpu_ram.data);
 		}
 	}
 	free(s);

@@ -1,7 +1,7 @@
 #ifndef _SCRIPT_H_
 #define _SCRIPT_H_
-#include "reader_master.h"
 #if DEBUG==1
+#include "reader_master.h"
 int ppu_ramtest(const struct reader_driver *d);
 #endif
 struct st_config;
@@ -32,30 +32,6 @@ enum{
 enum{
 	EXPRESSION_TYPE_VARIABLE,
 	EXPRESSION_TYPE_VALUE
-};
-
-struct st_config{
-	//override config
-	long mapper;
-	int mirror, backupram;
-	//target filename
-	const char *ramimage_write, *ramimage_read, *romimage;
-	const char *script;
-	const struct reader_driver *reader;
-	const struct flash_driver *cpu_flash_driver, *ppu_flash_driver;
-	//data mode
-	int mode;
-};
-enum{
-	CONFIG_OVERRIDE_UNDEF = 4649,
-	CONFIG_OVERRIDE_TRUE = 1
-};
-
-enum{
-	MODE_ROM_DUMP,
-	MODE_RAM_READ,
-	MODE_RAM_WRITE,
-	MODE_ROM_PROGRAM
 };
 
 #endif

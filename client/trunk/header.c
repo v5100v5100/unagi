@@ -8,6 +8,7 @@ iNES header/buffer control
 #include "type.h"
 #include "file.h"
 #include "crc32.h"
+#include "config.h"
 #include "header.h"
 
 enum{
@@ -28,7 +29,7 @@ static void nesheader_set(const struct romimage *r, u8 *header)
 	if(r->mirror == MIRROR_VERTICAL){
 		header[6] |= 0x01;
 	}
-	if((r->cpu_ram_read.size != 0) || (r->backupram != 0)){
+	if((r->cpu_ram.size != 0) || (r->backupram != 0)){
 		header[6] |= 0x02;
 	}
 	//4 screen ¤ÏÌµ»ë
@@ -126,11 +127,13 @@ static inline void memory_malloc(struct memory *m)
 	}
 }
 
-int nesbuffer_malloc(struct romimage *r)
+int nesbuffer_malloc(struct romimage *r, int mode)
 {
 	memory_malloc(&(r->cpu_rom));
 	memory_malloc(&(r->ppu_rom));
-	memory_malloc(&(r->cpu_ram_read));
+	if(mode == MODE_RAM_READ){
+		memory_malloc(&(r->cpu_ram));
+	}
 	return OK;
 }
 
@@ -141,11 +144,13 @@ static inline void memory_free(struct memory *m)
 		m->data = NULL;
 	}
 }
-void nesbuffer_free(struct romimage *r)
+void nesbuffer_free(struct romimage *r, int mode)
 {
 	memory_free(&(r->cpu_rom));
 	memory_free(&(r->ppu_rom));
-	memory_free(&(r->cpu_ram_read));
+	if(mode == MODE_RAM_READ){
+		memory_free(&(r->cpu_ram));
+	}
 }
 
 void backupram_create(const struct memory *r, const char *ramfilename)

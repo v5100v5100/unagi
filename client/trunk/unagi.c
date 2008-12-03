@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "script.h"
 #include "header.h"
 #include "textutil.h"
+#include "config.h"
 #include "flashmemory.h"
 #include "client_test.h"
 
@@ -111,58 +112,70 @@ static int flash_pointer_init(const char *device, const struct flash_driver **f)
 	}
 	return OK;
 }
+enum{
+	ARGC_MODE = 1,
+	ARGC_SCRIPTFILE,
+	ARGC_DUMP_OUT_NESFILE,
+	ARGC_DUMP_FLAG,
+	ARGC_DUMP_MAPPER,
+	ARGC_READ_OUT_RAMFILE = ARGC_DUMP_OUT_NESFILE,
+	ARGC_WRITE_IN_RAMFILE = ARGC_DUMP_OUT_NESFILE,
+	ARGC_PROGRAM_IN_NESFILE = ARGC_DUMP_OUT_NESFILE,
+	ARGC_PROGRAM_CPU_DEVICE,
+	ARGC_PROGRAM_PPU_DEVICE
+};
 
-static int config_init(int argc, const char *mode, const char *script, const char *file, const char *flag, const char *mapper, struct st_config *c)
+static int config_init(const int argc, const char **argv, struct st_config *c)
 {
+	c->script = argv[ARGC_SCRIPTFILE];
 	c->romimage = NULL;
 	c->ramimage_read = NULL;
 	c->ramimage_write = NULL;
-	//mode 別 target file 初期化
-	switch(mode[0]){
-	case 'd':
-		c->mode = MODE_ROM_DUMP;
-		c->romimage = file;
-		break;
-	case 'r':
-		c->mode = MODE_RAM_READ;
-		c->ramimage_read = file;
-		break;
-	case 'w':
-		c->mode = MODE_RAM_WRITE;
-		c->ramimage_write = file;
-		break;
-	case 'f':
-		c->mode = MODE_ROM_PROGRAM;
-		c->romimage = file;
-		break;
-	default:
-		printf("%s unkown mode %s\n", PREFIX_CONFIG_ERROR, mode);
-		return NG;
-	};
-	//mode 別 argc check. ここに来る argc は 4.5.6 が保証されている
-	c->script = script;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
 	c->mirror = CONFIG_OVERRIDE_UNDEF;
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
+	//mode 別 target file 初期化
+	switch(argv[ARGC_MODE][0]){
+	case 'd':
+		c->mode = MODE_ROM_DUMP;
+		c->romimage = argv[ARGC_DUMP_OUT_NESFILE];
+		break;
+	case 'r':
+		c->mode = MODE_RAM_READ;
+		c->ramimage_read = argv[ARGC_READ_OUT_RAMFILE];
+		break;
+	case 'w':
+		c->mode = MODE_RAM_WRITE;
+		c->ramimage_write = argv[ARGC_WRITE_IN_RAMFILE];
+		break;
+	case 'f':
+		c->mode = MODE_ROM_PROGRAM;
+		c->romimage = argv[ARGC_PROGRAM_IN_NESFILE];
+		break;
+	default:
+		printf("%s unkown mode %s\n", PREFIX_CONFIG_ERROR, argv[ARGC_MODE]);
+		return NG;
+	};
+	//mode 別 argc check. ここに来る argc は 4.5.6 が保証されている
 	switch(c->mode){
 	case MODE_ROM_DUMP:{
 		int flag_error = OK, mapper_error = OK;
 		switch(argc){
 		case 5:
-			flag_error = flag_get(flag, c);
+			flag_error = flag_get(argv[ARGC_DUMP_FLAG], c);
 			break;
 		case 6:
-			flag_error = flag_get(flag, c);
-			mapper_error = value_get(mapper, &c->mapper);
+			flag_error = flag_get(argv[ARGC_DUMP_FLAG], c);
+			mapper_error = value_get(argv[ARGC_DUMP_MAPPER], &c->mapper);
 			break;
 		}
 		if(flag_error != OK){
-			printf("%s unknown flag %s\n", PREFIX_CONFIG_ERROR, flag);
+			printf("%s unknown flag %s\n", PREFIX_CONFIG_ERROR, argv[ARGC_DUMP_FLAG]);
 			return NG;
 		}
 		if(mapper_error != OK){
-			printf("%s unknown mapper %s\n", PREFIX_CONFIG_ERROR, flag);
+			printf("%s unknown mapper %s\n", PREFIX_CONFIG_ERROR, argv[ARGC_DUMP_MAPPER]);
 			return NG;
 		}
 		}break;
@@ -179,24 +192,19 @@ static int config_init(int argc, const char *mode, const char *script, const cha
 			printf("%s few argument\n", PREFIX_CONFIG_ERROR);
 			return NG;
 		case 5:
-			//flag って変数名はまずい
-			if(flash_pointer_init(flag, &(c->cpu_flash_driver)) == NG){
+			if(flash_pointer_init(argv[ARGC_PROGRAM_CPU_DEVICE], &(c->cpu_flash_driver)) == NG){
 				return NG;
 			}
 			c->ppu_flash_driver = NULL;
 			break;
 		case 6:
-			//flag, mapper ... 同様
-			if(flash_pointer_init(flag, &(c->cpu_flash_driver)) == NG){
+			if(flash_pointer_init(argv[ARGC_PROGRAM_CPU_DEVICE], &(c->cpu_flash_driver)) == NG){
 				return NG;
 			}
-			if(flash_pointer_init(mapper, &(c->ppu_flash_driver)) == NG){
+			if(flash_pointer_init(argv[ARGC_PROGRAM_PPU_DEVICE], &(c->ppu_flash_driver)) == NG){
 				return NG;
 			}
 			break;
-		default:
-			printf("%s too many argument\n", PREFIX_CONFIG_ERROR);
-			return NG;
 		}
 		break;
 	}
@@ -220,17 +228,13 @@ int main(int c, char **v)
 		}
 		return 0;
 	case 4: //mode script target
-		config_result = config_init(c, v[1], v[2], v[3], NULL, NULL, &config);
-		break;
 	case 5:
 		//mode script target flag
 		//mode script target cpu_flash_device
-		config_result = config_init(c, v[1], v[2], v[3], v[4], NULL, &config);
-		break;
 	case 6:
 		//mode script target flag mapper
 		//mode script target cpu_flash_device ppu_flash_device
-		config_result = config_init(c, v[1], v[2], v[3], v[4], v[5], &config);
+		config_result = config_init(c, (const char **) v, &config);
 		break;
 	usage:
 	default:
