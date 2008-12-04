@@ -2,6 +2,7 @@
 famicom ROM cartridge utility - unagi
 iNES header/buffer control
 */
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -156,4 +157,153 @@ void nesbuffer_free(struct romimage *r, int mode)
 void backupram_create(const struct memory *r, const char *ramfilename)
 {
 	buf_save(r->data, ramfilename, r->size);
+}
+
+static int nesfile_size_check(const char *errorprefix, const struct memory *m, long size)
+{
+	if(size < m->size){
+		while(size == m->size){
+			if(size < 0){
+				printf("%s NES header %s romsize alignment error\n", errorprefix, m->name);
+				return NG;
+			}
+			size -= m->size;
+		}
+		return NG;
+	}
+	//
+	else if(size > m->size){
+		printf("%s NES header cpuromsize too large\n", errorprefix);
+		return NG;
+	}
+	return OK;
+}
+
+/*
+memory size は 2乗されていく値が正常値.
+ただし、region の最小値より小さい場合は test 用として正常にする
+*/
+int memorysize_check(const long size, int region)
+{
+	long min;
+	switch(region){
+	case MEMORY_AREA_CPU_ROM:
+		min = PROGRAM_ROM_MIN;
+		break;
+	case MEMORY_AREA_CPU_RAM:
+		min = 0x800; //いまのところ. taito 系はもっと小さいような気がする
+		break;
+	case MEMORY_AREA_PPU:
+		min = CHARCTER_ROM_MIN;
+		break;
+	default:
+		assert(0);
+	}
+	if(size <= min){
+		return OK;
+	}
+	switch(size){
+	case 0x004000:
+	case 0x008000: //27256
+	case 0x010000: //27512
+	case 0x020000: //1M bit
+	case 0x040000: //2M
+	case 0x080000: //4M
+	case 0x100000: //8M
+		return OK;
+	}
+	return NG;
+}
+
+/*
+romimage が bank の定義値より小さい場合は romarea の末尾に張る。 
+同じデータを memcpy したほうが安全だが、とりあえずで。
+*/
+static void nesfile_datapointer_set(const u8 *buf, struct memory *m, long size)
+{
+	u8 *data;
+	assert((size % CHARCTER_ROM_MIN) == 0);
+	assert((m->size % CHARCTER_ROM_MIN) == 0);
+	data = malloc(size);
+	m->data = data;
+	if(size < m->size){
+		long fillsize = m->size - size;
+		assert(fillsize >= 0); //fillsize is minus
+		memset(data, 0xff, fillsize); //ROM の未使用領域は 0xff が基本
+		data += fillsize;
+		size -= fillsize;
+	}
+	memcpy(data, buf, size);
+}
+
+//flashmemory device capacity check が抜けてるけどどこでやるか未定
+int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
+{
+	int imagesize;
+	u8 *buf;
+	
+	buf = buf_load_full(file, &imagesize);
+	if(buf == NULL || imagesize < (NES_HEADER_SIZE + PROGRAM_ROM_MIN)){
+		printf("%s ROM image open error\n", errorprefix);
+		return NG;
+	}
+	//nes header check
+	if(memcmp(buf, NES_HEADER_INIT, 4) != 0){
+		printf("%s NES header identify error\n", errorprefix);
+		free(buf);
+		return NG;
+	}
+	//mapper number check
+	{
+		long mapper = (buf[6] >> 4) & 0x0f;
+		mapper |= buf[7] & 0xf0;
+		if(r->mappernum != mapper){
+			printf("%s NES header mapper error\n", errorprefix);
+			free(buf);
+			return NG;
+		}
+	}
+	//NES/CPU/PPU imagesize check
+	long cpusize, ppusize;
+	{
+		long offset = NES_HEADER_SIZE;
+		//CPU
+		cpusize = ((long) buf[4]) * PROGRAM_ROM_MIN;
+		offset += cpusize;
+		if(nesfile_size_check(errorprefix, &r->cpu_rom, cpusize) == NG){
+			free(buf);
+			return NG;
+		}
+		//PPU
+		ppusize = ((long) buf[5]) * CHARCTER_ROM_MIN;
+		offset += ppusize;
+		if(ppusize != 0){
+			if(nesfile_size_check(errorprefix, &r->ppu_rom, ppusize) == NG){
+				free(buf);
+				return NG;
+			}
+		}
+		//NESfilesize
+		if(offset != imagesize){
+			printf("%s NES header filesize error\n", errorprefix);
+			free(buf);
+			return NG;
+		}
+	}
+	/*
+	image pointer set/ memcpy
+	*/
+	{
+		u8 *d;
+		d = buf;
+		d += NES_HEADER_SIZE;
+		nesfile_datapointer_set(d, &r->cpu_rom, cpusize);
+		d += cpusize;
+		if(ppusize != 0){
+			nesfile_datapointer_set(d, &r->ppu_rom, ppusize);
+		}
+	}
+
+	free(buf);
+	return OK;
 }

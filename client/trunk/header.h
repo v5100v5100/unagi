@@ -37,9 +37,14 @@ enum{
 	MIRROR_VERTICAL,
 	MIRROR_PROGRAMABLE = MIRROR_HORIZONAL
 };
+enum{
+	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU
+};
 
 int nesbuffer_malloc(struct romimage *r, int mode);
 void nesfile_create(struct romimage *r, const char *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);
 void backupram_create(const struct memory *r, const char *ramfilename);
+int memorysize_check(const long size, int region);
+int nesfile_load(const char *errorprefix, const char *file, struct romimage *r);
 #endif

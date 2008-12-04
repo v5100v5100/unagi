@@ -6,8 +6,9 @@ struct st_config{
 	long mapper;
 	int mirror, backupram;
 	//target filename
-	const char *ramimage_write, *ramimage_read, *romimage;
+	const char *ramimage, *romimage;
 	const char *script;
+	//device driver function pointer struct
 	const struct reader_driver *reader;
 	const struct flash_driver *cpu_flash_driver, *ppu_flash_driver;
 	//data mode

@@ -65,8 +65,10 @@ enum{
 };
 
 static const struct variable_manage VARIABLE_INIT = {
-	'\0', 0, 0, 0, 0,
-	NULL
+	.name = '\0', 
+	.start = 0, .end = 0, .step = 0,
+	.val = 0,
+	.Continue = NULL
 };
 static struct variable_manage variable_bank[VARIABLE_MAX];
 static int variable_num = 0;
@@ -311,6 +313,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 					}break;
 				}
 			}
+			//opcode found and 入力文字種正常
 			return 0;
 		}
 		syntax++;
@@ -412,12 +415,12 @@ static const char STR_ACCESS_READ[] = "read";
 static const char STR_ACCESS_WRITE[] = "write";
 
 enum{
-	SETTING, DUMP, END, AREA_CPU, AREA_PPU
+	SETTING, DUMP, END
 };
-static int command_mask(const int region, long address, long offset, long size, long *data)
+static int command_mask(const int region, const long address, const long offset, long size, long *data)
 {
 	switch(region){
-	case AREA_CPU:
+	case MEMORY_AREA_CPU_ROM:
 		switch(offset){
 		case 0x8000: case 0xa000: case 0xc000:
 			break;
@@ -433,7 +436,7 @@ static int command_mask(const int region, long address, long offset, long size, 
 			return NG;
 		}
 		break;
-	case AREA_PPU:
+	case MEMORY_AREA_PPU:
 		switch(offset){
 		case 0x0000: case 0x0400: case 0x0800: case 0x0c00:
 		case 0x1000: case 0x1400: case 0x1800: case 0x1c00:
@@ -451,13 +454,13 @@ static int command_mask(const int region, long address, long offset, long size, 
 		}
 		break;
 	default:
-		assert(0);
+		assert(0); //unknown memory area
 	}
 	switch(address){
 	case 0: case 0x2aaa: case 0x5555:
 		break;
 	default:
-		assert(0);
+		assert(0); //unknown command address
 	}
 	long mask = size - 1;
 	*data = (address & mask) | offset;
@@ -467,8 +470,10 @@ static int command_mask(const int region, long address, long offset, long size, 
 static int logical_check(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	long cpu_romsize = 0, cpu_ramsize = 0, ppu_romsize = 0;
-	int setting = SETTING, error = 0;
-	//romimage init
+	int imagesize = 0; //for write or program mode
+	int setting = SETTING;
+	int error = 0;
+	
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		//printf("opcode exec %s\n", SCRIPT_SYNTAX[s->opcode].name);
@@ -476,6 +481,36 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			printf("%s config script include DUMPSTART area\n", LOGICAL_ERROR_PREFIX);
 			error += 1;
 		}
+
+		//romimage open for write or program mode
+		if((imagesize == 0) && (setting == DUMP)){
+			switch(c->mode){
+			case MODE_RAM_WRITE:
+				r->cpu_ram.data = buf_load_full(c->ramimage, &imagesize);
+				if(r->cpu_ram.data == NULL){
+					printf("%s RAM image open error\n", LOGICAL_ERROR_PREFIX);
+					imagesize = -1;
+					error += 1;
+				}else if(r->cpu_ram.size != imagesize){
+					printf("%s RAM image size is not same\n", LOGICAL_ERROR_PREFIX);
+					free(r->cpu_ram.data);
+					r->cpu_ram.data = NULL;
+					imagesize = -1;
+					error += 1;
+				}
+				break;
+			case MODE_ROM_PROGRAM:
+				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
+					error += 1;
+				}
+				imagesize = -1;
+				break;
+			default: 
+				imagesize = -1;
+				break;
+			}
+		}
+	
 		switch(s->opcode){
 		case SCRIPT_OPCODE_COMMENT:
 			break;
@@ -486,41 +521,50 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			r->mirror = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_ROMSIZE:
+			if(memorysize_check(s->value[0], MEMORY_AREA_CPU_ROM)){
+				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_ROMSIZE);
+				error += 1;
+			}
 			r->cpu_rom.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_RAMSIZE:
+			//未確定要素が多いので check を抜く
 			r->cpu_ram.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_COMMAND_0000:
-			if(command_mask(AREA_CPU, 0, s->value[0], s->value[1], &(r->cpu_flash.command_0000)) == NG){
+			if(command_mask(MEMORY_AREA_CPU_ROM, 0, s->value[0], s->value[1], &(r->cpu_flash.command_0000)) == NG){
 				error += 1;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_COMMAND_2AAA:
-			if(command_mask(AREA_CPU, 0x2aaa, s->value[0], s->value[1], &(r->cpu_flash.command_2aaa)) == NG){
+			if(command_mask(MEMORY_AREA_CPU_ROM, 0x2aaa, s->value[0], s->value[1], &(r->cpu_flash.command_2aaa)) == NG){
 				error += 1;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_COMMAND_5555:
-			if(command_mask(AREA_CPU, 0x5555, s->value[0], s->value[1], &(r->cpu_flash.command_5555)) == NG){
+			if(command_mask(MEMORY_AREA_CPU_ROM, 0x5555, s->value[0], s->value[1], &(r->cpu_flash.command_5555)) == NG){
 				error += 1;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_ROMSIZE:
+			if(memorysize_check(s->value[0], MEMORY_AREA_PPU)){
+				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_PPU_ROMSIZE);
+				error += 1;
+			}
 			r->ppu_rom.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_PPU_COMMAND_0000:
-			if(command_mask(AREA_PPU, 0, s->value[0], s->value[1], &(r->ppu_flash.command_0000)) == NG){
+			if(command_mask(MEMORY_AREA_PPU, 0, s->value[0], s->value[1], &(r->ppu_flash.command_0000)) == NG){
 				error += 1;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_COMMAND_2AAA:
-			if(command_mask(AREA_PPU, 0x2aaa, s->value[0], s->value[1], &(r->ppu_flash.command_2aaa)) == NG){
+			if(command_mask(MEMORY_AREA_PPU, 0x2aaa, s->value[0], s->value[1], &(r->ppu_flash.command_2aaa)) == NG){
 				error += 1;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_COMMAND_5555:
-			if(command_mask(AREA_PPU, 0x5555, s->value[0], s->value[1], &(r->ppu_flash.command_5555)) == NG){
+			if(command_mask(MEMORY_AREA_PPU, 0x5555, s->value[0], s->value[1], &(r->ppu_flash.command_5555)) == NG){
 				error += 1;
 			}
 			break;
@@ -537,7 +581,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			//address filter
-			else if(address < 0x6000 || address >= 0x10000){
+			else if(address < 0x8000 || address >= 0x10000){
 				logical_print_illgalarea(STR_REGION_CPU, address);
 				error += 1;
 			}else if(end >= 0x10000){
@@ -593,19 +637,6 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			cpu_ramsize += length;
-			if(c->mode == MODE_RAM_WRITE){
-				int imagesize;
-				r->cpu_ram.data = buf_load_full(c->ramimage_write, &imagesize);
-				if(r->cpu_ram.data == NULL){
-					printf("%s RAM image open error\n", LOGICAL_ERROR_PREFIX);
-					error += 1;
-				}else if(r->cpu_ram.size != imagesize){
-					printf("%s RAM image size is not same\n", LOGICAL_ERROR_PREFIX);
-					free(r->cpu_ram.data);
-					r->cpu_ram.data = NULL;
-					error += 1;
-				}
-			}
 			setting = DUMP;
 			}
 			break;
@@ -1041,23 +1072,23 @@ void script_load(const struct st_config *c)
 		}
 	}
 	struct romimage r = {
-		cpu_rom: {
-			size: 0, offset: 0,
-			data: NULL,
-			name: STR_REGION_CPU
+		.cpu_rom = {
+			.size = 0, .offset = 0,
+			.data = NULL,
+			.name = STR_REGION_CPU
 		},
-		ppu_rom: {
-			size: 0, offset: 0,
-			data: NULL,
-			name: STR_REGION_PPU
+		.ppu_rom = {
+			.size = 0, .offset = 0,
+			.data = NULL,
+			.name = STR_REGION_PPU
 		},
-		cpu_ram: {
-			size: 0, offset: 0,
-			data: NULL,
-			name: STR_REGION_CPU
+		.cpu_ram = {
+			.size = 0, .offset = 0,
+			.data = NULL,
+			.name = STR_REGION_CPU
 		},
-		mappernum: 0,
-		mirror: MIRROR_PROGRAMABLE
+		.mappernum = 0,
+		.mirror = MIRROR_PROGRAMABLE
 	};
 	if(logical_check(s, c, &r) == 0){
 		//dump RAM 領域取得
@@ -1076,7 +1107,7 @@ void script_load(const struct st_config *c)
 				nesfile_create(&r, c->romimage);
 				break;
 			case MODE_RAM_READ:
-				backupram_create(&(r.cpu_ram), c->ramimage_read);
+				backupram_create(&(r.cpu_ram), c->ramimage);
 				break;
 			}
 		}

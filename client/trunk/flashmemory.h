@@ -37,7 +37,10 @@ struct flash_driver{
 	long capacity;
 	u8 id_manufacurer, id_device;
 	int (*productid_check)(const struct flash_order *d, const struct flash_driver *f);
+#if DEBUG==1
 	void (*erase)(const struct flash_order *d);
+#endif
+	void (*init)(const struct flash_order *d);
 	void (*write)(const struct flash_order *d);
 };
 

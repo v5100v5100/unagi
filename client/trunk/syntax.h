@@ -87,7 +87,7 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 	{
 		name: "MAPPER",
 		script_opcode: SCRIPT_OPCODE_MAPPER,
-		permittion: PERMITTION_ROM_DUMP,
+		permittion: PERMITTION_ROM_DUMP | PERMITTION_ROM_PROGRAM,
 		argc: 1, compare: SYNTAX_COMPARE_EQ,
 		argv_type: ARGV_TYPE_VALUE_ONLY
 	},{

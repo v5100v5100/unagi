@@ -129,8 +129,7 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 {
 	c->script = argv[ARGC_SCRIPTFILE];
 	c->romimage = NULL;
-	c->ramimage_read = NULL;
-	c->ramimage_write = NULL;
+	c->ramimage = NULL;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
 	c->mirror = CONFIG_OVERRIDE_UNDEF;
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
@@ -143,16 +142,23 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		break;
 	case 'r':
 		c->mode = MODE_RAM_READ;
-		c->ramimage_read = argv[ARGC_READ_OUT_RAMFILE];
+		c->ramimage = argv[ARGC_READ_OUT_RAMFILE];
 		break;
 	case 'w':
 		c->mode = MODE_RAM_WRITE;
-		c->ramimage_write = argv[ARGC_WRITE_IN_RAMFILE];
+		c->ramimage = argv[ARGC_WRITE_IN_RAMFILE];
 		break;
 	case 'f':
 		c->mode = MODE_ROM_PROGRAM;
 		c->romimage = argv[ARGC_PROGRAM_IN_NESFILE];
 		break;
+	case 't':
+		if(DEBUG == 0){
+			goto nonsupport_testmode;
+		}
+		//for testcode
+		break;
+	nonsupport_testmode:
 	default:
 		printf("%s unkown mode %s\n", PREFIX_CONFIG_ERROR, argv[ARGC_MODE]);
 		return NG;

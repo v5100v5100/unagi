@@ -109,7 +109,7 @@ static void command_set(const struct flash_order *d, const struct flash_task *t)
 			logical_address = d->command_5555;
 			break;
 		default:
-			assert(0);
+			assert(0); //unknown task address
 		}
 		d->flash_write(logical_address, t->data);
 		t++;
@@ -186,7 +186,7 @@ static void flash_erase(const struct flash_order *d)
 {
 	command_set(d, ERASE);
 	toggle_check(d, d->command_2aaa);
-	//Sleep(200); //Tec 0.2 sec
+	Sleep(200); //Tec 0.2 sec
 }
 
 /*
@@ -277,10 +277,26 @@ static void compare(const struct flash_order *d, long address, const u8 *data, l
 /*
 固有デバイスドライバ
 */
+static void w49f002_init(const struct flash_order *d)
+{
+/*
+byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
+よって初期化時には erase を実行する
+*/
+	flash_erase(d);
+}
+
 static void w49f002_write(const struct flash_order *d)
 {
 	program_byte(d, d->address, d->data, d->length);
 	compare(d, d->address, d->data, d->length);
+}
+
+static void w29c020_init(const struct flash_order *d)
+{
+/*
+page write mode ではとくになし
+*/
 }
 
 static void w29c020_write(const struct flash_order *d)
@@ -324,27 +340,46 @@ static void w29c020_write(const struct flash_order *d)
 デバイスリスト
 */
 static const struct flash_driver DRIVER_W29C020 = {
-	name: "W29C020",
-	capacity: 0x40000,
-	id_manufacurer: 0xda,
-	id_device: 0x45,
-	productid_check: productid_check,
-	erase: flash_erase,
-	write: w29c020_write
+	.name = "W29C020",
+	.capacity = 0x40000,
+	.id_manufacurer = 0xda,
+	.id_device = 0x45,
+	.productid_check = productid_check,
+#if DEBUG==1
+	.erase = flash_erase,
+#endif
+	.init = w29c020_init,
+	.write = w29c020_write
+};
+
+static const struct flash_driver DRIVER_W29C040 = {
+	.name = "W29C040",
+	.capacity = 0x80000,
+	.id_manufacurer = 0xda,
+	.id_device = 0x46,
+	.productid_check = productid_check,
+#if DEBUG==1
+	.erase = flash_erase,
+#endif
+	.init = w29c020_init,
+	.write = w29c020_write
 };
 
 static const struct flash_driver DRIVER_W49F002 = {
-	name: "W49F002",
-	capacity: 0x40000,
-	id_manufacurer: 0xda,
-	id_device: 0xae,
-	productid_check: productid_check,
-	erase: flash_erase,
-	write: w49f002_write
+	.name = "W49F002",
+	.capacity = 0x40000,
+	.id_manufacurer = 0xda,
+	.id_device = 0xae,
+	.productid_check = productid_check,
+#if DEBUG==1
+	.erase = flash_erase,
+#endif
+	.init = w49f002_init,
+	.write = w49f002_write
 };
 
 static const struct flash_driver *DRIVER_LIST[] = {
-	&DRIVER_W29C020, &DRIVER_W49F002,
+	&DRIVER_W29C020, &DRIVER_W29C040, &DRIVER_W49F002,
 	NULL
 };
 
