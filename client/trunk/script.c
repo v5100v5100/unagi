@@ -485,6 +485,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		if((imagesize == 0) && (setting == DUMP)){
 			switch(c->mode){
 			case MODE_RAM_WRITE:
+				assert(r->cpu_ram.attribute != MEMORY_ATTR_READ);
 				r->cpu_ram.data = buf_load_full(c->ramimage, &imagesize);
 				if(r->cpu_ram.data == NULL){
 					printf("%s RAM image open error\n", LOGICAL_ERROR_PREFIX);
@@ -499,6 +500,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				}
 				break;
 			case MODE_ROM_PROGRAM:
+				assert(r->cpu_rom.attribute != MEMORY_ATTR_READ);
+				assert(r->ppu_rom.attribute != MEMORY_ATTR_READ);
 				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
 					error += 1;
 				}
@@ -574,30 +577,22 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
+			
+			assert(r->cpu_rom.attribute != MEMORY_ATTR_WRITE);
 			//length filter. 0 はだめ
 			if(!is_range(length, 1, 0x4000)){
 				logical_print_illgallength(STR_REGION_CPU, length);
 				error += 1;
 			}
 			//address filter
-			else if(address < 0x8000 || address >= 0x10000){
+			else if(!is_region_cpurom(address)){
 				logical_print_illgalarea(STR_REGION_CPU, address);
 				error += 1;
 			}else if(end >= 0x10000){
 				logical_print_overdump(STR_REGION_CPU, address, end);
 				error += 1;
 			}
-			//$7fff-$8000を連続でまたがせない
-			else if((address <= 0x7fff) && (end >= 0x8000)){
-				printf("%s address cannot over $7fff-$8000. divide CPU_READ.\n", LOGICAL_ERROR_PREFIX);
-				error += 1;
-			}
-			//dump length update
-			if(is_region_cpuram(address)){
-				cpu_ramsize += length;
-			}else if(is_region_cpurom(address)){
-				cpu_romsize += length;
-			}
+			cpu_romsize += length;
 			setting = DUMP;
 			}
 			break;
@@ -622,6 +617,14 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
+			switch(c->mode){
+			case MODE_RAM_READ:
+				assert(r->cpu_ram.attribute != MEMORY_ATTR_WRITE);
+				break;
+			case MODE_RAM_WRITE:
+				assert(r->cpu_ram.attribute = MEMORY_ATTR_READ);
+				break;
+			}
 			//length filter. 0 はだめ
 			if(!is_range(length, 1, 0x2000)){
 				logical_print_illgallength(STR_REGION_CPU, length);
@@ -643,6 +646,9 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
+			
+			assert(r->cpu_rom.attribute != MEMORY_ATTR_READ);
+			assert(r->ppu_rom.attribute = MEMORY_ATTR_READ);
 			//length filter.
 			if(!is_range(length, 0x80, 0x2000)){
 				logical_print_illgallength(STR_REGION_CPU, length);
@@ -671,6 +677,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
+			assert(r->ppu_rom.attribute != MEMORY_ATTR_WRITE);
 			//length filter. 0 を容認する
 			if(!is_range(length, 0, 0x2000)){
 				logical_print_illgallength(STR_REGION_PPU, length);
@@ -768,6 +775,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		r->backupram = 1;
 	}
 	if(c->mapper != CONFIG_OVERRIDE_UNDEF){
+		//program mode で mapper 変更を防ぐ
+		assert(c->mode == MODE_ROM_DUMP);
 		r->mappernum = c->mapper;
 	}
 	return error;
@@ -947,9 +956,6 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			const long addr = s->value[0];
 			const long length = s->value[1];
 			m = &cpu_rom;
-			if(is_region_cpuram(addr)){
-				m = &cpu_ram;
-			}
 			d->cpu_read(addr, length, m->data);
 			read_result_print(m, length);
 			m->data += length;
@@ -1070,21 +1076,44 @@ void script_load(const struct st_config *c)
 		.cpu_rom = {
 			.size = 0, .offset = 0,
 			.data = NULL,
+			.attribute = MEMORY_ATTR_NOTUSE,
 			.name = STR_REGION_CPU
 		},
 		.ppu_rom = {
 			.size = 0, .offset = 0,
 			.data = NULL,
+			.attribute = MEMORY_ATTR_NOTUSE,
 			.name = STR_REGION_PPU
 		},
 		.cpu_ram = {
 			.size = 0, .offset = 0,
 			.data = NULL,
+			.attribute = MEMORY_ATTR_NOTUSE,
 			.name = STR_REGION_CPU
 		},
 		.mappernum = 0,
 		.mirror = MIRROR_PROGRAMABLE
 	};
+	//attribute はその struct data に対しての RW なので要注意
+	switch(c->mode){
+	case MODE_ROM_DUMP:
+		r.cpu_rom.attribute = MEMORY_ATTR_WRITE;
+		r.ppu_rom.attribute = MEMORY_ATTR_WRITE;
+		break;
+	case MODE_RAM_READ:
+		r.cpu_ram.attribute = MEMORY_ATTR_WRITE;
+		break;
+	case MODE_RAM_WRITE:
+		r.cpu_ram.attribute = MEMORY_ATTR_READ;
+		break;
+	case MODE_ROM_PROGRAM:
+		r.cpu_rom.attribute = MEMORY_ATTR_READ;
+		r.ppu_rom.attribute = MEMORY_ATTR_READ;
+		break;
+	default:
+		assert(0);
+	}
+	
 	if(logical_check(s, c, &r) == 0){
 		//dump RAM 領域取得
 		if(nesbuffer_malloc(&r, c->mode) == NG){
@@ -1094,7 +1123,7 @@ void script_load(const struct st_config *c)
 			}
 			return;
 		}
-		//dump
+		//script execute!!
 		if(execute(s, c, &r) == OK){
 			//成果出力
 			switch(c->mode){

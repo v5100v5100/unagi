@@ -3,7 +3,7 @@
 #include "flashmemory.h"
 struct memory{
 	const char *name;
-	int size, offset;
+	int size, offset, attribute;
 	u8 *data;
 };
 /*
@@ -38,7 +38,8 @@ enum{
 	MIRROR_PROGRAMABLE = MIRROR_HORIZONAL
 };
 enum{
-	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU
+	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU,
+	MEMORY_ATTR_READ, MEMORY_ATTR_WRITE, MEMORY_ATTR_NOTUSE
 };
 
 int nesbuffer_malloc(struct romimage *r, int mode);

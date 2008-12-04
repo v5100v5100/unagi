@@ -185,7 +185,7 @@ memory size は 2乗されていく値が正常値.
 */
 int memorysize_check(const long size, int region)
 {
-	long min;
+	long min = 0;
 	switch(region){
 	case MEMORY_AREA_CPU_ROM:
 		min = PROGRAM_ROM_MIN;
