@@ -4,6 +4,7 @@ famicom ROM cartridge utility - unagi
 */
 #ifndef _PARALELL_PORT_INLINE_H_
 #define _PARALELL_PORT_INLINE_H_
+#include "giveio.h"
 //#include <dos.h> ?
 //#include <windows.h>
 #define ASM_ENABLE (0)

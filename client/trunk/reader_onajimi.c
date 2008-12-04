@@ -357,11 +357,12 @@ static void cpu_flash_write(long address, long data)
 }
 
 const struct reader_driver DRIVER_ONAJIMI = {
-	name: "onajimi",
-	init: reader_init,
-	cpu_read: cpu_read,
-	ppu_read: ppu_read,
-	cpu_6502_write: cpu_6502_write,
-	cpu_flash_write: cpu_flash_write,
-	ppu_write: ppu_write
+	.name = "onajimi",
+	.open_or_close = paralellport_open_or_close,
+	.init = reader_init,
+	.cpu_read = cpu_read,
+	.ppu_read = ppu_read,
+	.cpu_6502_write = cpu_6502_write,
+	.cpu_flash_write = cpu_flash_write,
+	.ppu_write = ppu_write
 };

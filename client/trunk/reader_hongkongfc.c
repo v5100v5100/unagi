@@ -299,13 +299,14 @@ W49F002
 }
 
 const struct reader_driver DRIVER_HONGKONGFC = {
-	name: "hongkongfc",
-	init: hk_init,
-	cpu_read: hk_cpu_read,
-	ppu_read: hk_ppu_read,
-	cpu_6502_write: hk_cpu_6502_write,
-	ppu_write: hk_ppu_write,
-	cpu_flash_write: hk_cpu_flash_write
+	.name = "hongkongfc",
+	.open_or_close = paralellport_open_or_close,
+	.init = hk_init,
+	.cpu_read = hk_cpu_read,
+	.ppu_read = hk_ppu_read,
+	.cpu_6502_write = hk_cpu_6502_write,
+	.ppu_write = hk_ppu_write,
+	.cpu_flash_write = hk_cpu_flash_write
 };
 
 #ifdef TEST

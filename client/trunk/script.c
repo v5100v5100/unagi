@@ -28,7 +28,6 @@ todo:
 #include "type.h"
 #include "file.h"
 #include "reader_master.h"
-#include "giveio.h"
 #include "textutil.h"
 #include "config.h"
 #include "header.h"
@@ -918,22 +917,20 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 
 static int execute(const struct script *s, const struct st_config *c, struct romimage *r)
 {
-	const struct reader_driver *d;
-	d = c->reader;
-	const int gg = giveio_start();
-	switch(gg){
-	case GIVEIO_OPEN:
-	case GIVEIO_START:
-	case GIVEIO_WIN95:
+	const struct reader_driver *const d = c->reader;
+	switch(d->open_or_close(READER_OPEN)){
+	case OK:
 		d->init();
 		break;
-	default:
-	case GIVEIO_ERROR:
-		printf("%s Can't Access Direct IO %d\n", EXECUTE_ERROR_PREFIX, gg);
+	case NG:
+		printf("%s driver open error\n", EXECUTE_ERROR_PREFIX);
 		return NG;
+	default:
+		assert(0);
 	}
 	if(execute_connection_check(d) == NG){
 		printf("%s maybe connection error\n", EXECUTE_ERROR_PREFIX);
+		d->open_or_close(READER_CLOSE);
 		return NG;
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram;
@@ -1028,9 +1025,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			s++;
 		}
 	}
-	if(gg != GIVEIO_WIN95){
-		giveio_stop(GIVEIO_STOP);
-	}
+	d->open_or_close(READER_CLOSE);
 	return OK;
 }
 
