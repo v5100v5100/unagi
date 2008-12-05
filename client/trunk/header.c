@@ -96,9 +96,9 @@ void nesfile_create(struct romimage *r, const char *romfilename)
 	if(r->ppu_rom.size != 0){
 		error += mirroring_fix(&(r->ppu_rom), CHARCTER_ROM_MIN);
 	}
-	/*if(error != 0){
+	if((DEBUG == 0) && (error != 0)){
 		return;
-	}*/
+	}
 	//修正済み ROM 情報表示
 	printf("mapper %d\n", (int) r->mappernum);
 	rominfo_print(&(r->cpu_rom));
@@ -203,10 +203,10 @@ int memorysize_check(const long size, int region)
 		return OK;
 	}
 	switch(size){
-	case 0x004000:
-	case 0x008000: //27256
-	case 0x010000: //27512
-	case 0x020000: //1M bit
+	case 0x004000: //128K bit
+	case 0x008000: //256K
+	case 0x010000: //512K
+	case 0x020000: //1M
 	case 0x040000: //2M
 	case 0x080000: //4M
 	case 0x100000: //8M
