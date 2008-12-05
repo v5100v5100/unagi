@@ -115,14 +115,22 @@ static int flash_pointer_init(const char *device, const struct flash_driver **f)
 enum{
 	ARGC_MODE = 1,
 	ARGC_SCRIPTFILE,
+	//DUMP MODE
 	ARGC_DUMP_OUT_NESFILE,
 	ARGC_DUMP_FLAG,
 	ARGC_DUMP_MAPPER,
+	//RAM RW MODE
 	ARGC_READ_OUT_RAMFILE = ARGC_DUMP_OUT_NESFILE,
 	ARGC_WRITE_IN_RAMFILE = ARGC_DUMP_OUT_NESFILE,
+	ARGC_RW_NUM,
+	//PROGRAM MODE
 	ARGC_PROGRAM_IN_NESFILE = ARGC_DUMP_OUT_NESFILE,
 	ARGC_PROGRAM_CPU_DEVICE,
-	ARGC_PROGRAM_PPU_DEVICE
+	ARGC_PROGRAM_PPU_DEVICE,
+	//TESTMODE
+	ARGC_TEST_OPTION = ARGC_SCRIPTFILE,
+	ARGC_TEST_FILE,
+	ARGC_TEST_NUM
 };
 
 static int config_init(const int argc, const char **argv, struct st_config *c)
@@ -153,21 +161,28 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		c->romimage = argv[ARGC_PROGRAM_IN_NESFILE];
 		break;
 	case 't':
-		if(DEBUG == 0){
-			goto nonsupport_testmode;
+		if(DEBUG == 1){
+			c->mode = MODE_TEST;
+			break;
 		}
-		//for testcode
-		break;
-	nonsupport_testmode:
+		//下へ
 	default:
 		printf("%s unkown mode %s\n", PREFIX_CONFIG_ERROR, argv[ARGC_MODE]);
 		return NG;
 	};
-	//mode 別 argc check. ここに来る argc は 4.5.6 が保証されている
+	if(config_file_load(c) == NG){
+		return NG;
+	}
+	/*mode 別 argc check. 
+	DEBUG==0  argc: 4,5,6
+	DEBUG==1  argc: 3,4,5,6
+	*/
 	switch(c->mode){
 	case MODE_ROM_DUMP:{
 		int flag_error = OK, mapper_error = OK;
 		switch(argc){
+		case 3:
+			return NG;
 		case 5:
 			flag_error = flag_get(argv[ARGC_DUMP_FLAG], c);
 			break;
@@ -187,13 +202,14 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		}break;
 	case MODE_RAM_READ:
 	case MODE_RAM_WRITE:
-		if(argc != 4){
+		if(argc != ARGC_RW_NUM){
 			printf("%s too many argument\n", PREFIX_CONFIG_ERROR);
 			return NG;
 		}
 		break;
 	case MODE_ROM_PROGRAM:
 		switch(argc){
+		case 3:
 		case 4:
 			printf("%s few argument\n", PREFIX_CONFIG_ERROR);
 			return NG;
@@ -213,26 +229,34 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 			break;
 		}
 		break;
+	
+	case MODE_TEST:
+		switch(argc){
+		case 3:
+			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL);
+			break;
+		case 4:
+			client_test(c->reader, argv[ARGC_TEST_OPTION], argv[ARGC_TEST_FILE]);
+			break;
+		default:
+			printf("%s test argc error\n", PREFIX_CONFIG_ERROR);
+		}
+		break;
 	}
 
-	if(config_file_load(c) == NG){
-		return NG;
-	}
 	return OK;
 }
 
 int main(int c, char **v)
 {
 	struct st_config config;
-	int config_result;
+	int config_result = NG;
 	switch(c){
-	case 3:
-		if(DEBUG==1){
-			test(v[1], v[2]);
-		}else{
+	case 3: //t testmode target
+		if(DEBUG == 0){
 			goto usage;
 		}
-		return 0;
+		//下へ
 	case 4: //mode script target
 	case 5:
 		//mode script target flag
@@ -247,9 +271,9 @@ int main(int c, char **v)
 		printf("famicom ROM cartridge utility - unagi version 0.5.2\n");
 		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
-		return 0;
+		break;
 	}
-	if(config_result == OK){
+	if((config.mode != MODE_TEST) && (config_result == OK)){
 		script_load(&config);
 	}
 	return 0;

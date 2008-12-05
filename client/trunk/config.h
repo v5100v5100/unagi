@@ -20,6 +20,7 @@ enum{
 };
 
 enum{
+	MODE_TEST,
 	MODE_ROM_DUMP,
 	MODE_RAM_READ,
 	MODE_RAM_WRITE,

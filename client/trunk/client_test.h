@@ -1,4 +1,4 @@
 #ifndef _CLIENT_TEST_H_
 #define _CLIENT_TEST_H_
-void test(const char *drivername, const char *file);
+void client_test(const struct reader_driver *const d, const char *option, const char *file);
 #endif
