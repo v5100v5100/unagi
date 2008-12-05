@@ -485,7 +485,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		if((imagesize == 0) && (setting == DUMP)){
 			switch(c->mode){
 			case MODE_RAM_WRITE:
-				assert(r->cpu_ram.attribute != MEMORY_ATTR_READ);
+				assert(r->cpu_ram.attribute == MEMORY_ATTR_READ);
 				r->cpu_ram.data = buf_load_full(c->ramimage, &imagesize);
 				if(r->cpu_ram.data == NULL){
 					printf("%s RAM image open error\n", LOGICAL_ERROR_PREFIX);
@@ -500,8 +500,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				}
 				break;
 			case MODE_ROM_PROGRAM:
-				assert(r->cpu_rom.attribute != MEMORY_ATTR_READ);
-				assert(r->ppu_rom.attribute != MEMORY_ATTR_READ);
+				assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
+				assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
 					error += 1;
 				}
@@ -578,7 +578,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long length = s->value[1];
 			const long end = address + length - 1;
 			
-			assert(r->cpu_rom.attribute != MEMORY_ATTR_WRITE);
+			assert(r->cpu_rom.attribute == MEMORY_ATTR_WRITE);
 			//length filter. 0 はだめ
 			if(!is_range(length, 1, 0x4000)){
 				logical_print_illgallength(STR_REGION_CPU, length);
@@ -619,7 +619,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long end = address + length - 1;
 			switch(c->mode){
 			case MODE_RAM_READ:
-				assert(r->cpu_ram.attribute != MEMORY_ATTR_WRITE);
+				assert(r->cpu_ram.attribute == MEMORY_ATTR_WRITE);
 				break;
 			case MODE_RAM_WRITE:
 				assert(r->cpu_ram.attribute = MEMORY_ATTR_READ);
@@ -647,8 +647,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long length = s->value[1];
 			const long end = address + length - 1;
 			
-			assert(r->cpu_rom.attribute != MEMORY_ATTR_READ);
-			assert(r->ppu_rom.attribute = MEMORY_ATTR_READ);
+			assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
+			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 			//length filter.
 			if(!is_range(length, 0x80, 0x2000)){
 				logical_print_illgallength(STR_REGION_CPU, length);
@@ -677,7 +677,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
-			assert(r->ppu_rom.attribute != MEMORY_ATTR_WRITE);
+			assert(r->ppu_rom.attribute == MEMORY_ATTR_WRITE);
 			//length filter. 0 を容認する
 			if(!is_range(length, 0, 0x2000)){
 				logical_print_illgallength(STR_REGION_PPU, length);
