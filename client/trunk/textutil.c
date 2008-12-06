@@ -58,6 +58,9 @@ int word_load(char *buf, char **text)
 	case '\t':
 	case ' ':
 		break;
+	case '#':
+		text[word] = buf;
+		return 1;
 	default:
 		text[word] = buf;
 		word++;
@@ -80,6 +83,9 @@ int word_load(char *buf, char **text)
 				return 0;
 			}
 			if(current_spc == 0){
+				/*if(*buf == '#'){
+					return word;
+				}*/
 				text[word] = buf;
 				word++;
 			}

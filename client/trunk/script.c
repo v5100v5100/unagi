@@ -779,6 +779,12 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		assert(c->mode == MODE_ROM_DUMP);
 		r->mappernum = c->mapper;
 	}
+	if(c->syntaxtest == 1){
+		if(error == 0){
+			printf("syntax ok!\n");
+		}
+		error += 1;
+	}
 	return error;
 }
 

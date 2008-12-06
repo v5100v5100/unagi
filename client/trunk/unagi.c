@@ -47,6 +47,9 @@ static int flag_get(const char *flag, struct st_config *c)
 			break;
 		case '_':
 			break;
+		case 'r':
+			c->syntaxtest = 1;
+			break;
 		default:
 			return NG;
 		}
@@ -142,6 +145,7 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	c->mirror = CONFIG_OVERRIDE_UNDEF;
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
+	c->syntaxtest = 0;
 	//mode 別 target file 初期化
 	switch(argv[ARGC_MODE][0]){
 	case 'd':

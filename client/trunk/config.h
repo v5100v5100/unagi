@@ -12,7 +12,7 @@ struct st_config{
 	const struct reader_driver *reader;
 	const struct flash_driver *cpu_flash_driver, *ppu_flash_driver;
 	//data mode
-	int mode;
+	int mode, syntaxtest;
 };
 enum{
 	CONFIG_OVERRIDE_UNDEF = 4649,
