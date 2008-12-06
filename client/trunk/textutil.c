@@ -58,7 +58,7 @@ int word_load(char *buf, char **text)
 	case '\t':
 	case ' ':
 		break;
-	case '#':
+	case '#': //行頭コメント
 		text[word] = buf;
 		return 1;
 	default:
