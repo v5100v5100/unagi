@@ -202,13 +202,16 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 		argv_type: ARGV_TYPE_ADDRESS_LENGTH
 	},
 #endif
+#if 0
 	{
 		name: "PPU_PROGRAM",
 		script_opcode: SCRIPT_OPCODE_PPU_PROGRAM,
 		permittion: PERMITTION_ROM_PROGRAM,
 		argc: 2, compare: SYNTAX_COMPARE_EQ,
 		argv_type: ARGV_TYPE_ADDRESS_LENGTH,
-	},{
+	},
+#endif
+	{
 		name: "STEP_START",
 		script_opcode: SCRIPT_OPCODE_STEP_START,
 		permittion: PERMITTION_ALL,

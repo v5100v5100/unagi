@@ -72,18 +72,6 @@ static const struct flash_task PROTECT_ENABLE[] = {
 	{ADDRESS_5555, 0x20},
 	{FLASH_COMMAND_END, 0}
 };
-//boot lock lockout enable をいれないとバンク切り替えをすると
-//先頭の0x100byteぐらいが書き換えられる?
-static const struct flash_task BOOTBLOCK_FIRST[] = {
-	{ADDRESS_5555, 0xaa},
-	{ADDRESS_2AAA, 0x55},
-	{ADDRESS_5555, 0x80},
-	{ADDRESS_5555, 0xaa},
-	{ADDRESS_2AAA, 0x55},
-	{ADDRESS_5555, 0x40},
-	{ADDRESS_0000, 0},
-	{FLASH_COMMAND_END, 0}
-};
 static const struct flash_task ERASE[] = {
 	{ADDRESS_5555, 0xaa},
 	{ADDRESS_2AAA, 0x55},
@@ -91,6 +79,16 @@ static const struct flash_task ERASE[] = {
 	{ADDRESS_5555, 0xaa},
 	{ADDRESS_2AAA, 0x55},
 	{ADDRESS_5555, 0x10},
+	{FLASH_COMMAND_END, 0}
+};
+
+static const struct flash_task PP[] = {
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x80},
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x60},
 	{FLASH_COMMAND_END, 0}
 };
 
@@ -179,11 +177,21 @@ static int polling_check(const struct flash_order *d, long address, u8 truedata)
 	return NG;
 }
 
+static void bootblock_lockout(const struct flash_order *d)
+{
+	u8 dummy[3];
+	command_set(d, PP);
+	d->read(0x8000 ,3, dummy);
+	printf("%02x %02x %02x \n", dummy[0], dummy[1], dummy[2]);
+	d->read(0xfff2 ,1, dummy);
+	command_set(d, PRODUCTID_EXIT);
+}
 /*
 ---- erase ----
 */
 static void flash_erase(const struct flash_order *d)
 {
+	if(0) bootblock_lockout(d);
 	command_set(d, ERASE);
 	toggle_check(d, d->command_2aaa);
 	Sleep(200); //Tec 0.2 sec
@@ -204,14 +212,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 				}
 				return NG;
 			}
-			if(0){
-			u8 putdata;
-			d->read(address, 1, &putdata);
-			if(putdata != *data){
-				printf("%s %06x retry\n", __FUNCTION__, (int) address);
-				continue;
-			}
-			}
+			Sleep(1);
 		}
 		if((DEBUG == 1) && (address & 0x1f) == 0){
 			printf("%s %06x\n", __FUNCTION__, (int) address);
@@ -286,10 +287,10 @@ byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 	flash_erase(d);
 }
 
-static void w49f002_write(const struct flash_order *d)
+static void w49f002_write(const struct flash_order *d, long address, long length, const u8 *data)
 {
-	program_byte(d, d->address, d->data, d->length);
-	compare(d, d->address, d->data, d->length);
+	program_byte(d, address, data, length);
+	compare(d, address, data, length);
 }
 
 static void w29c020_init(const struct flash_order *d)
@@ -299,17 +300,17 @@ page write mode ではとくになし
 */
 }
 
-static void w29c020_write(const struct flash_order *d)
+static void w29c020_write(const struct flash_order *d, long address, long length, const u8 *data)
 {
 	const long pagesize = 0x80;
 	int retry = 0;
 	{
-		long a = d->address;
-		long i = d->length;
+		long a = address;
+		long i = length;
 		const u8 *dd;
 		u8 *cmp;
 
-		dd = d->data;
+		dd = data;
 		cmp = malloc(pagesize);
 		while(i != 0){
 			int result = program_pagewrite(d, a, dd, pagesize);
@@ -324,6 +325,9 @@ static void w29c020_write(const struct flash_order *d)
 				dd += pagesize;
 				i -= pagesize;
 			}else{
+				if(retry >= 0x100){
+					break;
+				}
 				retry++;
 			}
 		}
@@ -331,8 +335,7 @@ static void w29c020_write(const struct flash_order *d)
 	}
 
 	printf("write ok. retry %d\n", retry);
-	compare(d, d->address, d->data, d->length);
-	command_set(d, BOOTBLOCK_FIRST);
+	compare(d, address, data, length);
 	Sleep(10);
 }
 

@@ -522,15 +522,22 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		case SCRIPT_OPCODE_MIRROR:
 			r->mirror = s->value[0];
 			break;
-		case SCRIPT_OPCODE_CPU_ROMSIZE:
-			if(memorysize_check(s->value[0], MEMORY_AREA_CPU_ROM)){
+		case SCRIPT_OPCODE_CPU_ROMSIZE:{
+			const long size = s->value[0];
+			r->cpu_rom.size = size;
+			if(memorysize_check(size, MEMORY_AREA_CPU_ROM)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_ROMSIZE);
 				error += 1;
 			}
-			r->cpu_rom.size = s->value[0];
-			break;
+			//flash memory capacity check
+			//いまのところ == にして小さい容量もそのうち対応
+			else if((c->mode == MODE_ROM_PROGRAM) && (size != c->cpu_flash_driver->capacity)){
+				printf("%s flash memory capacity error\n", LOGICAL_ERROR_PREFIX);
+				error += 1;
+			}
+			}break;
 		case SCRIPT_OPCODE_CPU_RAMSIZE:
-			//未確定要素が多いので check を抜く
+			//memory size は未確定要素が多いので check を抜く
 			r->cpu_ram.size = s->value[0];
 			break;
 		case SCRIPT_OPCODE_CPU_COMMAND_0000:
@@ -548,12 +555,14 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			break;
-		case SCRIPT_OPCODE_PPU_ROMSIZE:
-			if(memorysize_check(s->value[0], MEMORY_AREA_PPU)){
+		case SCRIPT_OPCODE_PPU_ROMSIZE:{
+			const long size = s->value[0];
+			r->ppu_rom.size = size;
+			if(memorysize_check(size, MEMORY_AREA_PPU)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_PPU_ROMSIZE);
 				error += 1;
 			}
-			r->ppu_rom.size = s->value[0];
+			}
 			break;
 		case SCRIPT_OPCODE_PPU_COMMAND_0000:
 			if(command_mask(MEMORY_AREA_PPU, 0, s->value[0], s->value[1], &(r->ppu_flash.command_0000)) == NG){
@@ -959,10 +968,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		switch(s->opcode){
 		case SCRIPT_OPCODE_CPU_READ:{
 			struct memory *m;
-			const long addr = s->value[0];
+			const long address = s->value[0];
 			const long length = s->value[1];
 			m = &cpu_rom;
-			d->cpu_read(addr, length, m->data);
+			d->cpu_read(address, length, m->data);
 			read_result_print(m, length);
 			m->data += length;
 			m->offset += length;
@@ -982,14 +991,15 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_PROGRAM:{
-			struct flash_order *order;
-			order = &(r->cpu_flash);
-			order->address = s->value[0];
-			order->length = s->value[1];
-			order->data = cpu_rom.data;
-			c->cpu_flash_driver->write(order);
-			cpu_rom.data += order->length;
-			cpu_rom.offset += order->length;
+			const long address = s->value[0];
+			const long length = s->value[1];
+			c->cpu_flash_driver->write(
+				&(r->cpu_flash),
+				address, length,
+				cpu_rom.data
+			);
+			cpu_rom.data += length;
+			cpu_rom.offset += length;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMTEST:
@@ -1096,6 +1106,21 @@ void script_load(const struct st_config *c)
 			.data = NULL,
 			.attribute = MEMORY_ATTR_NOTUSE,
 			.name = STR_REGION_CPU
+		},
+		//device に応じた関数ポインタを flash_order に渡す
+		.cpu_flash = {
+			.command_0000 = 0,
+			.command_2aaa = 0,
+			.command_5555 = 0,
+			.flash_write = c->reader->cpu_flash_write,
+			.read = c->reader->cpu_read
+		},
+		.ppu_flash = {
+			.command_0000 = 0,
+			.command_2aaa = 0,
+			.command_5555 = 0,
+			.flash_write = c->reader->ppu_write,
+			.read = c->reader->ppu_read
 		},
 		.mappernum = 0,
 		.mirror = MIRROR_PROGRAMABLE

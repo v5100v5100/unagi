@@ -25,9 +25,9 @@ flashmemory.c だけの警告
 #ifndef _FLASHMEMORY_H_
 #define _FLASHMEMORY_H_
 struct flash_order{
-	long address, length;
-	const u8 *data;
+	//JEDEC command を充てる CPU/PPU 論理アドレス
 	long command_0000, command_2aaa, command_5555;
+	//struct reader_driver の関数ポインタを渡す場所
 	void (*flash_write)(long address, long data);
 	void (*read)(long address, long length, u8 *data);
 };
@@ -41,7 +41,7 @@ struct flash_driver{
 	void (*erase)(const struct flash_order *d);
 #endif
 	void (*init)(const struct flash_order *d);
-	void (*write)(const struct flash_order *d);
+	void (*write)(const struct flash_order *d, long address, long length, const u8 *data);
 };
 
 const struct flash_driver *flash_driver_get(const char *name);

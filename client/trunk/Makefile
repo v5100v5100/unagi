@@ -5,6 +5,7 @@ OBJ = \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o reader_hongkongfc.o
 TARGET = unagi.exe
+CC = gcc
 CFLAGS = -Wall -Werror -Wmissing-declarations #-Wcast-qual
 #else if が使えればもうちょい見やすくなるのに...
 ifeq ($(RELEASE),1)
@@ -21,17 +22,17 @@ endif
 
 all: $(TARGET) unagi.d
 client_test.o: test/client_test.c
-	gcc $(CFLAGS) -I. -c -o $@ $<
+	$(CC) $(CFLAGS) -I. -c -o $@ $<
 unagi.d:
-	gcc -MM *.c > $@
+	$(CC) -MM $(CFLAGS) *.c > $@
 hk.exe: $(OBJ_HK)
-	gcc -o $@ $(OBJ_HK)
+	$(CC) -o $@ $(OBJ_HK)
 iodel.exe: iodel.o giveio.o
-	gcc -o $@ iodel.o giveio.o
+	$(CC) -o $@ iodel.o giveio.o
 clean: 
 	rm -f $(OBJ) $(TARGET) unagi.d
 $(TARGET): $(OBJ)
-	gcc $(LDFLAG) -o $@ $(OBJ)
+	$(CC) $(LDFLAG) -o $@ $(OBJ)
 ifeq ($(RELEASE),1)
 	strip $@
 endif
