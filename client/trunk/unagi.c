@@ -235,6 +235,9 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		break;
 	
 	case MODE_TEST:
+		if(DEBUG == 0){
+			break;
+		}
 		switch(argc){
 		case 3:
 			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL);
