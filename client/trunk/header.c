@@ -130,10 +130,14 @@ static inline void memory_malloc(struct memory *m)
 
 int nesbuffer_malloc(struct romimage *r, int mode)
 {
-	memory_malloc(&(r->cpu_rom));
-	memory_malloc(&(r->ppu_rom));
-	if(mode == MODE_RAM_READ){
+	switch(mode){
+	case MODE_ROM_DUMP:
+		memory_malloc(&(r->cpu_rom));
+		memory_malloc(&(r->ppu_rom));
+		break;
+	case MODE_RAM_READ:
 		memory_malloc(&(r->cpu_ram));
+		break;
 	}
 	return OK;
 }
