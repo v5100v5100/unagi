@@ -674,20 +674,25 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			setting = DUMP;
 			}
 			break;
-		case SCRIPT_OPCODE_PPU_RAMTEST:
+		case SCRIPT_OPCODE_PPU_RAMFIND:
 			//ループ内部に入ってたらエラー
 			if(variable_num != 0){
 				printf("%s PPU_RAMTEST must use outside loop\n", LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
 			break;
+		case SCRIPT_OPCODE_PPU_SRAMTEST:
 		case SCRIPT_OPCODE_PPU_READ:{
 			const long address = s->value[0];
 			const long length = s->value[1];
 			const long end = address + length - 1;
 			assert(r->ppu_rom.attribute == MEMORY_ATTR_WRITE);
 			//length filter. 0 を容認する
-			if(!is_range(length, 0, 0x2000)){
+			long min = 0;
+			if(s->opcode == SCRIPT_OPCODE_PPU_SRAMTEST){
+				min = 1;
+			}
+			if(!is_range(length, min, 0x2000)){
 				logical_print_illgallength(STR_REGION_PPU, length);
 				error += 1;
 			}
@@ -700,7 +705,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			//dump length update
-			if(is_region_ppurom(address)){
+			if((s->opcode == SCRIPT_OPCODE_PPU_READ) && is_region_ppurom(address)){
 				ppu_romsize += length;
 			}
 			setting = DUMP;
@@ -831,10 +836,7 @@ static int execute_connection_check(const struct reader_driver *d)
 
 enum {PPU_TEST_RAM, PPU_TEST_ROM};
 const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
-#if DEBUG==0
-static 
-#endif
-int ppu_ramtest(const struct reader_driver *d)
+static int ppu_ramfind(const struct reader_driver *d)
 {
 	const int length = sizeof(PPU_TEST_DATA);
 	const long testaddr = 123;
@@ -867,6 +869,40 @@ int ppu_ramtest(const struct reader_driver *d)
 		return PPU_TEST_RAM;
 	}
 	return PPU_TEST_ROM;
+}
+
+static int ramtest(const struct reader_driver *d, long address, long length, u8 *writedata, u8 *testdata, const long filldata)
+{
+	long i = length;
+	long a = address;
+	while(i != 0){
+		d->ppu_write(a, filldata);
+		a++;
+		i--;
+	}
+	d->ppu_read(address, length, testdata);
+	memset(writedata, filldata, length);
+	if(memcmp(writedata, testdata, length) == 0){
+		return 0;
+	}
+	return 1;
+}
+
+static const long SRAMTESTDATA[] = {0xff, 0xaa, 0x55, 0x00};
+static int ppu_sramtest(const struct reader_driver *d, long address, long length)
+{
+	u8 *writedata, *testdata;
+	int error = 0;
+	int i;
+	testdata = malloc(length);
+	writedata = malloc(length);
+	for(i = 0; i < sizeof(SRAMTESTDATA) / sizeof(long); i++){
+		const long filldata = SRAMTESTDATA[i];
+		error += ramtest(d, address, length, testdata, writedata, filldata);
+	}
+	free(testdata);
+	free(writedata);
+	return error;
 }
 
 static void readbuffer_print(const struct memory *m, long length)
@@ -1006,13 +1042,23 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			cpu_rom.offset += length;
 			}
 			break;
-		case SCRIPT_OPCODE_PPU_RAMTEST:
-			if(ppu_ramtest(d) == PPU_TEST_RAM){
-				printf("PPU_RAMTEST: charcter RAM found\n");
+		case SCRIPT_OPCODE_PPU_RAMFIND:
+			if(ppu_ramfind(d) == PPU_TEST_RAM){
+				printf("PPU_RAMFIND: charcter RAM found\n");
 				r->ppu_rom.size = 0;
 				end = 0;
 			}
 			break;
+		case SCRIPT_OPCODE_PPU_SRAMTEST:{
+			const long address = s->value[0];
+			const long length = s->value[1];
+			if(ppu_sramtest(d, address, length) == 0){
+				printf("PPU_SRAMTEST: ok\n");
+			}else{
+				printf("PPU_SRAMTEST: ng\n");
+				//end = 0;
+			}
+			}break;
 		case SCRIPT_OPCODE_PPU_READ:{
 			const long address = s->value[0];
 			const long length = s->value[1];

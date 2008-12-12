@@ -244,16 +244,16 @@ static void hk_ppu_write(long address, long data)
 	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15, ADDRESS_SET);
 	data_port_set(c, data); 
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
-	//WE down
-	c = bit_clear(c, BITNUM_PPU_RW);
-	data_port_latch(DATA_SELECT_CONTROL, c);
 	//CS down
 	c = bit_clear(c, BITNUM_PPU_SELECT);
 	data_port_latch(DATA_SELECT_CONTROL, c);
-	//CS up
-	c = bit_set(c, BITNUM_PPU_SELECT);
+	//WE down
+	c = bit_clear(c, BITNUM_PPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//WE up
+	c = bit_set(c, BITNUM_PPU_RW);
+	data_port_latch(DATA_SELECT_CONTROL, c);
+	//CS up
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
 }
 

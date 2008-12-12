@@ -1,9 +1,5 @@
 #ifndef _SCRIPT_H_
 #define _SCRIPT_H_
-#if DEBUG==1
-#include "reader_master.h"
-int ppu_ramtest(const struct reader_driver *d);
-#endif
 struct st_config;
 void script_load(const struct st_config *config);
 
