@@ -193,13 +193,13 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 		argc: 2, compare: SYNTAX_COMPARE_EQ,
 		argv_type: ARGV_TYPE_ADDRESS_LENGTH
 	},
-#if OP_PPU_WRITE_ENABLE==1
+#if DEBUG==1
 	{
 		name: "PPU_WRITE",
 		script_opcode: SCRIPT_OPCODE_PPU_WRITE,
 		permittion: PERMITTION_ROM_DUMP | PERMITTION_ROM_PROGRAM,
-		argc: 2, compare: SYNTAX_COMPARE_EQ,
-		argv_type: ARGV_TYPE_ADDRESS_LENGTH
+		argc: 2, compare: SYNTAX_COMPARE_GT,
+		argv_type: ARGV_TYPE_ADDRESS_EXPRESSION
 	},
 #endif
 #if 0

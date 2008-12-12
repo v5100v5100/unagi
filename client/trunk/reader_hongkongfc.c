@@ -279,11 +279,12 @@ W29C020
 During the byte-load cycle, the addresses are latched by the falling 
 edge of either CE or WE,whichever occurs last. The data are latched 
 by the rising edge of either CE or WE, whicheveroccurs first.
-*/
-/*
 W49F002
 #CS or #WE が降りたときに address latch
 #CS or #WE が上がったときに data latch
+
+hongkong 系は address と /ROMCS が同じバイトで、 /CS 制御にすると
+hongkong データ破壊+アドレス不安定になるので、/WE 制御にしないと動かない。
 */
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	//CS down

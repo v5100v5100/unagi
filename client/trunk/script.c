@@ -33,7 +33,6 @@ todo:
 #include "header.h"
 #include "script.h"
 
-#define OP_PPU_WRITE_ENABLE (0)
 /*
 MAPPER num
 MIRROR [HV]
@@ -708,11 +707,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_WRITE:{
-			if(OP_PPU_WRITE_ENABLE==0){
+			if(DEBUG==0){
 				break;
 			}
 			const long address = s->value[0];
-			const long data = s->value[1];
+			long data;
+			if(expression_calc(&s->expression, &data) == NG){
+				printf("%s expression calc error\n", LOGICAL_ERROR_PREFIX);
+				error += 1;
+			}
 			setting = DUMP;
 			if(!is_region_ppurom(address)){
 				logical_print_illgalarea(STR_REGION_PPU, address);
@@ -721,6 +724,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				logical_print_byteerror(STR_REGION_PPU, data);
 				error += 1;
 			}
+			setting = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:{
@@ -1026,8 +1030,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_WRITE:
-			if(OP_PPU_WRITE_ENABLE == 1){
-				d->ppu_write(s->value[0], s->value[1]);
+			if(DEBUG == 1){
+				long data;
+				expression_calc(&s->expression, &data);
+				d->ppu_write(s->value[0], data);
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:
