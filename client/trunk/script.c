@@ -1164,6 +1164,7 @@ void script_load(const struct st_config *c)
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
+			.pagesize = c->cpu_flash_driver->pagesize,
 			.flash_write = c->reader->cpu_flash_write,
 			.read = c->reader->cpu_read
 		},
@@ -1171,6 +1172,7 @@ void script_load(const struct st_config *c)
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
+			.pagesize = c->ppu_flash_driver->pagesize,
 			.flash_write = c->reader->ppu_write,
 			.read = c->reader->ppu_read
 		},

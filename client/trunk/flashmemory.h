@@ -27,6 +27,7 @@ flashmemory.c だけの警告
 struct flash_order{
 	//JEDEC command を充てる CPU/PPU 論理アドレス
 	long command_0000, command_2aaa, command_5555;
+	long pagesize;
 	//struct reader_driver の関数ポインタを渡す場所
 	void (*flash_write)(long address, long data);
 	void (*read)(long address, long length, u8 *data);
@@ -34,7 +35,7 @@ struct flash_order{
 
 struct flash_driver{
 	const char *name;
-	long capacity;
+	long capacity, pagesize;
 	u8 id_manufacurer, id_device;
 	int (*productid_check)(const struct flash_order *d, const struct flash_driver *f);
 #if DEBUG==1

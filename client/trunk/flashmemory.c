@@ -320,7 +320,6 @@ page write mode ではとくになし
 
 static void w29c020_write(const struct flash_order *d, long address, long length, const u8 *data)
 {
-	const long pagesize = 0x80;
 	int retry = 0;
 	{
 		long a = address;
@@ -329,19 +328,19 @@ static void w29c020_write(const struct flash_order *d, long address, long length
 		u8 *cmp;
 
 		dd = data;
-		cmp = malloc(pagesize);
+		cmp = malloc(d->pagesize);
 		while(i != 0){
-			int result = program_pagewrite(d, a, dd, pagesize);
+			int result = program_pagewrite(d, a, dd, d->pagesize);
 			if(result == NG){
 				printf("%s: write error\n", __FUNCTION__);
 				free(cmp);
 				return;
 			}
-			d->read(a, pagesize, cmp);
-			if(memcmp(cmp, dd, pagesize) == 0){
-				a += pagesize;
-				dd += pagesize;
-				i -= pagesize;
+			d->read(a, d->pagesize, cmp);
+			if(memcmp(cmp, dd, d->pagesize) == 0){
+				a += d->pagesize;
+				dd += d->pagesize;
+				i -= d->pagesize;
 			}else{
 				if(retry >= 0x100){
 					break;
@@ -359,10 +358,9 @@ static void w29c020_write(const struct flash_order *d, long address, long length
 
 static void w29c040_write(const struct flash_order *d, long address, long length, const u8 *data)
 {
-	const long pagesize = 0x100;
 	u8 *cmp;
 	int ngblock = 0;
-	cmp = malloc(pagesize);
+	cmp = malloc(d->pagesize);
 	do{
 		long a = address;
 		long i = length;
@@ -371,20 +369,20 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 		dd = data;
 		ngblock = 0;
 		while(i != 0){
-			d->read(a, pagesize, cmp);
-			if(memcmp(cmp, dd, pagesize) != 0){
+			d->read(a, d->pagesize, cmp);
+			if(memcmp(cmp, dd, d->pagesize) != 0){
 				ngblock++;
 				printf("write %x\n", (int) a);
-				int result = program_pagewrite(d, a, dd, pagesize);
+				int result = program_pagewrite(d, a, dd, d->pagesize);
 				if(result == NG){
 					printf("%s: write error\n", __FUNCTION__);
 					free(cmp);
 					return;
 				}
 			}
-			a += pagesize;
-			dd += pagesize;
-			i -= pagesize;
+			a += d->pagesize;
+			dd += d->pagesize;
+			i -= d->pagesize;
 		}
 		printf("ngblock %d\n", ngblock);
 		fflush(stdout);
@@ -401,6 +399,7 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 static const struct flash_driver DRIVER_W29C020 = {
 	.name = "W29C020",
 	.capacity = 0x40000,
+	.pagesize = 0x80,
 	.id_manufacurer = 0xda,
 	.id_device = 0x45,
 	.productid_check = productid_check,
@@ -414,6 +413,7 @@ static const struct flash_driver DRIVER_W29C020 = {
 static const struct flash_driver DRIVER_W29C040 = {
 	.name = "W29C040",
 	.capacity = 0x80000,
+	.pagesize = 0x100,
 	.id_manufacurer = 0xda,
 	.id_device = 0x46,
 	.productid_check = productid_check,
@@ -427,6 +427,7 @@ static const struct flash_driver DRIVER_W29C040 = {
 static const struct flash_driver DRIVER_W49F002 = {
 	.name = "W49F002",
 	.capacity = 0x40000,
+	.pagesize = 0,
 	.id_manufacurer = 0xda,
 	.id_device = 0xae,
 	.productid_check = productid_check,
