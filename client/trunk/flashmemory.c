@@ -204,19 +204,21 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 {
 	while(length != 0){
 		if(*data != 0xff){
-			command_set(d, PROTECT_DISABLE);
-			d->flash_write(address, *data);
-			if(toggle_check(d, address) == NG){
-				if(DEBUG == 1){
-					printf("%s NG\n", __FUNCTION__);
+			u8 dummy;
+			d->read(address, 1, &dummy);
+			if(*data != dummy){
+				printf("%s %06x\n", __FUNCTION__, (int) address);
+				fflush(stdout);
+				command_set(d, PROTECT_DISABLE);
+				d->flash_write(address, *data);
+				if(toggle_check(d, address) == NG){
+					if(DEBUG == 1){
+						printf("%s NG\n", __FUNCTION__);
+					}
+					return NG;
 				}
-				return NG;
+				Sleep(1);
 			}
-			Sleep(1);
-		}
-		if((DEBUG == 1) && (address & 0x1f) == 0){
-			printf("%s %06x\n", __FUNCTION__, (int) address);
-			fflush(stdout);
 		}
 		address++;
 		data++;
@@ -289,9 +291,25 @@ byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 
 static void w49f002_write(const struct flash_order *d, long address, long length, const u8 *data)
 {
-	program_byte(d, address, data, length);
-	compare(d, address, data, length);
+	int writemiss = 0;
+	int retry = 0;
+	u8 *compare;
+	compare = malloc(length);
+	do{
+		if(program_byte(d, address, data, length) == NG){
+			break;
+		}
+		d->read(address, length, compare);
+		writemiss = memcmp(compare, data, length);
+		if(retry > 20){
+			printf("%s retry error\n", __FUNCTION__);
+			break;
+		}
+		retry++;
+	}while(writemiss != 0);
+	free(compare);
 }
+
 
 static void w29c020_init(const struct flash_order *d)
 {
