@@ -28,6 +28,7 @@ flashmemory.c だけの警告
 #include <string.h>
 #include <windows.h>
 #include "type.h"
+#include "header.h"
 #include "flashmemory.h"
 /*
 driver for Winbond W29C020, W49F002
@@ -229,7 +230,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 
 static int program_pagewrite(const struct flash_order *d, long address, const u8 *data, long length)
 {
-	const long toggle_address = address;
+	const long toggle_address = address ;
 	command_set(d, PROTECT_DISABLE);
 	while(length != 0){
 		d->flash_write(address, *data);
@@ -289,11 +290,14 @@ byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 	flash_erase(d);
 }
 
-static void w49f002_write(const struct flash_order *d, long address, long length, const u8 *data)
+static void w49f002_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
 	int writemiss = 0;
 	int retry = 0;
+	const u8 *data;
 	u8 *compare;
+	
+	data = m->data;
 	compare = malloc(length);
 	do{
 		if(program_byte(d, address, data, length) == NG){
@@ -318,7 +322,7 @@ page write mode ではとくになし
 */
 }
 
-static void w29c020_write(const struct flash_order *d, long address, long length, const u8 *data)
+static void w29c020_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
 	int retry = 0;
 	{
@@ -327,7 +331,7 @@ static void w29c020_write(const struct flash_order *d, long address, long length
 		const u8 *dd;
 		u8 *cmp;
 
-		dd = data;
+		dd = m->data;
 		cmp = malloc(d->pagesize);
 		while(i != 0){
 			int result = program_pagewrite(d, a, dd, d->pagesize);
@@ -352,27 +356,29 @@ static void w29c020_write(const struct flash_order *d, long address, long length
 	}
 
 	printf("write ok. retry %d\n", retry);
-	compare(d, address, data, length);
+	compare(d, address, m->data, length);
 	Sleep(10);
 }
 
-static void w29c040_write(const struct flash_order *d, long address, long length, const u8 *data)
+static void w29c040_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
 	u8 *cmp;
 	int ngblock = 0;
+	int retry = 0;
 	cmp = malloc(d->pagesize);
 	do{
 		long a = address;
 		long i = length;
+		long offset = m->offset;
 		const u8 *dd;
 
-		dd = data;
+		dd = m->data;
 		ngblock = 0;
 		while(i != 0){
 			d->read(a, d->pagesize, cmp);
 			if(memcmp(cmp, dd, d->pagesize) != 0){
 				ngblock++;
-				printf("write %x\n", (int) a);
+				printf("write %s 0x%06x\n", m->name, (int) offset);
 				int result = program_pagewrite(d, a, dd, d->pagesize);
 				if(result == NG){
 					printf("%s: write error\n", __FUNCTION__);
@@ -382,15 +388,25 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 			}
 			a += d->pagesize;
 			dd += d->pagesize;
+			offset += d->pagesize;
 			i -= d->pagesize;
 		}
-		printf("ngblock %d\n", ngblock);
+		printf("%s 0x%06x, ngblock %d\n", m->name, (int) offset, ngblock);
+		if(retry >= 3 && ngblock >= 16){
+			printf("skip\n");
+			break;
+		}
+		else if(retry > 12){
+			printf("skip\n");
+			break;
+		}
+		retry++;
 		fflush(stdout);
 	}while(ngblock != 0);
 
 	free(cmp);
-	compare(d, address, data, length);
-	Sleep(10);
+//	compare(d, address, data, length);
+//	Sleep(10);
 }
 
 /*
