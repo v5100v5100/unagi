@@ -530,7 +530,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			//flash memory capacity check
 			//いまのところ == にして小さい容量もそのうち対応
-			else if((c->mode == MODE_ROM_PROGRAM) && (size != c->cpu_flash_driver->capacity)){
+			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->cpu_flash_driver->capacity)){
 				printf("%s flash memory capacity error\n", LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
@@ -559,6 +559,10 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			r->ppu_rom.size = size;
 			if(memorysize_check(size, MEMORY_AREA_PPU)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_PPU_ROMSIZE);
+				error += 1;
+			}
+			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->ppu_flash_driver->capacity)){
+				printf("%s flash memory capacity error\n", LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
 			}
@@ -729,6 +733,29 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				logical_print_byteerror(STR_REGION_PPU, data);
 				error += 1;
 			}
+			setting = DUMP;
+			}
+			break;
+		case SCRIPT_OPCODE_PPU_PROGRAM:{
+			const long address = s->value[0];
+			const long length = s->value[1];
+			const long end = address + length - 1;
+			
+			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
+			//length filter.
+			if(!is_range(length, 0x80, 0x2000)){
+				logical_print_illgallength(STR_REGION_PPU, length);
+				error += 1;
+			}
+			//address filter
+			else if(!is_region_ppurom(address)){
+				logical_print_illgalarea(STR_REGION_PPU, address);
+				error += 1;
+			}else if(end >= 0x2000){
+				logical_print_overdump(STR_REGION_PPU, address, end);
+				error += 1;
+			}
+			ppu_romsize += length;
 			setting = DUMP;
 			}
 			break;
@@ -1036,7 +1063,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			c->cpu_flash_driver->write(
 				&(r->cpu_flash),
 				address, length,
-				cpu_rom.data
+				&cpu_rom
 			);
 			cpu_rom.data += length;
 			cpu_rom.offset += length;
@@ -1080,6 +1107,18 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				long data;
 				expression_calc(&s->expression, &data);
 				d->ppu_write(s->value[0], data);
+			}
+			break;
+		case SCRIPT_OPCODE_PPU_PROGRAM:{
+			const long address = s->value[0];
+			const long length = s->value[1];
+			c->ppu_flash_driver->write(
+				&(r->ppu_flash),
+				address, length,
+				&ppu_rom
+			);
+			ppu_rom.data += length;
+			ppu_rom.offset += length;
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:
@@ -1164,15 +1203,17 @@ void script_load(const struct st_config *c)
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
-			.pagesize = c->cpu_flash_driver->pagesize,
+			.pagesize = 0x100, //c->cpu_flash_driver->pagesize,
 			.flash_write = c->reader->cpu_flash_write,
+			//.flash_write = c->reader->cpu_6502_write,
 			.read = c->reader->cpu_read
 		},
 		.ppu_flash = {
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
-			.pagesize = c->ppu_flash_driver->pagesize,
+			.pagesize = 0x100,
+			//.pagesize = c->ppu_flash_driver->pagesize,
 			.flash_write = c->reader->ppu_write,
 			.read = c->reader->ppu_read
 		},
