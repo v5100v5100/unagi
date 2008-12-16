@@ -499,6 +499,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				}
 				break;
 			case MODE_ROM_PROGRAM:
+				assert(c->cpu_flash_driver->write != NULL);
 				assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
 				assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
@@ -1203,7 +1204,7 @@ void script_load(const struct st_config *c)
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
-			.pagesize = 0x100, //c->cpu_flash_driver->pagesize,
+			.pagesize = c->cpu_flash_driver->pagesize,
 			.flash_write = c->reader->cpu_flash_write,
 			//.flash_write = c->reader->cpu_6502_write,
 			.read = c->reader->cpu_read
@@ -1212,8 +1213,7 @@ void script_load(const struct st_config *c)
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
-			.pagesize = 0x100,
-			//.pagesize = c->ppu_flash_driver->pagesize,
+			.pagesize = c->ppu_flash_driver->pagesize,
 			.flash_write = c->reader->ppu_write,
 			.read = c->reader->ppu_read
 		},

@@ -325,6 +325,7 @@ page write mode ではとくになし
 static void w29c020_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
 	int retry = 0;
+	assert(d->pagesize != 0);
 	{
 		long a = address;
 		long i = length;
@@ -365,6 +366,7 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 	u8 *cmp;
 	int ngblock = 0;
 	int retry = 0;
+	assert(d->pagesize != 0);
 	cmp = malloc(d->pagesize);
 	do{
 		long a = address;

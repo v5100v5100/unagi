@@ -181,6 +181,12 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 		permittion: PERMITTION_ROM_PROGRAM,
 		argc: 2, compare: SYNTAX_COMPARE_EQ,
 		argv_type: ARGV_TYPE_ADDRESS_LENGTH
+	},{ //version 0.5.3 ¤ÇÇÑ»ß¤¹¤ë
+		name: "PPU_RAMTEST",
+		script_opcode: SCRIPT_OPCODE_PPU_RAMFIND,
+		permittion: PERMITTION_ROM_DUMP,
+		argc: 0, compare: SYNTAX_COMPARE_EQ,
+		argv_type: ARGV_TYPE_NULL
 	},{
 		name: "PPU_RAMFIND",
 		script_opcode: SCRIPT_OPCODE_PPU_RAMFIND,

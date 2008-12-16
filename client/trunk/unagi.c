@@ -106,6 +106,19 @@ static int config_file_load(struct st_config *c)
 	return OK;
 }
 
+static const struct flash_driver DRIVER_UNDEF = {
+	.name = "undefined",
+	.capacity = 0,
+	.pagesize = 1,
+	.id_manufacurer = 0,
+	.id_device = 0,
+	.productid_check = NULL,
+#if DEBUG==1
+	.erase = NULL,
+#endif
+	.init = NULL,
+	.write = NULL
+};
 static int flash_pointer_init(const char *device, const struct flash_driver **f)
 {
 	*f = flash_driver_get(device);
@@ -115,6 +128,7 @@ static int flash_pointer_init(const char *device, const struct flash_driver **f)
 	}
 	return OK;
 }
+
 enum{
 	ARGC_MODE = 1,
 	ARGC_SCRIPTFILE,
@@ -146,6 +160,8 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
 	c->syntaxtest = 0;
+	c->cpu_flash_driver = &DRIVER_UNDEF;
+	c->ppu_flash_driver = &DRIVER_UNDEF;
 	//mode 別 target file 初期化
 	switch(argv[ARGC_MODE][0]){
 	case 'd':
@@ -221,7 +237,6 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 			if(flash_pointer_init(argv[ARGC_PROGRAM_CPU_DEVICE], &(c->cpu_flash_driver)) == NG){
 				return NG;
 			}
-			c->ppu_flash_driver = NULL;
 			break;
 		case 6:
 			if(flash_pointer_init(argv[ARGC_PROGRAM_CPU_DEVICE], &(c->cpu_flash_driver)) == NG){
