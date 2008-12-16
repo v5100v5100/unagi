@@ -1025,6 +1025,13 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		d->open_or_close(READER_CLOSE);
 		return NG;
 	}
+	if(c->mode == MODE_ROM_PROGRAM){
+		//device よっては erase
+		c->cpu_flash_driver->init(&(r->cpu_flash));
+		if(r->ppu_rom.size != 0){
+			c->ppu_flash_driver->init(&(r->ppu_flash));
+		}
+	}
 	struct memory cpu_rom, ppu_rom, cpu_ram;
 	cpu_rom = r->cpu_rom;
 	ppu_rom = r->ppu_rom;
