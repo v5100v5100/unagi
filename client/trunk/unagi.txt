@@ -1,7 +1,7 @@
 famicom ROM cartridge utility - unagi
 client version 0.5.2
 by unagi development team
-公式サイト http://sourceforge.jp/projects/unagi/
+公式サイト http://unagi.sourceforge.jp/
 掲示板     http://unagi.sourceforge.jp/t/bbs.html
 
 --はじめに--
@@ -60,7 +60,7 @@ script file - 対応するマッパの RAM スクリプトファイルを指定します。
 ram file    - 入力する RAM イメージファイルを指定します。
 
 == f Flashmemory/SRAM Program MODE ==
-実験途中の実装のため、詳細は個別に問い合わせてください。
+実験要素が多い実装のため、詳細は個別に問い合わせてください。
 
 --スクリプト仕様--
 ROM dump script パッケージの syntax.txt を参照してください。
