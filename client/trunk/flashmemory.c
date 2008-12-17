@@ -133,6 +133,10 @@ static int productid_check(const struct flash_order *d, const struct flash_drive
 	return OK;
 }
 
+static int productid_sram(const struct flash_order *d, const struct flash_driver *f)
+{
+	return OK;
+}
 /*
 ---- toggle check ----
 databit6
@@ -198,32 +202,45 @@ static void flash_erase(const struct flash_order *d)
 	Sleep(200); //Tec 0.2 sec
 }
 
+static void sram_erase(const struct flash_order *d)
+{
+	//bank 切り替えが伴うので実装できない
+}
+
 /*
 ---- program ----
 */
 static int program_byte(const struct flash_order *d, long address, const u8 *data, long length)
 {
+	int retry = 0;
 	while(length != 0){
 		if(*data != 0xff){
-			u8 dummy;
-			d->read(address, 1, &dummy);
-			if(*data != dummy){
-				printf("%s %06x\n", __FUNCTION__, (int) address);
-				fflush(stdout);
-				command_set(d, PROTECT_DISABLE);
-				d->flash_write(address, *data);
-				if(toggle_check(d, address) == NG){
-					if(DEBUG == 1){
-						printf("%s NG\n", __FUNCTION__);
-					}
-					return NG;
+			fflush(stdout);
+			command_set(d, PROTECT_DISABLE);
+			d->flash_write(address, *data);
+			if(toggle_check(d, address) == NG){
+				if(DEBUG == 1){
+					printf("%s NG\n", __FUNCTION__);
 				}
-				Sleep(1);
+				return NG;
 			}
 		}
-		address++;
-		data++;
-		length--;
+		u8 dummy;
+		d->read(address, 1, &dummy);
+		if(*data == dummy){
+			address++;
+			data++;
+			length--;
+			retry = 0;
+		}else if(retry > 8){
+			printf("%s %06x error\n", __FUNCTION__, (int) address);
+			address++;
+			data++;
+			length--;
+			retry = 0;
+		}else{
+			retry++;
+		}
 	}
 	return OK;
 }
@@ -292,30 +309,11 @@ byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 
 static void w49f002_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
-	int writemiss = 0;
-	int retry = 0;
-	const u8 *data;
-	u8 *compare;
-	
-	data = m->data;
-	compare = malloc(length);
-	do{
-		if(program_byte(d, address, data, length) == NG){
-			break;
-		}
-		d->read(address, length, compare);
-		writemiss = memcmp(compare, data, length);
-		if(retry > 20){
-			printf("%s retry error\n", __FUNCTION__);
-			break;
-		}
-		retry++;
-	}while(writemiss != 0);
-	free(compare);
+	program_byte(d, address, m->data, length);
 }
 
 
-static void w29c020_init(const struct flash_order *d)
+static void init_nop(const struct flash_order *d)
 {
 /*
 page write mode ではとくになし
@@ -411,9 +409,38 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 //	Sleep(10);
 }
 
+static void sram_write(const struct flash_order *d, long address, long length, const struct memory *m)
+{
+	const u8 *data;
+	data = m->data;
+	while(length != 0){
+		d->flash_write(address, *data);
+		address++;
+		data++;
+		length--;
+	}
+}
+
 /*
 デバイスリスト
 */
+enum{
+	ID_SRAM = 0
+};
+static const struct flash_driver DRIVER_SRAM256K = {
+	.name = "SRAM256K",
+	.capacity = 0x8000,
+	.pagesize = 0,
+	.id_manufacurer = ID_SRAM,
+	.id_device = ID_SRAM,
+	.productid_check = productid_sram,
+#if DEBUG==1
+	.erase = sram_erase,
+#endif
+	.init = init_nop,
+	.write = sram_write
+};
+
 static const struct flash_driver DRIVER_W29C020 = {
 	.name = "W29C020",
 	.capacity = 0x40000,
@@ -424,7 +451,7 @@ static const struct flash_driver DRIVER_W29C020 = {
 #if DEBUG==1
 	.erase = flash_erase,
 #endif
-	.init = w29c020_init,
+	.init = init_nop,
 	.write = w29c020_write
 };
 
@@ -438,7 +465,7 @@ static const struct flash_driver DRIVER_W29C040 = {
 #if DEBUG==1
 	.erase = flash_erase,
 #endif
-	.init = w29c020_init,
+	.init = init_nop,
 	.write = w29c040_write
 };
 
@@ -458,6 +485,7 @@ static const struct flash_driver DRIVER_W49F002 = {
 
 static const struct flash_driver *DRIVER_LIST[] = {
 	&DRIVER_W29C020, &DRIVER_W29C040, &DRIVER_W49F002,
+	&DRIVER_SRAM256K, 
 	NULL
 };
 
