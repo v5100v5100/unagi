@@ -73,13 +73,23 @@ static const struct flash_task PROTECT_ENABLE[] = {
 	{ADDRESS_5555, 0x20},
 	{FLASH_COMMAND_END, 0}
 };
-static const struct flash_task ERASE[] = {
+static const struct flash_task ERASE_CHIP[] = {
 	{ADDRESS_5555, 0xaa},
 	{ADDRESS_2AAA, 0x55},
 	{ADDRESS_5555, 0x80},
 	{ADDRESS_5555, 0xaa},
 	{ADDRESS_2AAA, 0x55},
 	{ADDRESS_5555, 0x10},
+	{FLASH_COMMAND_END, 0}
+};
+
+static const struct flash_task ERASE_SECTOR[] = {
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	{ADDRESS_5555, 0x80},
+	{ADDRESS_5555, 0xaa},
+	{ADDRESS_2AAA, 0x55},
+	//このあと sectoraddress に 0x30 を write
 	{FLASH_COMMAND_END, 0}
 };
 
@@ -194,10 +204,10 @@ static void bootblock_lockout(const struct flash_order *d)
 /*
 ---- erase ----
 */
-static void flash_erase(const struct flash_order *d)
+static void flash_erase_chip(const struct flash_order *d)
 {
 	if(0) bootblock_lockout(d);
-	command_set(d, ERASE);
+	command_set(d, ERASE_CHIP);
 	toggle_check(d, d->command_2aaa);
 	Sleep(200); //Tec 0.2 sec
 }
@@ -304,7 +314,7 @@ static void w49f002_init(const struct flash_order *d)
 byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 よって初期化時には erase を実行する
 */
-	flash_erase(d);
+	flash_erase_chip(d);
 }
 
 static void w49f002_write(const struct flash_order *d, long address, long length, const struct memory *m)
@@ -449,7 +459,7 @@ static const struct flash_driver DRIVER_W29C020 = {
 	.id_device = 0x45,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase,
+	.erase = flash_erase_chip,
 #endif
 	.init = init_nop,
 	.write = w29c020_write
@@ -463,7 +473,7 @@ static const struct flash_driver DRIVER_W29C040 = {
 	.id_device = 0x46,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase,
+	.erase = flash_erase_chip,
 #endif
 	.init = init_nop,
 	.write = w29c040_write
@@ -477,7 +487,42 @@ static const struct flash_driver DRIVER_W49F002 = {
 	.id_device = 0xae,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase,
+	.erase = flash_erase_chip,
+#endif
+	.init = w49f002_init,
+	.write = w49f002_write
+};
+
+/*
+MANUFATUTER ID 0x7f1c
+EN29F002T DEVICE ID 0x7f92
+EN29F002B DEVICE ID 0x7f97
+
+command address が 0x00555, 0x00aaa になってる
+*/
+static const struct flash_driver DRIVER_EN29F002T = {
+	.name = "EN29F002T",
+	.capacity = 0x40000,
+	.pagesize = 0,
+	.id_manufacurer = 0x1c,
+	.id_device = 0x92,
+	.productid_check = productid_check,
+#if DEBUG==1
+	.erase = flash_erase_chip,
+#endif
+	.init = w49f002_init,
+	.write = w49f002_write
+};
+
+static const struct flash_driver DRIVER_AM29F040B = {
+	.name = "AM29F040B",
+	.capacity = 0x80000,
+	.pagesize = 0,
+	.id_manufacurer = 0x01,
+	.id_device = 0xa4,
+	.productid_check = productid_check,
+#if DEBUG==1
+	.erase = flash_erase_chip,
 #endif
 	.init = w49f002_init,
 	.write = w49f002_write

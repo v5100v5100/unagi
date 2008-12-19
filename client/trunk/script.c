@@ -455,7 +455,9 @@ static int command_mask(const int region, const long address, const long offset,
 		assert(0); //unknown memory area
 	}
 	switch(address){
-	case 0: case 0x2aaa: case 0x5555:
+	case 0: 
+	case 0x2aaa: case 0x5555:
+	case 0x02aa: case 0x0555:
 		break;
 	default:
 		assert(0); //unknown command address
