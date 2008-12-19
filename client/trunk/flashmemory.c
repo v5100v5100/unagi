@@ -265,7 +265,6 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 		data++;
 		length--;
 	}
-	Sleep(15);
 	int ret = toggle_check(d, toggle_address);
 	if(0){
 		data--;
@@ -273,8 +272,6 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 		polling_check(d, address - 1, *data);
 	}
 
-	//command_set(d, PROTECT_ENABLE);
-	//Sleep(15);
 	return ret;
 }
 
