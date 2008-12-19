@@ -279,33 +279,6 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 }
 
 /*
----- block compare ----
-*/
-static void compare(const struct flash_order *d, long address, const u8 *data, long length)
-{
-	u8 *romdata, *r;
-	int count = 0;
-	romdata = malloc(length);
-	d->read(address, length, romdata);
-	r = romdata;
-	while(length != 0){
-		if(*r != *data){
-			char safix = ' ';
-			if((count & 7) == 7){
-				safix = '\n';
-			}
-			count++;
-			printf("%06x%c", (int)address, safix);
-		}
-		r++;
-		data++;
-		address++;
-		length--;
-	}
-	free(romdata);
-}
-
-/*
 固有デバイスドライバ
 */
 static void w49f002_init(const struct flash_order *d)
@@ -328,45 +301,6 @@ static void init_nop(const struct flash_order *d)
 /*
 page write mode ではとくになし
 */
-}
-
-static void w29c020_write(const struct flash_order *d, long address, long length, const struct memory *m)
-{
-	int retry = 0;
-	assert(d->pagesize != 0);
-	{
-		long a = address;
-		long i = length;
-		const u8 *dd;
-		u8 *cmp;
-
-		dd = m->data;
-		cmp = malloc(d->pagesize);
-		while(i != 0){
-			int result = program_pagewrite(d, a, dd, d->pagesize);
-			if(result == NG){
-				printf("%s: write error\n", __FUNCTION__);
-				free(cmp);
-				return;
-			}
-			d->read(a, d->pagesize, cmp);
-			if(memcmp(cmp, dd, d->pagesize) == 0){
-				a += d->pagesize;
-				dd += d->pagesize;
-				i -= d->pagesize;
-			}else{
-				if(retry >= 0x100){
-					break;
-				}
-				retry++;
-			}
-		}
-		free(cmp);
-	}
-
-	printf("write ok. retry %d\n", retry);
-	compare(d, address, m->data, length);
-	Sleep(10);
 }
 
 static void w29c040_write(const struct flash_order *d, long address, long length, const struct memory *m)
@@ -401,7 +335,7 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 			offset += d->pagesize;
 			i -= d->pagesize;
 		}
-		printf("%s 0x%06x, ngblock %d\n", m->name, (int) offset, ngblock);
+		printf("%s 0x%06x, ngblock %d\n", m->name, (int) m->offset, ngblock);
 		if(retry >= 3 && ngblock >= 16){
 			printf("skip\n");
 			break;
@@ -462,7 +396,7 @@ static const struct flash_driver DRIVER_W29C020 = {
 	.erase = flash_erase_chip,
 #endif
 	.init = init_nop,
-	.write = w29c020_write
+	.write = w29c040_write
 };
 
 static const struct flash_driver DRIVER_W29C040 = {
