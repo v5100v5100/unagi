@@ -260,7 +260,7 @@ hongkong データ破壊+アドレス不安定になるので、/WE 制御にしないと動かない。
 */
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	//CS down
-	address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
+	data_port_latch(DATA_SELECT_A15toA8, (address & ADDRESS_MASK_A0toA14) >> 8);
 	//WE down
 	c = bit_clear(c, BITNUM_CPU_RW);
 //	c = bit_clear(c, BITNUM_CPU_M2);
