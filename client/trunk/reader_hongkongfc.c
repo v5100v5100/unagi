@@ -65,57 +65,38 @@ static inline void data_port_latch(int select, long data)
 	port_control_write(select, PORT_CONTROL_WRITE);
 }
 
-enum{ADDRESS_RESET, ADDRESS_SET};
-/*これもポート破壊が起こるのかちゃんと動かない
-static inline void address_set(long address, int reset)
+enum{ADDRESS_CPU_OPEN, ADDRESS_CPU_CLOSE};
+static inline void address_set(long address, int cpu_open)
 {
-	static long last_address_h, last_address_l;
 	long address_h = address >> 8;
 	long address_l = address & 0xff;
-	if(reset == ADDRESS_RESET){
+	if(cpu_open == ADDRESS_CPU_OPEN){
+		//hongkong のデータ破壊で A7toA0 を先に設定できない
 		data_port_latch(DATA_SELECT_A15toA8, address_h);
 		data_port_latch(DATA_SELECT_A7toA0, address_l);
 	}else{
-		if(last_address_h != address_h){
-			data_port_latch(DATA_SELECT_A15toA8, address_h);
-		}
-		if(last_address_l != address_l){
-			data_port_latch(DATA_SELECT_A7toA0, address_l);
-		}
+		data_port_latch(DATA_SELECT_A15toA8, address_h);
+		data_port_latch(DATA_SELECT_A7toA0, address_l);
 	}
-	last_address_h = address_h;
-	last_address_l = address_l;
 }
-*/
-static inline void address_set(long address, int reset)
+
+static const int BUS_CONTROL_PPU_READ = (
+	(0 << BITNUM_PPU_OUTPUT) |
+	(1 << BITNUM_PPU_RW) |
+	(0 << BITNUM_PPU_SELECT) |
+	(1 << BITNUM_WRITEDATA_OUTPUT) |
+	(0 << BITNUM_WRITEDATA_LATCH) |
+	(0 << BITNUM_CPU_M2) |
+	(1 << BITNUM_CPU_RW)
+);
+static inline u8 data_port_get(long address, int bus)
 {
-	long address_h = address >> 8;
-	long address_l = address & 0xff;
-	data_port_latch(DATA_SELECT_A15toA8, address_h);
-	data_port_latch(DATA_SELECT_A7toA0, address_l);
-}
-static inline u8 data_port_get(long address, int bus, int m2)
-{
-	if(0){ 
-		// at VRC4d
-		//φ2 control を入れると何故かCPUアドレス $8090 でバンクが切り替わる???
-		//PPU area は大丈夫
-		if(address == (0x8090 ^ ADDRESS_MASK_A15)){
-			//debug break point
-		}
-		address_set(address, ADDRESS_SET);
-		if(m2 == M2_CONTROL_TRUE){
-			bus = bit_clear(bus, BITNUM_CPU_M2);
-		}
-		data_port_latch(DATA_SELECT_CONTROL, bus);
-		if(m2 == M2_CONTROL_TRUE){
-			bus = bit_set(bus, BITNUM_CPU_M2);
-			data_port_latch(DATA_SELECT_CONTROL, bus);
-		}
-	}else{
-		address_set(address, ADDRESS_SET);
-	}
+	//CPU bus open
+	address_set(address, ADDRESS_CPU_OPEN);
 	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
+	if(bus == BUS_CONTROL_PPU_READ){
+		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
+	}
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
 	s = bit_set(s, BITNUM_CONTROL_DATA_LATCH);
 	port_control_write(s, PORT_CONTROL_READ);
@@ -144,17 +125,8 @@ static const int BUS_CONTROL_CPU_READ = (
 	(1 << BITNUM_CPU_M2) |
 	(1 << BITNUM_CPU_RW)
 );
-static const int BUS_CONTROL_PPU_READ = (
-	(0 << BITNUM_PPU_OUTPUT) |
-	(1 << BITNUM_PPU_RW) |
-	(0 << BITNUM_PPU_SELECT) |
-	(1 << BITNUM_WRITEDATA_OUTPUT) |
-	(0 << BITNUM_WRITEDATA_LATCH) |
-	(0 << BITNUM_CPU_M2) |
-	(1 << BITNUM_CPU_RW)
-);
-//static const int BUS_CONTROL_BUS_WRITE = BUS_CONTROL_CPU_READ; //エラーになる
-#define BUS_CONTROL_BUS_WRITE BUS_CONTROL_CPU_READ
+//static const int BUS_CONTROL_BUS_STANDBY = BUS_CONTROL_CPU_READ; //エラーになる
+#define BUS_CONTROL_BUS_STANDBY BUS_CONTROL_CPU_READ
 /*
 namcot の SRAM 付カートリッジはφ2を0x80回上げると出力が安定する
 RAM アダプタも同様??
@@ -171,19 +143,18 @@ static void hk_init(void)
 		data_port_latch(DATA_SELECT_CONTROL, c);
 		i--;
 	}
-	if(0){
-		address_set(0, ADDRESS_RESET);
-	}
 }
 
 static void hk_cpu_read(long address, long length, u8 *data)
 {
 	//fc bus 初期化
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_CPU_READ);
-	//A15 を反転し、 /ROMCS にしたものを渡す
-	address ^= ADDRESS_MASK_A15;
 	while(length != 0){
-		*data = data_port_get(address, BUS_CONTROL_CPU_READ, M2_CONTROL_FALSE);
+		//data_port_get内部 address_set で bus open
+		//A15 を反転し、 /ROMCS にしたものを渡す
+		*data = data_port_get(address ^ ADDRESS_MASK_A15, BUS_CONTROL_CPU_READ);
+		//bus close, A15 を先に設定
+		address_set(address, ADDRESS_CPU_CLOSE);
 		address++;
 		data++;
 		length--;
@@ -192,11 +163,12 @@ static void hk_cpu_read(long address, long length, u8 *data)
 
 static void hk_ppu_read(long address, long length, u8 *data)
 {
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
-		*data = data_port_get(address, BUS_CONTROL_PPU_READ, M2_CONTROL_FALSE);
+		*data = data_port_get(address, BUS_CONTROL_PPU_READ);
+		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 		address++;
 		data++;
 		length--;
@@ -205,11 +177,11 @@ static void hk_ppu_read(long address, long length, u8 *data)
 
 static void hk_cpu_6502_write(long address, long data)
 {
-	int c = BUS_CONTROL_BUS_WRITE;
+	int c = BUS_CONTROL_BUS_STANDBY;
 	//全てのバスを止める
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	// /rom を H にしてバスを止める
-	address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
+	address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 	
 	//1 H->L bus:data set, mapper:address get
 	c = bit_clear(c, BITNUM_CPU_M2);
@@ -219,7 +191,7 @@ static void hk_cpu_6502_write(long address, long data)
 	//2 L->H bus:data write
 	//ROM 領域の場合はこのタイミングで /rom を落とす
 	if(address & ADDRESS_MASK_A15){
-		address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_SET);
+		address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
 	c = bit_set(c, BITNUM_CPU_M2);
@@ -229,19 +201,19 @@ static void hk_cpu_6502_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//4 L->H mapper: data get, bus:close
 	if(address & ADDRESS_MASK_A15){
-		address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
+		address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 	}
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
 static void hk_ppu_write(long address, long data)
 {
-	int c = BUS_CONTROL_BUS_WRITE;
+	int c = BUS_CONTROL_BUS_STANDBY;
 	c = bit_clear(c, BITNUM_CPU_M2); //たぶんいる
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//cpu rom を止めたアドレスを渡す
-	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15, ADDRESS_SET);
+	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 	data_port_set(c, data); 
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	//CS down
@@ -254,7 +226,7 @@ static void hk_ppu_write(long address, long data)
 	c = bit_set(c, BITNUM_PPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//CS up
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 static const int FLASH_CPU_WRITE = (
@@ -272,7 +244,7 @@ static void hk_cpu_flash_write(long address, long data)
 	int c = FLASH_CPU_WRITE;
 	//全てのバスを止める
 	data_port_latch(DATA_SELECT_CONTROL, c);
-	address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
+	address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 	data_port_set(c, data);
 /*
 W29C020
@@ -288,7 +260,7 @@ hongkong データ破壊+アドレス不安定になるので、/WE 制御にしないと動かない。
 */
 	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	//CS down
-	address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_SET);
+	address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
 	//WE down
 	c = bit_clear(c, BITNUM_CPU_RW);
 //	c = bit_clear(c, BITNUM_CPU_M2);
@@ -296,7 +268,7 @@ hongkong データ破壊+アドレス不安定になるので、/WE 制御にしないと動かない。
 	//WE up
 	data_port_latch(DATA_SELECT_CONTROL, FLASH_CPU_WRITE);
 	//CS up
-	address_set(address | ADDRESS_MASK_A15, ADDRESS_SET);
+	address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 }
 
 const struct reader_driver DRIVER_HONGKONGFC = {
@@ -358,7 +330,7 @@ int main(int c, char **v)
 
 	switch(v[1][0]){
 	case 'w':
-		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_WRITE);
+		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 		port_control_write(DATA_SELECT_WRITE << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 		_outp(PORT_DATA, d);
 		break;
