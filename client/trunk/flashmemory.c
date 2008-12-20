@@ -212,10 +212,12 @@ static void flash_erase_chip(const struct flash_order *d)
 	Sleep(200); //Tec 0.2 sec
 }
 
+#if DEBUG==1
 static void sram_erase(const struct flash_order *d)
 {
 	//bank 切り替えが伴うので実装できない
 }
+#endif
 
 /*
 ---- program ----
@@ -290,6 +292,7 @@ byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 static void w49f002_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
 	program_byte(d, address, m->data, length);
+	printf("write %s 0x%06x done\n", m->name, (int) m->offset);
 }
 
 
@@ -346,8 +349,6 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 	}while(ngblock != 0);
 
 	free(cmp);
-//	compare(d, address, data, length);
-//	Sleep(10);
 }
 
 static void sram_write(const struct flash_order *d, long address, long length, const struct memory *m)
@@ -362,11 +363,15 @@ static void sram_write(const struct flash_order *d, long address, long length, c
 	}
 }
 
+static void dummy_write(const struct flash_order *d, long address, long length, const struct memory *m)
+{
+}
+
 /*
 デバイスリスト
 */
 enum{
-	ID_SRAM = 0
+	ID_SRAM = 0, ID_DUMMY = ID_SRAM
 };
 static const struct flash_driver DRIVER_SRAM256K = {
 	.name = "SRAM256K",
@@ -380,6 +385,20 @@ static const struct flash_driver DRIVER_SRAM256K = {
 #endif
 	.init = init_nop,
 	.write = sram_write
+};
+
+static const struct flash_driver DRIVER_DUMMY = {
+	.name = "dummy",
+	.capacity = 0x40000,
+	.pagesize = 0,
+	.id_manufacurer = ID_DUMMY,
+	.id_device = ID_DUMMY,
+	.productid_check = productid_sram,
+#if DEBUG==1
+	.erase = sram_erase,
+#endif
+	.init = init_nop,
+	.write = dummy_write
 };
 
 static const struct flash_driver DRIVER_W29C020 = {
@@ -460,8 +479,10 @@ static const struct flash_driver DRIVER_AM29F040B = {
 };
 
 static const struct flash_driver *DRIVER_LIST[] = {
-	&DRIVER_W29C020, &DRIVER_W29C040, &DRIVER_W49F002,
+	&DRIVER_W29C020, &DRIVER_W29C040, 
+	&DRIVER_W49F002, &DRIVER_EN29F002T, &DRIVER_AM29F040B,
 	&DRIVER_SRAM256K, 
+	&DRIVER_DUMMY,
 	NULL
 };
 
