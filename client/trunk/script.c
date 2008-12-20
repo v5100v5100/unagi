@@ -415,22 +415,26 @@ static const char STR_ACCESS_WRITE[] = "write";
 enum{
 	SETTING, DUMP, END
 };
-static int command_mask(const int region, const long address, const long offset, long size, long *data)
+static int command_mask(const int region, const long address, const long offset, long size, struct flash_order *f)
 {
+	const char *str_region = STR_REGION_CPU;
+	if(region == MEMORY_AREA_PPU){
+		str_region = STR_REGION_PPU;
+	}
 	switch(region){
 	case MEMORY_AREA_CPU_ROM:
 		switch(offset){
 		case 0x8000: case 0xa000: case 0xc000:
 			break;
 		default:
-			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, str_region);
 			return NG;
 		}
 		switch(size){
 		case 0x2000: case 0x4000: case 0x8000:
 			break;
 		default:
-			printf("%s %s_COMMAND area mask error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			printf("%s %s_COMMAND area mask error\n", LOGICAL_ERROR_PREFIX, str_region);
 			return NG;
 		}
 		break;
@@ -440,30 +444,37 @@ static int command_mask(const int region, const long address, const long offset,
 		case 0x1000: case 0x1400: case 0x1800: case 0x1c00:
 			break;
 		default:
-			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			printf("%s %s_COMMAND area offset error\n", LOGICAL_ERROR_PREFIX, str_region);
 			return NG;
 		}
 		switch(size){
 		case 0x0400: case 0x0800: case 0x1000: case 0x2000: 
 			break;
 		default:
-			printf("%s %s_COMMAND area mask error\n", LOGICAL_ERROR_PREFIX, STR_REGION_CPU);
+			printf("%s %s_COMMAND area mask error\n", LOGICAL_ERROR_PREFIX, str_region);
 			return NG;
 		}
 		break;
 	default:
 		assert(0); //unknown memory area
 	}
+
+	const long mask = size - 1;
+	const long data = (address & mask) | offset;
 	switch(address){
-	case 0: 
-	case 0x2aaa: case 0x5555:
-	case 0x02aa: case 0x0555:
+	case 0:
+		f->command_0000 = data;
+		break;
+	case 0x2aaa: case 0x02aa: 
+		f->command_2aaa = data;
+		break;
+	case 0x5555: case 0x0555:
+		f->command_5555 = data;
 		break;
 	default:
-		assert(0); //unknown command address
+		printf("%s %s_COMMAND unknown commnand address\n", LOGICAL_ERROR_PREFIX, str_region);
+		return NG;
 	}
-	long mask = size - 1;
-	*data = (address & mask) | offset;
 	return OK;
 }
 
@@ -542,18 +553,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			//memory size は未確定要素が多いので check を抜く
 			r->cpu_ram.size = s->value[0];
 			break;
-		case SCRIPT_OPCODE_CPU_COMMAND_0000:
-			if(command_mask(MEMORY_AREA_CPU_ROM, 0, s->value[0], s->value[1], &(r->cpu_flash.command_0000)) == NG){
-				error += 1;
-			}
-			break;
-		case SCRIPT_OPCODE_CPU_COMMAND_2AAA:
-			if(command_mask(MEMORY_AREA_CPU_ROM, 0x2aaa, s->value[0], s->value[1], &(r->cpu_flash.command_2aaa)) == NG){
-				error += 1;
-			}
-			break;
-		case SCRIPT_OPCODE_CPU_COMMAND_5555:
-			if(command_mask(MEMORY_AREA_CPU_ROM, 0x5555, s->value[0], s->value[1], &(r->cpu_flash.command_5555)) == NG){
+		case SCRIPT_OPCODE_CPU_COMMAND:
+			if(command_mask(MEMORY_AREA_CPU_ROM, s->value[0], s->value[1], s->value[2], &(r->cpu_flash)) == NG){
 				error += 1;
 			}
 			break;
@@ -570,18 +571,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			}
 			break;
-		case SCRIPT_OPCODE_PPU_COMMAND_0000:
-			if(command_mask(MEMORY_AREA_PPU, 0, s->value[0], s->value[1], &(r->ppu_flash.command_0000)) == NG){
-				error += 1;
-			}
-			break;
-		case SCRIPT_OPCODE_PPU_COMMAND_2AAA:
-			if(command_mask(MEMORY_AREA_PPU, 0x2aaa, s->value[0], s->value[1], &(r->ppu_flash.command_2aaa)) == NG){
-				error += 1;
-			}
-			break;
-		case SCRIPT_OPCODE_PPU_COMMAND_5555:
-			if(command_mask(MEMORY_AREA_PPU, 0x5555, s->value[0], s->value[1], &(r->ppu_flash.command_5555)) == NG){
+		case SCRIPT_OPCODE_PPU_COMMAND:
+			if(command_mask(MEMORY_AREA_PPU, s->value[0], s->value[1], s->value[2], &(r->ppu_flash)) == NG){
 				error += 1;
 			}
 			break;

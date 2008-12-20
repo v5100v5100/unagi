@@ -59,7 +59,7 @@ unagi.exe w [script file] [ram file]
 script file - 対応するマッパの RAM スクリプトファイルを指定します。
 ram file    - 入力する RAM イメージファイルを指定します。
 
-== f Flashmemory/SRAM Program MODE ==
+== f flashmemory/SRAM PROGRAM MODE ==
 実験要素が多い実装のため、詳細は個別に問い合わせてください。
 
 --スクリプト仕様--
