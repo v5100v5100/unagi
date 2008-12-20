@@ -293,7 +293,7 @@ int main(int c, char **v)
 	default:
 		printf("famicom ROM cartridge utility - unagi version %s\n", STR_VERSION);
 		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
-		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM/ program [f]lash memory\n");
+		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM/ [f]lash memory program\n");
 		break;
 	}
 	if((config.mode != MODE_TEST) && (config_result == OK)){
