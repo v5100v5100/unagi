@@ -269,6 +269,7 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	return OK;
 }
 
+#include "version.h"
 int main(int c, char **v)
 {
 	struct st_config config;
@@ -290,7 +291,7 @@ int main(int c, char **v)
 		break;
 	usage:
 	default:
-		printf("famicom ROM cartridge utility - unagi version 0.5.2\n");
+		printf("famicom ROM cartridge utility - unagi version %s\n", STR_VERSION);
 		printf("%s [mode] [mapper script] [target file] [flag]\n", v[0]);
 		printf("mode - [d]ump ROM / [r]ead RAM/ [w]rite RAM\n");
 		break;
