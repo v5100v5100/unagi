@@ -690,7 +690,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			if(s->opcode == SCRIPT_OPCODE_PPU_SRAMTEST){
 				min = 1;
 			}
-			if(!is_range(length, min, 0x2000)){
+			if(!is_range(length, min, 0x1000)){
 				logical_print_illgallength(STR_REGION_PPU, length);
 				error += 1;
 			}
