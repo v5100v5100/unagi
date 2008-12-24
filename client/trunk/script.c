@@ -974,7 +974,7 @@ static void read_result_print(const struct memory *m, long length)
 }
 
 const char EXECUTE_ERROR_PREFIX[] = "execute error:";
-static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length)
+static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length, long wait)
 {
 	if(mode == MODE_RAM_WRITE){
 		const u8 *writedata;
@@ -982,7 +982,7 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 		long l = length;
 		writedata = ram->data;
 		while(l != 0){
-			d->cpu_6502_write(a++, *writedata);
+			d->cpu_6502_write(a++, *writedata, wait);
 			writedata += 1;
 			l--;
 		}
@@ -1047,12 +1047,12 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_CPU_WRITE:{
 			long data;
 			expression_calc(&s->expression, &data);
-			d->cpu_6502_write(s->value[0], data);
+			d->cpu_6502_write(s->value[0], data, c->write_wait);
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
 			const long length = s->value[1];
-			execute_cpu_ramrw(d, &cpu_ram, c->mode, s->value[0], length);
+			execute_cpu_ramrw(d, &cpu_ram, c->mode, s->value[0], length, c->write_wait);
 			read_result_print(&cpu_ram, length);
 			cpu_ram.data += length;
 			cpu_ram.offset += length;

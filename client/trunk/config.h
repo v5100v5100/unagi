@@ -11,6 +11,7 @@ struct st_config{
 	//device driver function pointer struct
 	const struct reader_driver *reader;
 	const struct flash_driver *cpu_flash_driver, *ppu_flash_driver;
+	long write_wait;
 	//data mode
 	int mode, syntaxtest;
 };

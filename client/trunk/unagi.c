@@ -87,7 +87,13 @@ static int config_file_load(struct st_config *c)
 		}
 		if(strcmp("DRIVER", word[0]) == 0){
 			c->reader = reader_driver_get(word[1]);
-			break;
+		}else if(strcmp("WRITE_WAIT", word[0]) == 0){
+			if(value_get(word[1], &(c->write_wait)) == NG){
+				printf("%s write_wait parameter is illigal", PREFIX_CONFIG_ERROR);
+				free(buf);
+				free(text);
+				return NG;
+			}
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
 			free(buf);
@@ -162,6 +168,7 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	c->syntaxtest = 0;
 	c->cpu_flash_driver = &DRIVER_UNDEF;
 	c->ppu_flash_driver = &DRIVER_UNDEF;
+	c->write_wait = 0;
 	//mode 別 target file 初期化
 	switch(argv[ARGC_MODE][0]){
 	case 'd':

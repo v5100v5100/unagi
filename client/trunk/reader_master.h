@@ -7,7 +7,7 @@ struct reader_driver{
 	void (*init)(void);
 	void (*cpu_read)(long address, long length, u8 *data);
 	void (*ppu_read)(long address, long length, u8 *data);
-	void (*cpu_6502_write)(long address, long data);
+	void (*cpu_6502_write)(long address, long data, long wait_msec);
 	void (*cpu_flash_write)(long address, long data);
 	void (*ppu_write)(long address, long data);
 	const char *name;

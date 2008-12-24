@@ -44,7 +44,6 @@ static inline void bus_control(int data)
 		:: "i"(PORT_DATA), "q"(data): "%edx", "%eax"
 	);
 #endif
-	wait();
 }
 
 /*
@@ -65,7 +64,6 @@ static inline void address_control(int data)
 		:: "i"(PORT_CONTROL), "q"(data): "%edx", "%eax"
 	);
 #endif
-	wait();
 }
 
 /* address control data & function */
@@ -294,7 +292,7 @@ R/W |HHLLH
 
 H:1, L:0, x:ROMareaaccess時0, それ以外1
 */
-static void cpu_6502_write(long address, long data)
+static void cpu_6502_write(long address, long data, long wait_msec)
 {
 	int control = BUS_CONTROL_BUS_WRITE;
 	//address設定 + 全てのバスを止める
@@ -304,6 +302,7 @@ static void cpu_6502_write(long address, long data)
 	data_set(control, data);
 
 	control = bit_clear(control, BITNUM_CPU_RW);
+	bus_control(control);
 	control = bit_set(control, BITNUM_CPU_M2);
 	if(address & ADDRESS_MASK_A15){
 		control = bit_clear(control, BITNUM_CPU_RAMROM_SELECT);
@@ -311,6 +310,7 @@ static void cpu_6502_write(long address, long data)
 	bus_control(control);
 	control = bit_clear(control, BITNUM_CPU_M2);
 	bus_control(control);
+	wait(wait_msec);
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
 

@@ -6,7 +6,7 @@ famicom ROM cartridge utility - unagi
 #define _PARALELL_PORT_INLINE_H_
 #include "giveio.h"
 //#include <dos.h> ?
-//#include <windows.h>
+#include <windows.h>
 #define ASM_ENABLE (0)
 enum{
 	PORT_DATA = 0x0378,
@@ -42,10 +42,13 @@ static inline int bit_clear(int data, const int bit)
 	return data;
 }
 
-static inline void wait(void)
+static inline void wait(long msec)
 {
+	if(msec == 0){
+		return;
+	}
 	//const long waittime = 100000;
-	//SleepEx(20,TRUE);
+	Sleep(msec);
 }
 
 #endif
