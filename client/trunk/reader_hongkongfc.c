@@ -80,23 +80,10 @@ static inline void address_set(long address, int cpu_open)
 	}
 }
 
-static const int BUS_CONTROL_PPU_READ = (
-	(0 << BITNUM_PPU_OUTPUT) |
-	(1 << BITNUM_PPU_RW) |
-	(0 << BITNUM_PPU_SELECT) |
-	(1 << BITNUM_WRITEDATA_OUTPUT) |
-	(0 << BITNUM_WRITEDATA_LATCH) |
-	(0 << BITNUM_CPU_M2) |
-	(1 << BITNUM_CPU_RW)
-);
 static inline u8 data_port_get(long address, int bus)
 {
-	//CPU bus open
-	address_set(address, ADDRESS_CPU_OPEN);
+	address_set(address, 0);
 	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
-	if(bus == BUS_CONTROL_PPU_READ){
-		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
-	}
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
 	s = bit_set(s, BITNUM_CONTROL_DATA_LATCH);
 	port_control_write(s, PORT_CONTROL_READ);
@@ -125,6 +112,15 @@ static const int BUS_CONTROL_CPU_READ = (
 	(1 << BITNUM_CPU_M2) |
 	(1 << BITNUM_CPU_RW)
 );
+static const int BUS_CONTROL_PPU_READ = (
+	(0 << BITNUM_PPU_OUTPUT) |
+	(1 << BITNUM_PPU_RW) |
+	(0 << BITNUM_PPU_SELECT) |
+	(1 << BITNUM_WRITEDATA_OUTPUT) |
+	(0 << BITNUM_WRITEDATA_LATCH) |
+	(0 << BITNUM_CPU_M2) |
+	(1 << BITNUM_CPU_RW)
+);
 //static const int BUS_CONTROL_BUS_STANDBY = BUS_CONTROL_CPU_READ; //エラーになる
 #define BUS_CONTROL_BUS_STANDBY BUS_CONTROL_CPU_READ
 /*
@@ -149,12 +145,10 @@ static void hk_cpu_read(long address, long length, u8 *data)
 {
 	//fc bus 初期化
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_CPU_READ);
-	while(length != 0){
-		//data_port_get内部 address_set で bus open
 		//A15 を反転し、 /ROMCS にしたものを渡す
-		*data = data_port_get(address ^ ADDRESS_MASK_A15, BUS_CONTROL_CPU_READ);
-		//bus close, A15 を先に設定
-		address_set(address, ADDRESS_CPU_CLOSE);
+	address ^= ADDRESS_MASK_A15;
+	while(length != 0){
+		*data = data_port_get(address, BUS_CONTROL_CPU_READ);
 		address++;
 		data++;
 		length--;
@@ -163,19 +157,18 @@ static void hk_cpu_read(long address, long length, u8 *data)
 
 static void hk_ppu_read(long address, long length, u8 *data)
 {
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
 		*data = data_port_get(address, BUS_CONTROL_PPU_READ);
-		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 		address++;
 		data++;
 		length--;
 	}
 }
 
-static void hk_cpu_6502_write(long address, long data)
+static void hk_cpu_6502_write(long address, long data, long wait_msec)
 {
 	int c = BUS_CONTROL_BUS_STANDBY;
 	//全てのバスを止める
@@ -194,8 +187,10 @@ static void hk_cpu_6502_write(long address, long data)
 		address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
+	data_port_latch(DATA_SELECT_CONTROL, c);
 	c = bit_set(c, BITNUM_CPU_M2);
 	data_port_latch(DATA_SELECT_CONTROL, c);
+	wait(wait_msec);
 	//3 H->L mapper: data write enable
 	c = bit_clear(c, BITNUM_CPU_M2);
 	data_port_latch(DATA_SELECT_CONTROL, c);
