@@ -176,29 +176,29 @@ static void hk_cpu_6502_write(long address, long data, long wait_msec)
 	// /rom を H にしてバスを止める
 	address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 	
-	//1 H->L bus:data set, mapper:address get
+	//φ2 = L, R/W=L, address set, data set
 	c = bit_clear(c, BITNUM_CPU_M2);
 	data_port_set(c, data); //latchはこの関数内部で行う
-	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	//2 L->H bus:data write
-	//ROM 領域の場合はこのタイミングで /rom を落とす
 	if(address & ADDRESS_MASK_A15){
 		address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
+	wait(wait_msec);
+	//φ2 = H, data out
 	c = bit_set(c, BITNUM_CPU_M2);
+	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	wait(wait_msec);
-	//3 H->L mapper: data write enable
+	//φ2 = L, H にするまで R/W, address, Data を有効状態にする
 	c = bit_clear(c, BITNUM_CPU_M2);
 	data_port_latch(DATA_SELECT_CONTROL, c);
-	//4 L->H mapper: data get, bus:close
+	wait(wait_msec);
+	//φ2 = H, R/W = H, address disable, data out disable
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	if(address & ADDRESS_MASK_A15){
 		address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
 	}
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
