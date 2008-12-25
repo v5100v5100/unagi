@@ -298,19 +298,25 @@ static void cpu_6502_write(long address, long data, long wait_msec)
 	//address設定 + 全てのバスを止める
 	address_set(address, control);
 
+	//φ2 = L, R/W=L, data set, dataout
 	control = bit_clear(control, BITNUM_CPU_M2);
 	data_set(control, data);
-
 	control = bit_clear(control, BITNUM_CPU_RW);
 	bus_control(control);
-	control = bit_set(control, BITNUM_CPU_M2);
 	if(address & ADDRESS_MASK_A15){
 		control = bit_clear(control, BITNUM_CPU_RAMROM_SELECT);
 	}
+	wait(wait_msec);
+	
+	//φ2 = H, data out
+	control = bit_set(control, BITNUM_CPU_M2);
 	bus_control(control);
+	wait(wait_msec);
+	//φ2 = L, H にするまで R/W, address, Data を有効状態にする
 	control = bit_clear(control, BITNUM_CPU_M2);
 	bus_control(control);
 	wait(wait_msec);
+	//φ2 = H, R/W = H, address disable, data out disable
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
 
