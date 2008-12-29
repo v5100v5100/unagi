@@ -4,6 +4,7 @@ OBJ = \
 	flashmemory.o \
 	file.o textutil.o giveio.o unagi.res.o
 OBJ_HK = giveio.o reader_hongkongfc.o
+OBJ_HD = head/nesheader.o head/header.o file.o
 TARGET = unagi.exe
 CC = gcc
 CFLAGS = -Wall -Werror -Wmissing-declarations #-Wcast-qual
@@ -23,8 +24,14 @@ endif
 all: $(TARGET) unagi.d
 client_test.o: test/client_test.c
 	$(CC) $(CFLAGS) -I. -c -o $@ $<
+head/nesheader.o: nesheader.c
+	$(CC) $(CFLAGS) -DHEADEROUT -I. -c -o $@ $<
+head/header.o: header.c
+	$(CC) $(CFLAGS) -DHEADEROUT -I. -c -o $@ $<
 unagi.d:
 	$(CC) -MM $(CFLAGS) *.c > $@
+nesheader.exe: $(OBJ_HD)
+	$(CC) -o $@ $(OBJ_HD)
 hk.exe: $(OBJ_HK)
 	$(CC) -o $@ $(OBJ_HK)
 iodel.exe: iodel.o giveio.o

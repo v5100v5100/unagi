@@ -42,6 +42,9 @@ enum{
 	MEMORY_ATTR_READ, MEMORY_ATTR_WRITE, MEMORY_ATTR_NOTUSE
 };
 
+#ifdef HEADEROUT
+void nesheader_set(const struct romimage *r, u8 *header);
+#endif
 int nesbuffer_malloc(struct romimage *r, int mode);
 void nesfile_create(struct romimage *r, const char *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);

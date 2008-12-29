@@ -22,7 +22,10 @@ static const u8 NES_HEADER_INIT[NES_HEADER_SIZE] = {
 	0, 0, 0, 0, 0, 0, 0, 0
 };
 
-static void nesheader_set(const struct romimage *r, u8 *header)
+#ifndef HEADEROUT
+static 
+#endif
+void nesheader_set(const struct romimage *r, u8 *header)
 {
 	memcpy(header, NES_HEADER_INIT, NES_HEADER_SIZE);
 	header[4] = r->cpu_rom.size / PROGRAM_ROM_MIN;
@@ -38,6 +41,7 @@ static void nesheader_set(const struct romimage *r, u8 *header)
 	header[7] |= r->mappernum & 0xf0;
 }
 
+#ifndef HEADEROUT
 /*
 return√Õ: error count
 */
@@ -311,3 +315,4 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 	free(buf);
 	return OK;
 }
+#endif
