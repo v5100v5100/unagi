@@ -180,7 +180,8 @@ static void hk_cpu_6502_write(long address, long data, long wait_msec)
 	c = bit_clear(c, BITNUM_CPU_M2);
 	data_port_set(c, data); //latchはこの関数内部で行う
 	if(address & ADDRESS_MASK_A15){
-		address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
+		//address_set(address & ADDRESS_MASK_A0toA14, ADDRESS_CPU_OPEN);
+		data_port_latch(DATA_SELECT_A15toA8, (address & ADDRESS_MASK_A0toA14) >> 8);
 	}
 	c = bit_clear(c, BITNUM_CPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
@@ -195,10 +196,11 @@ static void hk_cpu_6502_write(long address, long data, long wait_msec)
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	wait(wait_msec);
 	//φ2 = H, R/W = H, address disable, data out disable
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	if(address & ADDRESS_MASK_A15){
-		address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
+		//address_set(address | ADDRESS_MASK_A15, ADDRESS_CPU_CLOSE);
+		data_port_latch(DATA_SELECT_A15toA8, (address & ADDRESS_MASK_A15) >> 8);
 	}
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
