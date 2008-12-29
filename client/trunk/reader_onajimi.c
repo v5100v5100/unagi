@@ -191,7 +191,7 @@ static void reader_init(void)
 	address_reset();
 	/*
 	namcot bus 安定処置
-	driver_onajimi 参照
+	reader_hongkong 参照
 	*/
 	while(i != 0){
 		c = bit_set(c, BITNUM_CPU_M2);
