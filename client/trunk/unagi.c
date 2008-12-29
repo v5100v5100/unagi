@@ -88,12 +88,14 @@ static int config_file_load(struct st_config *c)
 		if(strcmp("DRIVER", word[0]) == 0){
 			c->reader = reader_driver_get(word[1]);
 		}else if(strcmp("WRITE_WAIT", word[0]) == 0){
+#if DEBUG==1
 			if(value_get(word[1], &(c->write_wait)) == NG){
 				printf("%s write_wait parameter is illigal", PREFIX_CONFIG_ERROR);
 				free(buf);
 				free(text);
 				return NG;
 			}
+#endif
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
 			free(buf);
