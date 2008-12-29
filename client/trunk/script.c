@@ -978,7 +978,7 @@ static void execute_program_begin(const struct memory *m)
 	if(DEBUG==1){
 		return;
 	}
-	printf("programming %s memory 0x%06x ... ", m->name, m->offset);
+	printf("writing %s area 0x%06x ... ", m->name, m->offset);
 	fflush(stdout);
 }
 
@@ -1096,9 +1096,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				&cpu_rom
 			);
 			d->cpu_read(address, length, program_compare);
-			execute_program_finish(memcmp(program_compare, cpu_rom.data, length));
+			const int result = memcmp(program_compare, cpu_rom.data, length);
+			execute_program_finish(result);
 			cpu_rom.data += length;
 			cpu_rom.offset += length;
+			
+			if((DEBUG==0) && (result != 0)){
+				end = 0;
+			}
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMFIND:
@@ -1152,9 +1157,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				&ppu_rom
 			);
 			d->ppu_read(address, length, program_compare);
-			execute_program_finish(memcmp(program_compare, ppu_rom.data, length));
+			const int result = memcmp(program_compare, ppu_rom.data, length);
+			execute_program_finish(result);
 			ppu_rom.data += length;
 			ppu_rom.offset += length;
+			
+			if((DEBUG==0) && (result != 0)){
+				end = 0;
+			}
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:
@@ -1223,13 +1233,13 @@ void script_load(const struct st_config *c)
 			.size = 0, .offset = 0,
 			.data = NULL,
 			.attribute = MEMORY_ATTR_NOTUSE,
-			.name = STR_REGION_CPU
+			.name = "program ROM"
 		},
 		.ppu_rom = {
 			.size = 0, .offset = 0,
 			.data = NULL,
 			.attribute = MEMORY_ATTR_NOTUSE,
-			.name = STR_REGION_PPU
+			.name = "charcter ROM"
 		},
 		.cpu_ram = {
 			.size = 0, .offset = 0,
@@ -1244,7 +1254,6 @@ void script_load(const struct st_config *c)
 			.command_5555 = 0,
 			.pagesize = c->cpu_flash_driver->pagesize,
 			.flash_write = c->reader->cpu_flash_write,
-			//.flash_write = c->reader->cpu_6502_write,
 			.read = c->reader->cpu_read
 		},
 		.ppu_flash = {
