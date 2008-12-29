@@ -1,0 +1,12 @@
+#RC832 ... バッテリーがないのでただの追加RAM
+#$6000- RAM
+#$67ff- mirror
+#$7000-$7fff 無効
+#$9001 bit0 0:ram disable(初期値), 1:ram enable
+#RC840 は設定が無視される
+CPU_RAMSIZE 0x800
+DUMP_START
+CPU_WRITE $9001 $01
+CPU_RAMRW $6000 0x800
+CPU_WRITE $9001 $00
+DUMP_END
