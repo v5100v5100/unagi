@@ -192,21 +192,11 @@ static int polling_check(const struct flash_order *d, long address, u8 truedata)
 	return NG;
 }
 
-static void bootblock_lockout(const struct flash_order *d)
-{
-	u8 dummy[3];
-	command_set(d, PP);
-	d->read(0x8000 ,3, dummy);
-	printf("%02x %02x %02x \n", dummy[0], dummy[1], dummy[2]);
-	d->read(0xfff2 ,1, dummy);
-	command_set(d, PRODUCTID_EXIT);
-}
 /*
 ---- erase ----
 */
 static void flash_erase_chip(const struct flash_order *d)
 {
-	if(0) bootblock_lockout(d);
 	command_set(d, ERASE_CHIP);
 	toggle_check(d, d->command_2aaa);
 	Sleep(200); //Tec 0.2 sec
@@ -222,6 +212,7 @@ static void sram_erase(const struct flash_order *d)
 /*
 ---- program ----
 */
+#define dprintf if(DEBUG==1) printf
 static int program_byte(const struct flash_order *d, long address, const u8 *data, long length)
 {
 	int retry = 0;
@@ -231,9 +222,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 			command_set(d, PROTECT_DISABLE);
 			d->flash_write(address, *data);
 			if(toggle_check(d, address) == NG){
-				if(DEBUG == 1){
-					printf("%s NG\n", __FUNCTION__);
-				}
+				dprintf("%s NG\n", __FUNCTION__);
 				return NG;
 			}
 		}
@@ -245,11 +234,14 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 			length--;
 			retry = 0;
 		}else if(retry > 8){
-			printf("%s %06x error\n", __FUNCTION__, (int) address);
+			dprintf("%s %06x error\n", __FUNCTION__, (int) address);
 			address++;
 			data++;
 			length--;
 			retry = 0;
+			if(DEBUG == 0){
+				return NG;
+			}
 		}else{
 			retry++;
 		}
@@ -270,7 +262,6 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 	int ret = toggle_check(d, toggle_address);
 	if(0){
 		data--;
-		address -= 1;
 		polling_check(d, address - 1, *data);
 	}
 
@@ -292,7 +283,7 @@ byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 static void w49f002_write(const struct flash_order *d, long address, long length, const struct memory *m)
 {
 	program_byte(d, address, m->data, length);
-	printf("write %s 0x%06x done\n", m->name, (int) m->offset);
+//	dprintf("write %s 0x%06x done\n", m->name, (int) m->offset);
 }
 
 
@@ -322,7 +313,7 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 			d->read(a, d->pagesize, cmp);
 			if(memcmp(cmp, dd, d->pagesize) != 0){
 				ngblock++;
-				printf("write %s 0x%06x\n", m->name, (int) offset);
+				dprintf("write %s 0x%06x\n", m->name, (int) offset);
 				int result = program_pagewrite(d, a, dd, d->pagesize);
 				if(result == NG){
 					printf("%s: write error\n", __FUNCTION__);
@@ -335,13 +326,13 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 			offset += d->pagesize;
 			i -= d->pagesize;
 		}
-		printf("%s 0x%06x, ngblock %d\n", m->name, (int) m->offset, ngblock);
+		dprintf("%s 0x%06x, ngblock %d\n", m->name, (int) m->offset, ngblock);
 		if(retry >= 3 && ngblock >= 16){
-			printf("skip\n");
+			dprintf("skip\n");
 			break;
 		}
 		else if(retry > 12){
-			printf("skip\n");
+			dprintf("skip\n");
 			break;
 		}
 		retry++;

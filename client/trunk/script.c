@@ -973,6 +973,26 @@ static void read_result_print(const struct memory *m, long length)
 	fflush(stdout);
 }
 
+static void execute_program_begin(const struct memory *m)
+{
+	if(DEBUG==1){
+		return;
+	}
+	printf("programming %s memory 0x%06x ... ", m->name, m->offset);
+	fflush(stdout);
+}
+
+//memcmp の戻り値が入るので 0 が正常
+static void execute_program_finish(int result)
+{
+	const char *str;
+	str = "NG";
+	if(result == 0){
+		str = "OK";
+	}
+	printf("%s\n", str);
+	fflush(stdout);
+}
 const char EXECUTE_ERROR_PREFIX[] = "execute error:";
 static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length, long wait)
 {
@@ -1018,12 +1038,20 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		d->open_or_close(READER_CLOSE);
 		return NG;
 	}
+	u8 *program_compare;
+	program_compare = NULL;
 	if(c->mode == MODE_ROM_PROGRAM){
 		//device よっては erase
 		c->cpu_flash_driver->init(&(r->cpu_flash));
 		if(r->ppu_rom.size != 0){
 			c->ppu_flash_driver->init(&(r->ppu_flash));
 		}
+		printf("flashmemory/SRAM program mode. you can abort programming Ctrl+C\n");
+		int size = r->cpu_rom.size;
+		if(size < r->ppu_rom.size){
+			size = r->ppu_rom.size;
+		}
+		program_compare = malloc(size);
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram;
 	cpu_rom = r->cpu_rom;
@@ -1061,11 +1089,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_CPU_PROGRAM:{
 			const long address = s->value[0];
 			const long length = s->value[1];
+			execute_program_begin(&cpu_rom);
 			c->cpu_flash_driver->write(
 				&(r->cpu_flash),
 				address, length,
 				&cpu_rom
 			);
+			d->cpu_read(address, length, program_compare);
+			execute_program_finish(memcmp(program_compare, cpu_rom.data, length));
 			cpu_rom.data += length;
 			cpu_rom.offset += length;
 			}
@@ -1080,10 +1111,11 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_PPU_SRAMTEST:{
 			const long address = s->value[0];
 			const long length = s->value[1];
+			printf("PPU_SRAMTEST: 0x%06x-0x%06x ", (int)ppu_rom.offset, (int) (ppu_rom.offset + length) - 1);
 			if(ppu_sramtest(d, address, length) == 0){
-				printf("PPU_SRAMTEST: ok\n");
+				printf("ok\n");
 			}else{
-				printf("PPU_SRAMTEST: ng\n");
+				printf("ng\n");
 				//end = 0;
 			}
 			}break;
@@ -1113,11 +1145,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_PPU_PROGRAM:{
 			const long address = s->value[0];
 			const long length = s->value[1];
+			execute_program_begin(&ppu_rom);
 			c->ppu_flash_driver->write(
 				&(r->ppu_flash),
 				address, length,
 				&ppu_rom
 			);
+			d->ppu_read(address, length, program_compare);
+			execute_program_finish(memcmp(program_compare, ppu_rom.data, length));
 			ppu_rom.data += length;
 			ppu_rom.offset += length;
 			}
@@ -1140,6 +1175,9 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		}
 	}
 	d->open_or_close(READER_CLOSE);
+	if(program_compare != NULL){
+		free(program_compare);
+	}
 	return OK;
 }
 
