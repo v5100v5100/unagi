@@ -128,6 +128,7 @@ static void command_set(const struct flash_order *d, const struct flash_task *t)
 /*
 ---- product ID check ----
 */
+#define dprintf if(DEBUG==1) printf
 static int productid_check(const struct flash_order *d, const struct flash_driver *f)
 {
 	u8 data[3];
@@ -152,7 +153,7 @@ static int productid_sram(const struct flash_order *d, const struct flash_driver
 databit6
 */
 const int CHECK_RETRY_MAX = 0x10000;
-static int toggle_check(const struct flash_order *d, long address)
+static int toggle_check_d6(const struct flash_order *d, long address)
 {
 	u8 predata;
 	int retry = 0;
@@ -168,6 +169,36 @@ static int toggle_check(const struct flash_order *d, long address)
 		predata = data;
 		retry++;
 	}
+	return NG;
+}
+
+static int toggle_check_d2d5d6(const struct flash_order *d, long address)
+{
+	u8 predata;
+	int retry = 0;
+	d->read(address, 1, &predata);
+	do{
+		u8 data;
+		d->read(address, 1, &data);
+		//DQ6 toggle check
+		if((predata & 0x40) == (data & 0x40)){
+			return OK;
+		}
+		//DQ5 == 0 ならやりなおし
+		dprintf("toggle out %06x \n", (int) address);
+		if(data & 0x20){
+			//recheck toggle bit, read twice
+			u8 t[2];
+			d->read(address, 1, &t[0]);
+			d->read(address, 1, &t[1]);
+			if((t[0] & 0x40) == (t[1] & 0x40)){
+				return OK;
+			}
+			//Program/Erase operation not complete, write reset command.
+			return NG;
+		}
+		retry++;
+	}while(retry < CHECK_RETRY_MAX);
 	return NG;
 }
 
@@ -195,11 +226,18 @@ static int polling_check(const struct flash_order *d, long address, u8 truedata)
 /*
 ---- erase ----
 */
-static void flash_erase_chip(const struct flash_order *d)
+static void flash_erase_chip_2aaa(const struct flash_order *d)
 {
 	command_set(d, ERASE_CHIP);
-	toggle_check(d, d->command_2aaa);
+	toggle_check_d6(d, d->command_2aaa);
 	Sleep(200); //Tec 0.2 sec
+}
+
+static void flash_erase_chip_02aa(const struct flash_order *d)
+{
+	command_set(d, ERASE_CHIP);
+	toggle_check_d2d5d6(d, d->command_2aaa);
+	Sleep(5200); //AM29F020 1.0 sec なんだけどこれって sector 単位?
 }
 
 #if DEBUG==1
@@ -212,7 +250,6 @@ static void sram_erase(const struct flash_order *d)
 /*
 ---- program ----
 */
-#define dprintf if(DEBUG==1) printf
 static int program_byte(const struct flash_order *d, long address, const u8 *data, long length)
 {
 	int retry = 0;
@@ -221,7 +258,7 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 			fflush(stdout);
 			command_set(d, PROTECT_DISABLE);
 			d->flash_write(address, *data);
-			if(toggle_check(d, address) == NG){
+			if(toggle_check_d6(d, address) == NG){
 				dprintf("%s NG\n", __FUNCTION__);
 				return NG;
 			}
@@ -259,7 +296,7 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 		data++;
 		length--;
 	}
-	int ret = toggle_check(d, toggle_address);
+	int ret = toggle_check_d6(d, toggle_address);
 	if(0){
 		data--;
 		polling_check(d, address - 1, *data);
@@ -277,7 +314,7 @@ static void w49f002_init(const struct flash_order *d)
 byte program mode では 1->0 にするだけ。 0->1 は erase のみ。
 よって初期化時には erase を実行する
 */
-	flash_erase_chip(d);
+	flash_erase_chip_2aaa(d);
 }
 
 static void w49f002_write(const struct flash_order *d, long address, long length, const struct memory *m)
@@ -286,6 +323,29 @@ static void w49f002_write(const struct flash_order *d, long address, long length
 //	dprintf("write %s 0x%06x done\n", m->name, (int) m->offset);
 }
 
+static void am29f040_init(const struct flash_order *d)
+{
+	flash_erase_chip_02aa(d);
+}
+
+static void am29f040_write(const struct flash_order *d, long address, long length, const struct memory *m)
+{
+	const u8 *data;
+	data = m->data;
+	while(length != 0){
+		if(*data != 0xff){
+			command_set(d, PROTECT_DISABLE);
+			d->flash_write(address, *data);
+			if(toggle_check_d2d5d6(d, address) == NG){
+				dprintf("%s NG\n", __FUNCTION__);
+				return;
+			}
+		}
+		address++;
+		data++;
+		length--;
+	}
+}
 
 static void init_nop(const struct flash_order *d)
 {
@@ -400,7 +460,7 @@ static const struct flash_driver DRIVER_W29C020 = {
 	.id_device = 0x45,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase_chip,
+	.erase = flash_erase_chip_2aaa,
 #endif
 	.init = init_nop,
 	.write = w29c040_write
@@ -414,7 +474,7 @@ static const struct flash_driver DRIVER_W29C040 = {
 	.id_device = 0x46,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase_chip,
+	.erase = flash_erase_chip_2aaa,
 #endif
 	.init = init_nop,
 	.write = w29c040_write
@@ -428,7 +488,7 @@ static const struct flash_driver DRIVER_W49F002 = {
 	.id_device = 0xae,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase_chip,
+	.erase = flash_erase_chip_2aaa,
 #endif
 	.init = w49f002_init,
 	.write = w49f002_write
@@ -449,10 +509,10 @@ static const struct flash_driver DRIVER_EN29F002T = {
 	.id_device = 0x92,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase_chip,
+	.erase = flash_erase_chip_02aa,
 #endif
-	.init = w49f002_init,
-	.write = w49f002_write
+	.init = am29f040_init,
+	.write = am29f040_write
 };
 
 static const struct flash_driver DRIVER_AM29F040B = {
@@ -463,10 +523,10 @@ static const struct flash_driver DRIVER_AM29F040B = {
 	.id_device = 0xa4,
 	.productid_check = productid_check,
 #if DEBUG==1
-	.erase = flash_erase_chip,
+	.erase = flash_erase_chip_02aa,
 #endif
-	.init = w49f002_init,
-	.write = w49f002_write
+	.init = am29f040_init,
+	.write = am29f040_write
 };
 
 static const struct flash_driver *DRIVER_LIST[] = {
