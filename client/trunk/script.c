@@ -949,7 +949,7 @@ static void readbuffer_print(const struct memory *m, long length)
 	if(length >= 0x10){
 		length = 0x10;
 	}
-	printf("%s 0x%05x:", m->name, m->offset);
+	printf("%s ROM 0x%05x:", m->name, m->offset);
 	int offset = 0;
 	const u8 *data;
 	data = m->data;
