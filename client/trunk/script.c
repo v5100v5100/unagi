@@ -892,16 +892,34 @@ static int ppu_ramfind(const struct reader_driver *d)
 	return PPU_TEST_ROM;
 }
 
-static int ramtest(const struct reader_driver *d, long address, long length, u8 *writedata, u8 *testdata, const long filldata)
+static int ramtest(const int region, const struct reader_driver *d, long address, long length, u8 *writedata, u8 *testdata, const long filldata)
 {
 	long i = length;
 	long a = address;
 	while(i != 0){
-		d->ppu_write(a, filldata);
+		switch(region){
+		case MEMORY_AREA_CPU_RAM:
+			d->cpu_6502_write(a, filldata, 0);
+			break;
+		case MEMORY_AREA_PPU:
+			d->ppu_write(a, filldata);
+			break;
+		default:
+			assert(0);
+		}
 		a++;
 		i--;
 	}
-	d->ppu_read(address, length, testdata);
+	switch(region){
+	case MEMORY_AREA_CPU_RAM:
+		d->cpu_read(address, length, testdata);
+		break;
+	case MEMORY_AREA_PPU:
+		d->ppu_read(address, length, testdata);
+		break;
+	default:
+		assert(0);
+	}
 	memset(writedata, filldata, length);
 	if(memcmp(writedata, testdata, length) == 0){
 		return 0;
@@ -910,7 +928,7 @@ static int ramtest(const struct reader_driver *d, long address, long length, u8 
 }
 
 static const long SRAMTESTDATA[] = {0xff, 0xaa, 0x55, 0x00};
-static int ppu_sramtest(const struct reader_driver *d, long address, long length)
+static int sramtest(const int region, const struct reader_driver *d, long address, long length)
 {
 	u8 *writedata, *testdata;
 	int error = 0;
@@ -919,7 +937,7 @@ static int ppu_sramtest(const struct reader_driver *d, long address, long length
 	writedata = malloc(length);
 	for(i = 0; i < sizeof(SRAMTESTDATA) / sizeof(long); i++){
 		const long filldata = SRAMTESTDATA[i];
-		error += ramtest(d, address, length, testdata, writedata, filldata);
+		error += ramtest(region, d, address, length, testdata, writedata, filldata);
 	}
 	free(testdata);
 	free(writedata);
@@ -1079,8 +1097,16 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
+			const long address = s->value[0];
 			const long length = s->value[1];
-			execute_cpu_ramrw(d, &cpu_ram, c->mode, s->value[0], length, c->write_wait);
+			if(c->mode == MODE_RAM_WRITE){
+				if(sramtest(MEMORY_AREA_CPU_RAM, d, address, length) != 0){
+					printf("SRAM test NG\n");
+					end = 0;
+					break;
+				}
+			}
+			execute_cpu_ramrw(d, &cpu_ram, c->mode, address, length, c->write_wait);
 			read_result_print(&cpu_ram, length);
 			cpu_ram.data += length;
 			cpu_ram.offset += length;
@@ -1120,7 +1146,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			const long address = s->value[0];
 			const long length = s->value[1];
 			printf("PPU_SRAMTEST: 0x%06x-0x%06x ", (int)ppu_rom.offset, (int) (ppu_rom.offset + length) - 1);
-			if(ppu_sramtest(d, address, length) == 0){
+			if(sramtest(MEMORY_AREA_PPU, d, address, length) == 0){
 				printf("ok\n");
 			}else{
 				printf("ng\n");
@@ -1239,13 +1265,13 @@ void script_load(const struct st_config *c)
 			.size = 0, .offset = 0,
 			.data = NULL,
 			.attribute = MEMORY_ATTR_NOTUSE,
-			.name = "program ROM"
+			.name = "program"
 		},
 		.ppu_rom = {
 			.size = 0, .offset = 0,
 			.data = NULL,
 			.attribute = MEMORY_ATTR_NOTUSE,
-			.name = "charcter ROM"
+			.name = "charcter"
 		},
 		.cpu_ram = {
 			.size = 0, .offset = 0,

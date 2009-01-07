@@ -84,9 +84,9 @@ static void rominfo_print(const struct memory *m)
 {
 	if(m->size != 0){
 		const uint32_t crc = crc32_get(m->data, m->size);
-		printf("%s ROM size 0x%06x, crc32 0x%08x\n", m->name, m->size, (const int) crc);
+		printf("%s: ROM size 0x%06x, crc32 0x%08x\n", m->name, m->size, (const int) crc);
 	}else{
-		printf("%s RAM\n", m->name);
+		printf("%s: RAM\n", m->name);
 	}
 }
 
