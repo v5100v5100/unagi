@@ -421,15 +421,13 @@ static void dummy_write(const struct flash_order *d, long address, long length, 
 /*
 デバイスリスト
 */
-enum{
-	ID_SRAM = 0, ID_DUMMY = ID_SRAM
-};
+//0x80 以降は本当のデバイス重複しないと思う. 誰か JEDEC のとこをしらべて.
 static const struct flash_driver DRIVER_SRAM256K = {
 	.name = "SRAM256K",
 	.capacity = 0x8000,
 	.pagesize = 0,
-	.id_manufacurer = ID_SRAM,
-	.id_device = ID_SRAM,
+	.id_manufacurer = FLASH_ID_DEVICE_SRAM,
+	.id_device = FLASH_ID_DEVICE_SRAM,
 	.productid_check = productid_sram,
 #if DEBUG==1
 	.erase = sram_erase,
@@ -442,8 +440,8 @@ static const struct flash_driver DRIVER_DUMMY = {
 	.name = "dummy",
 	.capacity = 0x40000,
 	.pagesize = 0,
-	.id_manufacurer = ID_DUMMY,
-	.id_device = ID_DUMMY,
+	.id_manufacurer = FLASH_ID_DEVICE_DUMMY,
+	.id_device = FLASH_ID_DEVICE_DUMMY,
 	.productid_check = productid_sram,
 #if DEBUG==1
 	.erase = sram_erase,

@@ -975,7 +975,7 @@ static void read_result_print(const struct memory *m, long length)
 
 static void execute_program_begin(const struct memory *m)
 {
-	if(DEBUG==1){
+	if(0){ //DEBUG==1){
 		return;
 	}
 	printf("writing %s area 0x%06x ... ", m->name, m->offset);
@@ -1087,6 +1087,9 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_PROGRAM:{
+			if(c->cpu_flash_driver->id_device == FLASH_ID_DEVICE_DUMMY){
+				break;
+			}
 			const long address = s->value[0];
 			const long length = s->value[1];
 			execute_program_begin(&cpu_rom);
@@ -1148,6 +1151,9 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_PROGRAM:{
+			if(c->ppu_flash_driver->id_device == FLASH_ID_DEVICE_DUMMY){
+				break;
+			}
 			const long address = s->value[0];
 			const long length = s->value[1];
 			execute_program_begin(&ppu_rom);

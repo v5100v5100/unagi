@@ -48,4 +48,8 @@ struct flash_driver{
 };
 
 const struct flash_driver *flash_driver_get(const char *name);
+enum{
+	FLASH_ID_DEVICE_SRAM = 0xf0, 
+	FLASH_ID_DEVICE_DUMMY
+};
 #endif
