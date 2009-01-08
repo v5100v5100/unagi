@@ -266,10 +266,11 @@ static void flash_erase_chip_02aa(const struct flash_order *d)
 	command_set(d, ERASE_CHIP);
 	if(0){
 		toggle_check_d2d5d6(d, d->command_2aaa);
-		Sleep(5200); //AM29F020 1.0 sec なんだけどこれって sector 単位?
+		
+	}else{
+		polling_check_d5d7(d, d->command_2aaa, data);
 	}
-	polling_check_d5d7(d, d->command_2aaa, data);
-	Sleep(4200);
+	Sleep(8000); //chip erase time 8sec, max64sec
 }
 
 #if DEBUG==1
