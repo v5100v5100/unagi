@@ -1000,18 +1000,23 @@ static void execute_program_begin(const struct memory *m)
 	fflush(stdout);
 }
 
+static const char STR_OK[] = "OK";
+static const char STR_NG[] = "NG";
+
 //memcmp の戻り値が入るので 0 が正常
 static void execute_program_finish(int result)
 {
 	const char *str;
-	str = "NG";
+	str = STR_NG;
 	if(result == 0){
-		str = "OK";
+		str = STR_OK;
 	}
 	printf("%s\n", str);
 	fflush(stdout);
 }
-const char EXECUTE_ERROR_PREFIX[] = "execute error:";
+static const char EXECUTE_ERROR_PREFIX[] = "execute error:";
+static const char EXECUTE_PROGRAM_PREPARE[] = "%s device initialize ... ";
+static const char EXECUTE_PROGRAM_DONE[] = "done\n";
 static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length, long wait)
 {
 	if(mode == MODE_RAM_WRITE){
@@ -1060,10 +1065,6 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	program_compare = NULL;
 	if(c->mode == MODE_ROM_PROGRAM){
 		printf("flashmemory/SRAM program mode. To abort programming, press Ctrl+C\n");
-		printf("device initialize ... ");
-		fflush(stdout);
-		//device よっては erase
-		c->cpu_flash_driver->init(&(r->cpu_flash));
 		if(r->ppu_rom.size != 0){
 			c->ppu_flash_driver->init(&(r->ppu_flash));
 		}
@@ -1071,8 +1072,6 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		if(size < r->ppu_rom.size){
 			size = r->ppu_rom.size;
 		}
-		printf("done\n");
-		fflush(stdout);
 		program_compare = malloc(size);
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram;
@@ -1080,6 +1079,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	ppu_rom = r->ppu_rom;
 	cpu_ram = r->cpu_ram;
 	
+	int programcount_cpu = 0, programcount_ppu = 0;
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		int end = 1;
@@ -1120,6 +1120,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(c->cpu_flash_driver->id_device == FLASH_ID_DEVICE_DUMMY){
 				break;
 			}
+			if(programcount_cpu++ == 0){
+				printf(EXECUTE_PROGRAM_PREPARE, cpu_rom.name);
+				fflush(stdout);
+				//device によっては erase
+				c->cpu_flash_driver->init(&(r->cpu_flash));
+				printf(EXECUTE_PROGRAM_DONE);
+				fflush(stdout);
+			}
 			const long address = s->value[0];
 			const long length = s->value[1];
 			execute_program_begin(&cpu_rom);
@@ -1151,9 +1159,9 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			const long length = s->value[1];
 			printf("PPU_SRAMTEST: 0x%06x-0x%06x ", (int)ppu_rom.offset, (int) (ppu_rom.offset + length) - 1);
 			if(sramtest(MEMORY_AREA_PPU, d, address, length) == 0){
-				printf("ok\n");
+				printf("%s\n", STR_OK);
 			}else{
-				printf("ng\n");
+				printf("%s\n", STR_NG);
 				//end = 0;
 			}
 			}break;
@@ -1183,6 +1191,13 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_PPU_PROGRAM:{
 			if(c->ppu_flash_driver->id_device == FLASH_ID_DEVICE_DUMMY){
 				break;
+			}
+			if(programcount_ppu++ == 0){
+				printf(EXECUTE_PROGRAM_PREPARE, ppu_rom.name);
+				fflush(stdout);
+				c->ppu_flash_driver->init(&(r->ppu_flash));
+				printf(EXECUTE_PROGRAM_DONE);
+				fflush(stdout);
 			}
 			const long address = s->value[0];
 			const long length = s->value[1];
@@ -1289,6 +1304,8 @@ void script_load(const struct st_config *c)
 			.command_2aaa = 0,
 			.command_5555 = 0,
 			.pagesize = c->cpu_flash_driver->pagesize,
+			.erase_wait = c->cpu_flash_driver->erase_wait,
+			.command_mask = c->cpu_flash_driver->command_mask,
 			.flash_write = c->reader->cpu_flash_write,
 			.read = c->reader->cpu_read
 		},
@@ -1297,6 +1314,8 @@ void script_load(const struct st_config *c)
 			.command_2aaa = 0,
 			.command_5555 = 0,
 			.pagesize = c->ppu_flash_driver->pagesize,
+			.erase_wait = c->ppu_flash_driver->erase_wait,
+			.command_mask = c->ppu_flash_driver->command_mask,
 			.flash_write = c->reader->ppu_write,
 			.read = c->reader->ppu_read
 		},

@@ -87,14 +87,18 @@ static int config_file_load(struct st_config *c)
 		}
 		if(strcmp("DRIVER", word[0]) == 0){
 			c->reader = reader_driver_get(word[1]);
-		}else if(strcmp("WRITE_WAIT", word[0]) == 0){
-#if DEBUG==1
+		}else if((DEBUG == 1) && (strcmp("WRITE_WAIT", word[0]) == 0)){
 			if(value_get(word[1], &(c->write_wait)) == NG){
 				printf("%s write_wait parameter is illigal", PREFIX_CONFIG_ERROR);
 				free(buf);
 				free(text);
 				return NG;
 			}
+#if DEBUG==1 //member をしぼったので...
+		}else if(strcmp("TEST_DEVICE", word[0]) == 0){
+			strncpy(c->flash_test_device, word[1], 20);
+		}else if(strcmp("TEST_MAPPER", word[0]) == 0){
+			strncpy(c->flash_test_mapper, word[1], 20);
 #endif
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
@@ -118,6 +122,8 @@ static const struct flash_driver DRIVER_UNDEF = {
 	.name = "undefined",
 	.capacity = 0,
 	.pagesize = 1,
+	.erase_wait = 0,
+	.command_mask = 0,
 	.id_manufacurer = 0,
 	.id_device = 0,
 	.productid_check = NULL,
@@ -264,10 +270,10 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		}
 		switch(argc){
 		case 3:
-			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL);
+			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL, c->flash_test_device, c->flash_test_mapper);
 			break;
 		case 4:
-			client_test(c->reader, argv[ARGC_TEST_OPTION], argv[ARGC_TEST_FILE]);
+			client_test(c->reader, argv[ARGC_TEST_OPTION], argv[ARGC_TEST_FILE], c->flash_test_device, c->flash_test_mapper);
 			break;
 		default:
 			printf("%s test argc error\n", PREFIX_CONFIG_ERROR);

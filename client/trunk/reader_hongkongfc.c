@@ -112,7 +112,7 @@ static const int BUS_CONTROL_PPU_READ = (
 	(0 << BITNUM_PPU_SELECT) |
 	(1 << BITNUM_WRITEDATA_OUTPUT) |
 	(0 << BITNUM_WRITEDATA_LATCH) |
-	(0 << BITNUM_CPU_M2) |
+	(1 << BITNUM_CPU_M2) |
 	(1 << BITNUM_CPU_RW)
 );
 //static const int BUS_CONTROL_BUS_STANDBY = BUS_CONTROL_CPU_READ; //エラーになる
@@ -202,6 +202,7 @@ static void hk_cpu_6502_write(long address, long data, long wait_msec)
 }
 
 //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
+#include <stdio.h>
 static void hk_ppu_write(long address, long data)
 {
 	int c = BUS_CONTROL_BUS_STANDBY;

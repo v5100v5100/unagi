@@ -256,7 +256,7 @@ static void flash_erase_chip_2aaa(const struct flash_order *d)
 {
 	command_set(d, ERASE_CHIP);
 	toggle_check_d6(d, d->command_2aaa);
-	Sleep(200); //Tec 0.2 sec
+	Sleep(d->erase_wait);
 }
 
 static void flash_erase_chip_02aa(const struct flash_order *d)
@@ -270,7 +270,7 @@ static void flash_erase_chip_02aa(const struct flash_order *d)
 	}else{
 		polling_check_d5d7(d, d->command_2aaa, data);
 	}
-	Sleep(8000); //chip erase time 8sec, max64sec
+	Sleep(d->erase_wait);
 }
 
 #if DEBUG==1
@@ -285,7 +285,6 @@ static void sram_erase(const struct flash_order *d)
 */
 static int program_byte(const struct flash_order *d, long address, const u8 *data, long length)
 {
-	int retry = 0;
 	while(length != 0){
 		if(*data != 0xff){
 			fflush(stdout);
@@ -295,26 +294,14 @@ static int program_byte(const struct flash_order *d, long address, const u8 *dat
 				dprintf("%s NG\n", __FUNCTION__);
 				return NG;
 			}
-		}
-		u8 dummy;
-		d->read(address, 1, &dummy);
-		if(*data == dummy){
-			address++;
-			data++;
-			length--;
-			retry = 0;
-		}else if(retry > 8){
-			dprintf("%s %06x error\n", __FUNCTION__, (int) address);
-			address++;
-			data++;
-			length--;
-			retry = 0;
-			if(DEBUG == 0){
+			/*if(polling_check_d7(d, address, *data) == NG){
+				dprintf("%s NG\n", __FUNCTION__);
 				return NG;
-			}
-		}else{
-			retry++;
+			}*/
 		}
+		address++;
+		data++;
+		length--;
 	}
 	return OK;
 }
@@ -459,6 +446,8 @@ static const struct flash_driver DRIVER_SRAM256K = {
 	.name = "SRAM256K",
 	.capacity = 0x8000,
 	.pagesize = 0,
+	.erase_wait = 0,
+	.command_mask = 0,
 	.id_manufacurer = FLASH_ID_DEVICE_SRAM,
 	.id_device = FLASH_ID_DEVICE_SRAM,
 	.productid_check = productid_sram,
@@ -473,11 +462,13 @@ static const struct flash_driver DRIVER_DUMMY = {
 	.name = "dummy",
 	.capacity = 0x40000,
 	.pagesize = 0,
+	.erase_wait = 0,
+	.command_mask = 0,
 	.id_manufacurer = FLASH_ID_DEVICE_DUMMY,
 	.id_device = FLASH_ID_DEVICE_DUMMY,
 	.productid_check = productid_sram,
 #if DEBUG==1
-	.erase = sram_erase,
+	.erase = init_nop,
 #endif
 	.init = init_nop,
 	.write = dummy_write
@@ -487,6 +478,8 @@ static const struct flash_driver DRIVER_W29C020 = {
 	.name = "W29C020",
 	.capacity = 0x40000,
 	.pagesize = 0x80,
+	.erase_wait = 50,
+	.command_mask = 0x7fff,
 	.id_manufacurer = 0xda,
 	.id_device = 0x45,
 	.productid_check = productid_check,
@@ -501,6 +494,8 @@ static const struct flash_driver DRIVER_W29C040 = {
 	.name = "W29C040",
 	.capacity = 0x80000,
 	.pagesize = 0x100,
+	.erase_wait = 50,
+	.command_mask = 0x7fff,
 	.id_manufacurer = 0xda,
 	.id_device = 0x46,
 	.productid_check = productid_check,
@@ -515,6 +510,8 @@ static const struct flash_driver DRIVER_W49F002 = {
 	.name = "W49F002",
 	.capacity = 0x40000,
 	.pagesize = 0,
+	.erase_wait = 100, //typ 0.1, max 0.2 sec
+	.command_mask = 0x7fff,
 	.id_manufacurer = 0xda,
 	.id_device = 0xae,
 	.productid_check = productid_check,
@@ -536,6 +533,8 @@ static const struct flash_driver DRIVER_EN29F002T = {
 	.name = "EN29F002T",
 	.capacity = 0x40000,
 	.pagesize = 0,
+	.erase_wait = 3000, //typ 2, max 5 sec
+	.command_mask = 0x07ff,
 	.id_manufacurer = 0x1c,
 	.id_device = 0x92,
 	.productid_check = productid_check,
@@ -550,6 +549,8 @@ static const struct flash_driver DRIVER_AM29F040B = {
 	.name = "AM29F040B",
 	.capacity = 0x80000,
 	.pagesize = 0,
+	.erase_wait = 8000, //typ 8, max 64 sec
+	.command_mask = 0x07ff,
 	.id_manufacurer = 0x01,
 	.id_device = 0xa4,
 	.productid_check = productid_check,
