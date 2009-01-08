@@ -177,15 +177,15 @@ static int toggle_check_d2d5d6(const struct flash_order *d, long address)
 	u8 predata;
 	int retry = 0;
 	d->read(address, 1, &predata);
+	predata &= 0x40;
 	do{
 		u8 data;
 		d->read(address, 1, &data);
 		//DQ6 toggle check
-		if((predata & 0x40) == (data & 0x40)){
+		if(predata == (data & 0x40)){
 			return OK;
 		}
 		//DQ5 == 0 ならやりなおし
-		dprintf("toggle out %06x \n", (int) address);
 		if(data & 0x20){
 			//recheck toggle bit, read twice
 			u8 t[2];
@@ -197,6 +197,9 @@ static int toggle_check_d2d5d6(const struct flash_order *d, long address)
 			//Program/Erase operation not complete, write reset command.
 			return NG;
 		}
+		if((retry & 0x0f) == 0){
+			dprintf("toggle out %06x \n", (int) address);
+		}
 		retry++;
 	}while(retry < CHECK_RETRY_MAX);
 	return NG;
@@ -206,7 +209,7 @@ static int toggle_check_d2d5d6(const struct flash_order *d, long address)
 ---- polling check ----
 databit7
 */
-static int polling_check(const struct flash_order *d, long address, u8 truedata)
+static int polling_check_d7(const struct flash_order *d, long address, u8 truedata)
 {
 	int retry = 0;
 	
@@ -223,6 +226,29 @@ static int polling_check(const struct flash_order *d, long address, u8 truedata)
 	return NG;
 }
 
+static int polling_check_d5d7(const struct flash_order *d, long address, u8 truedata)
+{
+	int retry = 0;
+	
+	truedata &= 0x80;
+	do{
+		u8 data;
+		d->read(address, 1, &data);
+		if(truedata == (data & 0x80)){
+			return OK;
+		}
+		if(data & 0x20){
+			d->read(address, 1, &data);
+			if(truedata == (data & 0x80)){
+				return OK;
+			}
+			dprintf("%s error", __FUNCTION__);
+			return NG;
+		}
+		retry++;
+	}while(retry < CHECK_RETRY_MAX);
+	return NG;
+}
 /*
 ---- erase ----
 */
@@ -235,9 +261,15 @@ static void flash_erase_chip_2aaa(const struct flash_order *d)
 
 static void flash_erase_chip_02aa(const struct flash_order *d)
 {
+	u8 data;
+	d->read(d->command_2aaa, 1, &data);
 	command_set(d, ERASE_CHIP);
-	toggle_check_d2d5d6(d, d->command_2aaa);
-	Sleep(5200); //AM29F020 1.0 sec なんだけどこれって sector 単位?
+	if(0){
+		toggle_check_d2d5d6(d, d->command_2aaa);
+		Sleep(5200); //AM29F020 1.0 sec なんだけどこれって sector 単位?
+	}
+	polling_check_d5d7(d, d->command_2aaa, data);
+	Sleep(4200);
 }
 
 #if DEBUG==1
@@ -299,7 +331,7 @@ static int program_pagewrite(const struct flash_order *d, long address, const u8
 	int ret = toggle_check_d6(d, toggle_address);
 	if(0){
 		data--;
-		polling_check(d, address - 1, *data);
+		polling_check_d7(d, address - 1, *data);
 	}
 
 	return ret;

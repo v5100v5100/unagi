@@ -1059,16 +1059,20 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	u8 *program_compare;
 	program_compare = NULL;
 	if(c->mode == MODE_ROM_PROGRAM){
+		printf("flashmemory/SRAM program mode. To abort programming, press Ctrl+C\n");
+		printf("device initialize ... ");
+		fflush(stdout);
 		//device よっては erase
 		c->cpu_flash_driver->init(&(r->cpu_flash));
 		if(r->ppu_rom.size != 0){
 			c->ppu_flash_driver->init(&(r->ppu_flash));
 		}
-		printf("flashmemory/SRAM program mode. you can abort programming Ctrl+C\n");
 		int size = r->cpu_rom.size;
 		if(size < r->ppu_rom.size){
 			size = r->ppu_rom.size;
 		}
+		printf("done\n");
+		fflush(stdout);
 		program_compare = malloc(size);
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram;
