@@ -15,10 +15,8 @@ struct st_config{
 	int mode, syntaxtest;
 	//debug member
 	long write_wait;
-#if DEBUG==1
 	char flash_test_device[20];
 	char flash_test_mapper[20];
-#endif
 };
 enum{
 	CONFIG_OVERRIDE_UNDEF = 4649,

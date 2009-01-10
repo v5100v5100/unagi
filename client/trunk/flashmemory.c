@@ -407,11 +407,12 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 			i -= d->pagesize;
 		}
 		dprintf("%s 0x%06x, ngblock %d\n", m->name, (int) m->offset, ngblock);
+		/* mmc5 test
 		if(retry >= 3 && ngblock >= 16){
 			dprintf("skip\n");
 			break;
-		}
-		else if(retry > 12){
+		}*/
+		if(retry > 80){
 			dprintf("skip\n");
 			break;
 		}

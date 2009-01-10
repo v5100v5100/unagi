@@ -94,12 +94,14 @@ static int config_file_load(struct st_config *c)
 				free(text);
 				return NG;
 			}
-#if DEBUG==1 //member をしぼったので...
 		}else if(strcmp("TEST_DEVICE", word[0]) == 0){
-			strncpy(c->flash_test_device, word[1], 20);
+			if(DEBUG == 1){
+				strncpy(c->flash_test_device, word[1], 20);
+			}
 		}else if(strcmp("TEST_MAPPER", word[0]) == 0){
-			strncpy(c->flash_test_mapper, word[1], 20);
-#endif
+			if(DEBUG == 1){
+				strncpy(c->flash_test_mapper, word[1], 20);
+			}
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
 			free(buf);
@@ -264,8 +266,10 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		}
 		break;
 	
-#if DEBUG==1
 	case MODE_TEST:
+		if(DEBUG == 0){
+			break;
+		}
 		switch(argc){
 		case 3:
 			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL, c->flash_test_device, c->flash_test_mapper);
@@ -277,7 +281,6 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 			printf("%s test argc error\n", PREFIX_CONFIG_ERROR);
 		}
 		break;
-#endif
 	}
 
 	return OK;
