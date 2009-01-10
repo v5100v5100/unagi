@@ -28,3 +28,5 @@ hk.exe: $(OBJ_HK)
 	$(CC) -o $@ $(OBJ_HK)
 iodel.exe: iodel.o giveio.o
 	$(CC) -o $@ iodel.o giveio.o
+nesheader.exe: $(OBJ_HD)
+	$(CC) -o $@ $(OBJ_HD)
