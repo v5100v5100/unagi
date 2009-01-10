@@ -1,5 +1,5 @@
 famicom ROM cartridge utility - unagi
-client version 0.5.2
+client version 0.5.3
 by 鰻開発協同組合
 公式サイト http://unagi.sourceforge.jp/
 掲示板     http://unagi.sourceforge.jp/t/bbs.html
