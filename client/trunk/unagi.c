@@ -96,11 +96,11 @@ static int config_file_load(struct st_config *c)
 			}
 		}else if(strcmp("TEST_DEVICE", word[0]) == 0){
 			if(DEBUG == 1){
-				strncpy(c->flash_test_device, word[1], 20);
+				strncpy(c->flash_test_device, word[1], CONFIG_STR_LENGTH);
 			}
 		}else if(strcmp("TEST_MAPPER", word[0]) == 0){
 			if(DEBUG == 1){
-				strncpy(c->flash_test_mapper, word[1], 20);
+				strncpy(c->flash_test_mapper, word[1], CONFIG_STR_LENGTH);
 			}
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);

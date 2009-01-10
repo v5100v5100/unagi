@@ -1,6 +1,11 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 #include "reader_master.h"
+enum{
+	CONFIG_OVERRIDE_UNDEF = 4649,
+	CONFIG_OVERRIDE_TRUE = 1,
+	CONFIG_STR_LENGTH = 20
+};
 struct st_config{
 	//override config
 	long mapper;
@@ -15,12 +20,8 @@ struct st_config{
 	int mode, syntaxtest;
 	//debug member
 	long write_wait;
-	char flash_test_device[20];
-	char flash_test_mapper[20];
-};
-enum{
-	CONFIG_OVERRIDE_UNDEF = 4649,
-	CONFIG_OVERRIDE_TRUE = 1
+	char flash_test_device[CONFIG_STR_LENGTH];
+	char flash_test_mapper[CONFIG_STR_LENGTH];
 };
 
 enum{
