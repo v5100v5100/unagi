@@ -1,5 +1,11 @@
 OBJ_HK = giveio.o reader_hongkongfc.o
 OBJ_HD = head/nesheader.o head/header.o file.o
+ARCHIVE_FILE = $(shell ls *.c) $(shell ls *.h) $(shell ls *.mak) \
+	*.c *.h *.mak Makefile COPYING \
+	debug/debug.mak profile/profile.mak release/release.mak \
+	unagi.rc unagi.ico
+ARCHIVE_GZ = unagi_client.0.5.3.tar.gz
+ARCHIVE_ZIP = unagi_053.zip
 TARGET_DIR = debug
 TARGET_MAK = debug.mak
 ifeq ($(PROFILE),1)
@@ -30,3 +36,10 @@ iodel.exe: iodel.o giveio.o
 	$(CC) -o $@ iodel.o giveio.o
 nesheader.exe: $(OBJ_HD)
 	$(CC) -o $@ $(OBJ_HD)
+gz:
+	cd ..; \
+	tar cfvz $(ARCHIVE_GZ) $(patsubst %,client/%,$(ARCHIVE_FILE))
+zip:
+	7za a $(ARCHIVE_ZIP) unagi.exe unagi.txt iodel.exe iodel.txt COPYING
+	cd release; 7za a ../$(ARCHIVE_ZIP) unagi.cfg
+	mv $(ARCHIVE_ZIP) ..
