@@ -264,10 +264,8 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		}
 		break;
 	
+#if DEBUG==1
 	case MODE_TEST:
-		if(DEBUG == 0){
-			break;
-		}
 		switch(argc){
 		case 3:
 			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL, c->flash_test_device, c->flash_test_mapper);
@@ -279,6 +277,7 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 			printf("%s test argc error\n", PREFIX_CONFIG_ERROR);
 		}
 		break;
+#endif
 	}
 
 	return OK;

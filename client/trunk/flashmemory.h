@@ -2,7 +2,7 @@
 famicom ROM cartridge utility - unagi
 flash memory driver
 
-Copyright (C) 2008 鰻開発協同組合
+Copyright (C) 2008-2009 鰻開発協同組合
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
