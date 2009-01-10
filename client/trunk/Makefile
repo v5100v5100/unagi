@@ -1,6 +1,5 @@
 OBJ_HK = giveio.o reader_hongkongfc.o
 OBJ_HD = head/nesheader.o head/header.o file.o
-#$(shell ls *.c) $(shell ls *.h) $(shell ls *.mak) 
 ARCHIVE_FILE = \
 	*.c *.h *.mak Makefile COPYING \
 	debug/debug.mak profile/profile.mak release/release.mak \
