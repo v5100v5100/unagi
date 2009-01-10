@@ -38,7 +38,7 @@ nesheader.exe: $(OBJ_HD)
 	$(CC) -o $@ $(OBJ_HD)
 gz:
 	cd ..; \
-	tar cfvz $(ARCHIVE_GZ) $(patsubst %,client/%,$(ARCHIVE_FILE))
+	tar cfz $(ARCHIVE_GZ) $(patsubst %,client/%,$(ARCHIVE_FILE))
 zip:
 	7za a $(ARCHIVE_ZIP) unagi.exe unagi.txt iodel.exe iodel.txt COPYING
 	cd release; 7za a ../$(ARCHIVE_ZIP) unagi.cfg
