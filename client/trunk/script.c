@@ -58,7 +58,7 @@ struct variable_manage{
 };
 
 enum{
-	STEP_MAX = 2,
+	STEP_MAX = 3,
 	VARIABLE_MAX = STEP_MAX
 };
 
@@ -242,7 +242,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 			
 			s->opcode = syntax->script_opcode;
 			if((mode & syntax->permittion) == 0){
-				printf("%s opcode %s not allowed on current mode\n", SYNTAX_ERROR_PREFIX, syntax->name);
+				printf("%d:%s opcode %s not allowed on current mode\n", s->line, SYNTAX_ERROR_PREFIX, syntax->name);
 				return 1;
 			};
 			{
@@ -256,18 +256,18 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 					break;
 				}
 				if(!compare){
-					printf("%s parameter number not much %s\n", SYNTAX_ERROR_PREFIX, word[0]);
+					printf("%d:%s parameter number not much %s\n", s->line, SYNTAX_ERROR_PREFIX, word[0]);
 					return 1;
 				}
 			}
 			for(j = 0; j < syntax->argc; j++){
 				switch(syntax->argv_type[j]){
 				case SYNTAX_ARGVTYPE_NULL:
-					printf("%s ARGV_NULL select\n", SYNTAX_ERROR_PREFIX);
+					printf("%d:%s ARGV_NULL select\n", s->line, SYNTAX_ERROR_PREFIX);
 					return 1;
 				case SYNTAX_ARGVTYPE_VALUE:
 					if(value_get(word[j + 1], &(s->value[j])) == NG){
-						printf("%s value error %s %s\n", SYNTAX_ERROR_PREFIX, word[0], word[j+1]);
+						printf("%d:%s value error %s %s\n", s->line, SYNTAX_ERROR_PREFIX, word[0], word[j+1]);
 						return 1;
 					}
 					break;
@@ -286,7 +286,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 						s->value[j] = MIRROR_PROGRAMABLE;
 						break;
 					default:
-						printf("%s unknown scroll mirroring type %s\n", SYNTAX_ERROR_PREFIX, word[j+1]);
+						printf("%d:%s unknown scroll mirroring type %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j+1]);
 						return 1;
 					}
 					break;
@@ -294,7 +294,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 					s->value[j] = VALUE_EXPRESSION;
 					//命令名の単語と単語数を除外して渡す
 					if(syntax_check_expression(&word[j+1], word_num - 2, &s->expression) == NG){
-						printf("%s expression error\n", SYNTAX_ERROR_PREFIX);
+						printf("%d:%s expression error\n", s->line, SYNTAX_ERROR_PREFIX);
 						return 1;
 					}
 					//可変に引数を取るのでここで終わり
@@ -305,7 +305,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 						s->value[j] = VALUE_VARIABLE;
 						s->variable = v;
 					}else{
-						printf("%s variable must use [A-Za-z] %s\n", SYNTAX_ERROR_PREFIX, word[j+1]);
+						printf("%d:%s variable must use [A-Za-z] %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j+1]);
 						return 1;
 					}
 					}break;
@@ -333,6 +333,7 @@ static int syntax_check(char **text, int text_num, struct script *s, int mode)
 	for(i = 0; i < text_num; i++){
 		char *word[TEXT_MAXWORD];
 		const int n = word_load(text[i], word);
+		s->line = i + 1;
 		if(word[0][0] == '#'){
 			s->opcode = SCRIPT_OPCODE_COMMENT;
 		}else{
@@ -489,7 +490,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		//printf("opcode exec %s\n", SCRIPT_SYNTAX[s->opcode].name);
 		if((setting == DUMP) && (s->opcode < SCRIPT_OPCODE_DUMP_START)){
-			printf("%s config script include DUMPSTART area\n", LOGICAL_ERROR_PREFIX);
+			printf("%s config script include DUMP_START area\n", LOGICAL_ERROR_PREFIX);
 			error += 1;
 		}
 
@@ -656,7 +657,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
 			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 			//length filter.
-			if(!is_range(length, 0x80, 0x2000)){
+			if(!is_range(length, 0x80, 0x4000)){
 				logical_print_illgallength(STR_REGION_CPU, length);
 				error += 1;
 			}

@@ -16,6 +16,7 @@ struct st_expression{
 
 struct script{
 	int opcode;
+	int line;
 	long value[4];
 	struct st_expression expression;
 	char variable;
