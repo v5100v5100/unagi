@@ -1066,9 +1066,6 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	program_compare = NULL;
 	if(c->mode == MODE_ROM_PROGRAM){
 		printf("flashmemory/SRAM program mode. To abort programming, press Ctrl+C\n");
-		if(r->ppu_rom.size != 0){
-			c->ppu_flash_driver->init(&(r->ppu_flash));
-		}
 		int size = r->cpu_rom.size;
 		if(size < r->ppu_rom.size){
 			size = r->ppu_rom.size;
@@ -1085,6 +1082,9 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		int end = 1;
 		switch(s->opcode){
+		case SCRIPT_OPCODE_CPU_COMMAND:
+			command_mask(MEMORY_AREA_CPU_ROM, s->value[0], s->value[1], s->value[2], &(r->cpu_flash));
+			break;
 		case SCRIPT_OPCODE_CPU_READ:{
 			struct memory *m;
 			const long address = s->value[0];
@@ -1148,6 +1148,8 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			}
 			break;
+		case SCRIPT_OPCODE_PPU_COMMAND:
+			command_mask(MEMORY_AREA_PPU, s->value[0], s->value[1], s->value[2], &(r->ppu_flash));
 		case SCRIPT_OPCODE_PPU_RAMFIND:
 			if(ppu_ramfind(d) == PPU_TEST_RAM){
 				printf("PPU_RAMFIND: charcter RAM found\n");
