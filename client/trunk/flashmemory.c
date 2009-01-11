@@ -31,9 +31,6 @@ flashmemory.c ¤À¤±¤Î·Ù¹ð
 #include "header.h"
 #include "flashmemory.h"
 /*
-driver for Winbond W29C020, W49F002
-*/
-/*
 JEDEC flash memory command
 http://www.sst.com/downloads/software_driver/SST49LF002A.txt
 */
@@ -511,7 +508,7 @@ static const struct flash_driver DRIVER_W49F002 = {
 	.name = "W49F002",
 	.capacity = 0x40000,
 	.pagesize = 0,
-	.erase_wait = 100, //typ 0.1, max 0.2 sec
+	.erase_wait = 1000, //typ 0.1, max 0.2 sec
 	.command_mask = 0x7fff,
 	.id_manufacurer = 0xda,
 	.id_device = 0xae,
