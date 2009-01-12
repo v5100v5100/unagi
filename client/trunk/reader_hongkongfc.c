@@ -77,6 +77,7 @@ static inline void address_set(long address)
 static inline u8 data_port_get(long address, int bus)
 {
 	address_set(address);
+	data_port_latch(DATA_SELECT_CONTROL, bus);
 	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
 	s = bit_set(s, BITNUM_CONTROL_DATA_LATCH);
@@ -139,7 +140,7 @@ static void hk_cpu_read(long address, long length, u8 *data)
 {
 	//fc bus 初期化
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_CPU_READ);
-		//A15 を反転し、 /ROMCS にしたものを渡す
+	//A15 を反転し、 /ROMCS にしたものを渡す
 	address ^= ADDRESS_MASK_A15;
 	while(length != 0){
 		*data = data_port_get(address, BUS_CONTROL_CPU_READ);
@@ -151,7 +152,8 @@ static void hk_cpu_read(long address, long length, u8 *data)
 
 static void hk_ppu_read(long address, long length, u8 *data)
 {
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
+	//data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
@@ -160,6 +162,7 @@ static void hk_ppu_read(long address, long length, u8 *data)
 		data++;
 		length--;
 	}
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 static inline void cpu_romcs_set(long address)
@@ -202,11 +205,11 @@ static void hk_cpu_6502_write(long address, long data, long wait_msec)
 }
 
 //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
-#include <stdio.h>
 static void hk_ppu_write(long address, long data)
 {
 	int c = BUS_CONTROL_BUS_STANDBY;
 	c = bit_clear(c, BITNUM_CPU_M2); //たぶんいる
+	//c = bit_clear(c, BITNUM_CPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//cpu rom を止めたアドレスを渡す
 	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15);
