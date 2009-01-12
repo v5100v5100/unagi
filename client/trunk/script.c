@@ -349,29 +349,29 @@ logical_check() 用サブ関数とデータ
 */
 static const char LOGICAL_ERROR_PREFIX[] = "logical error:";
 
-static inline void logical_print_illgalarea(const char *area, long address)
+static inline void logical_print_illgalarea(int line, const char *area, long address)
 {
-	printf("%s illgal %s area $%06x\n", LOGICAL_ERROR_PREFIX, area, (int) address);
+	printf("%d:%s illgal %s area $%06x\n", line, LOGICAL_ERROR_PREFIX, area, (int) address);
 }
 
-static inline void logical_print_illgallength(const char *area, long length)
+static inline void logical_print_illgallength(int line, const char *area, long length)
 {
-	printf("%s illgal %s length $%04x\n", LOGICAL_ERROR_PREFIX, area, (int) length);
+	printf("%d:%s illgal %s length $%04x\n", line, LOGICAL_ERROR_PREFIX, area, (int) length);
 }
 
-static inline void logical_print_overdump(const char *area, long start, long end)
+static inline void logical_print_overdump(int line, const char *area, long start, long end)
 {
-	printf("%s %s area over dump $%06x-$%06x\n", LOGICAL_ERROR_PREFIX, area, (int)start ,(int)end);
+	printf("%d:%s %s area over dump $%06x-$%06x\n", line, LOGICAL_ERROR_PREFIX, area, (int)start ,(int)end);
 }
 
-static inline void logical_print_access(const char *area, const char *rw, long addr, long len)
+static inline void logical_print_access(int line, const char *area, const char *rw, long addr, long len)
 {
-	printf("%s %s $%04x $%02x\n", area, rw, (int) addr, (int) len);
+	printf("%d:%s %s $%04x $%02x\n", line, area, rw, (int) addr, (int) len);
 }
 
-static inline void logical_print_byteerror(const char *area, long data)
+static inline void logical_print_byteerror(int line, const char *area, long data)
 {
-	printf("%s write data byte range over, %s $%x\n", LOGICAL_ERROR_PREFIX, area, (int) data);
+	printf("%d:%s write data byte range over, %s $%x\n", line, LOGICAL_ERROR_PREFIX, area, (int) data);
 }
 
 static int dump_length_conform(const char *name, long logicallength, long configlength)
@@ -490,7 +490,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		//printf("opcode exec %s\n", SCRIPT_SYNTAX[s->opcode].name);
 		if((setting == DUMP) && (s->opcode < SCRIPT_OPCODE_DUMP_START)){
-			printf("%s config script include DUMP_START area\n", LOGICAL_ERROR_PREFIX);
+			printf("%d:%s config script include DUMP_START area\n", s->line, LOGICAL_ERROR_PREFIX);
 			error += 1;
 		}
 
@@ -588,15 +588,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			assert(r->cpu_rom.attribute == MEMORY_ATTR_WRITE);
 			//length filter. 0 はだめ
 			if(!is_range(length, 1, 0x4000)){
-				logical_print_illgallength(STR_REGION_CPU, length);
+				logical_print_illgallength(s->line, STR_REGION_CPU, length);
 				error += 1;
 			}
 			//address filter
 			else if(!is_region_cpurom(address)){
-				logical_print_illgalarea(STR_REGION_CPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_CPU, address);
 				error += 1;
 			}else if(end >= 0x10000){
-				logical_print_overdump(STR_REGION_CPU, address, end);
+				logical_print_overdump(s->line, STR_REGION_CPU, address, end);
 				error += 1;
 			}
 			cpu_romsize += length;
@@ -607,14 +607,14 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			long data;
 			if(expression_calc(&s->expression, &data) == NG){
-				printf("%s expression calc error\n", LOGICAL_ERROR_PREFIX);
+				printf("%d:%s expression calc error\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
 			if(address < 0x5000 || address >= 0x10000){
-				logical_print_illgalarea(STR_REGION_CPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_CPU, address);
 				error += 1;
 			}else if(!is_data_byte(data)){
-				logical_print_byteerror(STR_REGION_CPU, data);
+				logical_print_byteerror(s->line, STR_REGION_CPU, data);
 				error += 1;
 			}
 			setting = DUMP;
@@ -634,15 +634,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			//length filter. 0 はだめ
 			if(!is_range(length, 1, 0x2000)){
-				logical_print_illgallength(STR_REGION_CPU, length);
+				logical_print_illgallength(s->line, STR_REGION_CPU, length);
 				error += 1;
 			}
 			//address filter
 			else if(address < 0x6000 || address >= 0x8000){
-				logical_print_illgalarea(STR_REGION_CPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_CPU, address);
 				error += 1;
 			}else if(end >= 0x8000){
-				logical_print_overdump(STR_REGION_CPU, address, end);
+				logical_print_overdump(s->line, STR_REGION_CPU, address, end);
 				error += 1;
 			}
 			cpu_ramsize += length;
@@ -658,15 +658,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 			//length filter.
 			if(!is_range(length, 0x80, 0x4000)){
-				logical_print_illgallength(STR_REGION_CPU, length);
+				logical_print_illgallength(s->line, STR_REGION_CPU, length);
 				error += 1;
 			}
 			//address filter
 			else if(!is_region_cpurom(address)){
-				logical_print_illgalarea(STR_REGION_CPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_CPU, address);
 				error += 1;
 			}else if(end >= 0x10000){
-				logical_print_overdump(STR_REGION_CPU, address, end);
+				logical_print_overdump(s->line, STR_REGION_CPU, address, end);
 				error += 1;
 			}
 			cpu_romsize += length;
@@ -676,7 +676,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		case SCRIPT_OPCODE_PPU_RAMFIND:
 			//ループ内部に入ってたらエラー
 			if(variable_num != 0){
-				printf("%s PPU_RAMTEST must use outside loop\n", LOGICAL_ERROR_PREFIX);
+				printf("%d:%s PPU_RAMTEST must use outside loop\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
 			break;
@@ -692,15 +692,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				min = 1;
 			}
 			if(!is_range(length, min, 0x2000)){
-				logical_print_illgallength(STR_REGION_PPU, length);
+				logical_print_illgallength(s->line, STR_REGION_PPU, length);
 				error += 1;
 			}
 			//address filter
 			else if(!is_region_ppurom(address)){
-				logical_print_illgalarea(STR_REGION_PPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_PPU, address);
 				error += 1;
 			}else if (end >= 0x2000){
-				logical_print_overdump(STR_REGION_PPU, address, end);
+				logical_print_overdump(s->line, STR_REGION_PPU, address, end);
 				error += 1;
 			}
 			//dump length update
@@ -717,15 +717,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long address = s->value[0];
 			long data;
 			if(expression_calc(&s->expression, &data) == NG){
-				printf("%s expression calc error\n", LOGICAL_ERROR_PREFIX);
+				printf("%d:%s expression calc error\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
 			setting = DUMP;
 			if(!is_region_ppurom(address)){
-				logical_print_illgalarea(STR_REGION_PPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_PPU, address);
 				error += 1;
 			}else if(!is_data_byte(data)){
-				logical_print_byteerror(STR_REGION_PPU, data);
+				logical_print_byteerror(s->line, STR_REGION_PPU, data);
 				error += 1;
 			}
 			setting = DUMP;
@@ -739,15 +739,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 			//length filter.
 			if(!is_range(length, 0x80, 0x1000)){
-				logical_print_illgallength(STR_REGION_PPU, length);
+				logical_print_illgallength(s->line, STR_REGION_PPU, length);
 				error += 1;
 			}
 			//address filter
 			else if(!is_region_ppurom(address)){
-				logical_print_illgalarea(STR_REGION_PPU, address);
+				logical_print_illgalarea(s->line, STR_REGION_PPU, address);
 				error += 1;
 			}else if(end >= 0x2000){
-				logical_print_overdump(STR_REGION_PPU, address, end);
+				logical_print_overdump(s->line, STR_REGION_PPU, address, end);
 				error += 1;
 			}
 			ppu_romsize += length;
@@ -759,20 +759,20 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			{
 				const int v = s->value[1];
 				if((v < 0) || (v > 0xff)){
-					printf("%s step start must 0-0xff 0x%x\n", LOGICAL_ERROR_PREFIX, v);
+					printf("%d:%s step start must 0-0xff 0x%x\n", s->line, LOGICAL_ERROR_PREFIX, v);
 					error += 1;
 				}
 			}
 			for(i = 2; i <4; i++){
 				const int v = s->value[i];
 				if((v < 1) || (v > 0x100)){
-					printf("%s end or next must 1-0x100 0x%x\n", LOGICAL_ERROR_PREFIX, v);
+					printf("%d:%s end or next must 1-0x100 0x%x\n", s->line, LOGICAL_ERROR_PREFIX, v);
 					error += 1;
 				}
 			}
 			//ループの戻り先はこの命令の次なので s[1]
 			if(step_new(s->variable, s->value[1], s->value[2], s->value[3], &s[1]) == NG){
-				printf("%s step loop too much\n", LOGICAL_ERROR_PREFIX);
+				printf("%d:%s step loop too much\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 				return error;
 			}
@@ -787,7 +787,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		}
 		if(s->opcode == SCRIPT_OPCODE_STEP_END){
 			if(variable_num == 0){
-				printf("%s loop closed, missing STEP_START\n", LOGICAL_ERROR_PREFIX);
+				printf("%d:%s loop closed, missing STEP_START\n", s->line, LOGICAL_ERROR_PREFIX);
 				return error + 1;
 			}
 			s = step_end(&s[1]);
@@ -799,7 +799,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	
 	//loop open conform
 	if(variable_num != 0){
-		printf("%s loop opened, missing STEP_END\n", LOGICAL_ERROR_PREFIX);
+		printf("%d:%s loop opened, missing STEP_END\n", s->line, LOGICAL_ERROR_PREFIX);
 		error += 1;
 	}
 	//dump length conform
