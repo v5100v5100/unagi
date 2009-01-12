@@ -77,7 +77,9 @@ static inline void address_set(long address)
 static inline u8 data_port_get(long address, int bus)
 {
 	address_set(address);
-	data_port_latch(DATA_SELECT_CONTROL, bus);
+	if(bus != 0){
+		data_port_latch(DATA_SELECT_CONTROL, bus);
+	}
 	port_control_write(DATA_SELECT_BREAK_DATA << BITNUM_CONTROL_DATA_SELECT, PORT_CONTROL_WRITE);
 	int s = DATA_SELECT_READ << BITNUM_CONTROL_DATA_SELECT;
 	s = bit_set(s, BITNUM_CONTROL_DATA_LATCH);
@@ -143,7 +145,7 @@ static void hk_cpu_read(long address, long length, u8 *data)
 	//A15 を反転し、 /ROMCS にしたものを渡す
 	address ^= ADDRESS_MASK_A15;
 	while(length != 0){
-		*data = data_port_get(address, BUS_CONTROL_CPU_READ);
+		*data = data_port_get(address, 0);
 		address++;
 		data++;
 		length--;
@@ -161,8 +163,8 @@ static void hk_ppu_read(long address, long length, u8 *data)
 		address++;
 		data++;
 		length--;
+		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	}
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 static inline void cpu_romcs_set(long address)

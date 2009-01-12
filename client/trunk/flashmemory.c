@@ -390,7 +390,7 @@ static void w29c040_write(const struct flash_order *d, long address, long length
 			d->read(a, d->pagesize, cmp);
 			if(memcmp(cmp, dd, d->pagesize) != 0){
 				ngblock++;
-				dprintf("write %s 0x%06x\n", m->name, (int) offset);
+				//dprintf("write %s 0x%06x\n", m->name, (int) offset);
 				int result = program_pagewrite(d, a, dd, d->pagesize);
 				if(result == NG){
 					printf("%s: write error\n", __FUNCTION__);
