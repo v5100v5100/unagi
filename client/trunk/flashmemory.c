@@ -439,10 +439,10 @@ static void dummy_write(const struct flash_order *d, long address, long length, 
 /*
 デバイスリスト
 */
-//0x80 以降は本当のデバイス重複しないと思う. 誰か JEDEC のとこをしらべて.
-static const struct flash_driver DRIVER_SRAM256K = {
-	.name = "SRAM256K",
-	.capacity = 0x8000,
+enum{MEGA = 0x20000};
+static const struct flash_driver DRIVER_SRAM = {
+	.name = "SRAM",
+	.capacity = 4 * MEGA,
 	.pagesize = 0,
 	.erase_wait = 0,
 	.command_mask = 0,
@@ -458,7 +458,7 @@ static const struct flash_driver DRIVER_SRAM256K = {
 
 static const struct flash_driver DRIVER_DUMMY = {
 	.name = "dummy",
-	.capacity = 0x40000,
+	.capacity = 16 * MEGA,
 	.pagesize = 0,
 	.erase_wait = 0,
 	.command_mask = 0,
@@ -474,7 +474,7 @@ static const struct flash_driver DRIVER_DUMMY = {
 
 static const struct flash_driver DRIVER_W29C020 = {
 	.name = "W29C020",
-	.capacity = 0x40000,
+	.capacity = 2 * MEGA,
 	.pagesize = 0x80,
 	.erase_wait = 50,
 	.command_mask = 0x7fff,
@@ -490,7 +490,7 @@ static const struct flash_driver DRIVER_W29C020 = {
 
 static const struct flash_driver DRIVER_W29C040 = {
 	.name = "W29C040",
-	.capacity = 0x80000,
+	.capacity = 4 * MEGA,
 	.pagesize = 0x100,
 	.erase_wait = 50,
 	.command_mask = 0x7fff,
@@ -506,7 +506,7 @@ static const struct flash_driver DRIVER_W29C040 = {
 
 static const struct flash_driver DRIVER_W49F002 = {
 	.name = "W49F002",
-	.capacity = 0x40000,
+	.capacity = 2 * MEGA,
 	.pagesize = 0,
 	.erase_wait = 1000, //typ 0.1, max 0.2 sec
 	.command_mask = 0x7fff,
@@ -529,7 +529,7 @@ command address が 0x00555, 0x00aaa になってる
 */
 static const struct flash_driver DRIVER_EN29F002T = {
 	.name = "EN29F002T",
-	.capacity = 0x40000,
+	.capacity = 2 * MEGA,
 	.pagesize = 0,
 	.erase_wait = 3000, //typ 2, max 5 sec
 	.command_mask = 0x07ff,
@@ -545,7 +545,7 @@ static const struct flash_driver DRIVER_EN29F002T = {
 
 static const struct flash_driver DRIVER_AM29F040B = {
 	.name = "AM29F040B",
-	.capacity = 0x80000,
+	.capacity = 4 * MEGA,
 	.pagesize = 0,
 	.erase_wait = 8000, //typ 8, max 64 sec
 	.command_mask = 0x07ff,
@@ -562,7 +562,7 @@ static const struct flash_driver DRIVER_AM29F040B = {
 static const struct flash_driver *DRIVER_LIST[] = {
 	&DRIVER_W29C020, &DRIVER_W29C040, 
 	&DRIVER_W49F002, &DRIVER_EN29F002T, &DRIVER_AM29F040B,
-	&DRIVER_SRAM256K, 
+	&DRIVER_SRAM, 
 	&DRIVER_DUMMY,
 	NULL
 };

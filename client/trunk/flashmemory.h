@@ -52,6 +52,8 @@ struct flash_driver{
 };
 
 const struct flash_driver *flash_driver_get(const char *name);
+
+//0x80 以降は本当のデバイス重複しないと思う. 誰か JEDEC のとこをしらべて.
 enum{
 	FLASH_ID_DEVICE_SRAM = 0xf0, 
 	FLASH_ID_DEVICE_DUMMY

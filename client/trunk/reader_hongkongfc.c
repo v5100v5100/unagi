@@ -225,9 +225,8 @@ static void hk_ppu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//WE up
 	c = bit_set(c, BITNUM_PPU_RW);
-	c = bit_set(c, BITNUM_WRITEDATA_OUTPUT);
-	data_port_latch(DATA_SELECT_CONTROL, c);
 	//CS up
+	c = bit_set(c, BITNUM_WRITEDATA_OUTPUT);
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 

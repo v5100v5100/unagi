@@ -349,6 +349,11 @@ logical_check() 用サブ関数とデータ
 */
 static const char LOGICAL_ERROR_PREFIX[] = "logical error:";
 
+static void logical_print_capacityerror(int line, const char *area)
+{
+	printf("%d: %s %s area flash memory capacity error\n", line, LOGICAL_ERROR_PREFIX, area);
+}
+
 static inline void logical_print_illgalarea(int line, const char *area, long address)
 {
 	printf("%d:%s illgal %s area $%06x\n", line, LOGICAL_ERROR_PREFIX, area, (int) address);
@@ -546,7 +551,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			//flash memory capacity check
 			//いまのところ == にして小さい容量もそのうち対応
 			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->cpu_flash_driver->capacity)){
-				printf("%s flash memory capacity error\n", LOGICAL_ERROR_PREFIX);
+				logical_print_capacityerror(s->line, r->cpu_rom.name);
 				error += 1;
 			}
 			}break;
@@ -567,7 +572,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->ppu_flash_driver->capacity)){
-				printf("%s flash memory capacity error\n", LOGICAL_ERROR_PREFIX);
+				logical_print_capacityerror(s->line, r->ppu_rom.name);
 				error += 1;
 			}
 			}
