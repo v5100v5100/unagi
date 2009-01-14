@@ -154,16 +154,16 @@ static void hk_cpu_read(long address, long length, u8 *data)
 
 static void hk_ppu_read(long address, long length, u8 *data)
 {
-	//data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
+	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
+	//data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
-		*data = data_port_get(address, BUS_CONTROL_PPU_READ);
+		*data = data_port_get(address, 0); //BUS_CONTROL_PPU_READ);
 		address++;
 		data++;
 		length--;
-		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
+		//data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	}
 }
 
@@ -216,12 +216,12 @@ static void hk_ppu_write(long address, long data)
 	//cpu rom を止めたアドレスを渡す
 	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15);
 	data_port_set(c, data); 
-	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 //	data_port_latch(DATA_SELECT_CONTROL, c);
 	//CS down
 	c = bit_clear(c, BITNUM_PPU_SELECT);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//WE down
+	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
 	c = bit_clear(c, BITNUM_PPU_RW);
 	data_port_latch(DATA_SELECT_CONTROL, c);
 	//WE up

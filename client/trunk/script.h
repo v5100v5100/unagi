@@ -19,12 +19,14 @@ struct script{
 	int line;
 	long value[4];
 	struct st_expression expression;
-	char variable;
+	char variable, constant;
 };
 
 enum{
 	VALUE_EXPRESSION = 0x1000000,
-	VALUE_VARIABLE
+	VALUE_VARIABLE,
+	VALUE_CONSTANT,
+	VALUE_UNDEF
 };
 enum{
 	EXPRESSION_TYPE_VARIABLE,

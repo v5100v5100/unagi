@@ -50,6 +50,7 @@ DUMP_END
 #include "syntax.h"
 
 //変数管理
+//step の変数は小文字の a-z ではじまること。2文字目以降は無視する
 struct variable_manage{
 	char name;
 	long start,end,step;
@@ -70,6 +71,27 @@ static const struct variable_manage VARIABLE_INIT = {
 };
 static struct variable_manage variable_bank[VARIABLE_MAX];
 static int variable_num = 0;
+/*
+CPU_ROMSIZE, PPU_ROMSIZE 側で定義される定数名はそれぞれ C, P
+*/
+enum{
+	STEP_CONST_CPUAREA = 'C',
+	STEP_CONST_PPUAREA = 'P',
+	STEP_CONST_UNDEF = 0x4649
+};
+static long step_const_cpuarea = STEP_CONST_UNDEF;
+static long step_const_ppuarea = STEP_CONST_UNDEF;
+
+static long constant_get(char v)
+{
+	switch(v){
+	case STEP_CONST_CPUAREA:
+		return step_const_cpuarea;
+	case STEP_CONST_PPUAREA:
+		return step_const_ppuarea;
+	}
+	return STEP_CONST_UNDEF;
+}
 
 static void variable_init_single(int num)
 {
@@ -235,9 +257,11 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 {
 	int i = sizeof(SCRIPT_SYNTAX) / sizeof(SCRIPT_SYNTAX[0]);
 	const struct script_syntax *syntax;
+	const char *opword;
+	opword = word[0];
 	syntax = SCRIPT_SYNTAX;
 	while(i != 0){
-		if(strcmp(syntax->name, word[0]) == 0){
+		if(strcmp(syntax->name, opword) == 0){
 			int j;
 			
 			s->opcode = syntax->script_opcode;
@@ -252,27 +276,31 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 					compare = (syntax->argc == (word_num - 1));
 					break;
 				case SYNTAX_COMPARE_GT:
-					compare = (syntax->argc <= (word_num - 1));
+					compare = ((word_num - 1) >= syntax->argc);
+					compare &= (word_num <= 5);
 					break;
 				}
 				if(!compare){
-					printf("%d:%s parameter number not much %s\n", s->line, SYNTAX_ERROR_PREFIX, word[0]);
+					printf("%d:%s parameter number not match %s\n", s->line, SYNTAX_ERROR_PREFIX, opword);
 					return 1;
 				}
 			}
-			for(j = 0; j < syntax->argc; j++){
+			//opcode pointer をずらして単語の起点を引数だけにあわせる
+			word++;
+			word_num--;
+			for(j = 0; j < word_num; j++){
 				switch(syntax->argv_type[j]){
 				case SYNTAX_ARGVTYPE_NULL:
 					printf("%d:%s ARGV_NULL select\n", s->line, SYNTAX_ERROR_PREFIX);
 					return 1;
 				case SYNTAX_ARGVTYPE_VALUE:
-					if(value_get(word[j + 1], &(s->value[j])) == NG){
-						printf("%d:%s value error %s %s\n", s->line, SYNTAX_ERROR_PREFIX, word[0], word[j+1]);
+					if(value_get(word[j], &(s->value[j])) == NG){
+						printf("%d:%s value error %s %s\n", s->line, SYNTAX_ERROR_PREFIX, opword, word[j]);
 						return 1;
 					}
 					break;
 				case SYNTAX_ARGVTYPE_HV:
-					switch(word[j + 1][0]){
+					switch(word[j][0]){
 					case 'H':
 					case 'h':
 						s->value[j] = MIRROR_HORIZONAL;
@@ -286,29 +314,44 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 						s->value[j] = MIRROR_PROGRAMABLE;
 						break;
 					default:
-						printf("%d:%s unknown scroll mirroring type %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j+1]);
+						printf("%d:%s unknown scroll mirroring type %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j]);
 						return 1;
 					}
 					break;
 				case SYNTAX_ARGVTYPE_EXPRESSION:
 					s->value[j] = VALUE_EXPRESSION;
 					//命令名の単語と単語数を除外して渡す
-					if(syntax_check_expression(&word[j+1], word_num - 2, &s->expression) == NG){
+					if(syntax_check_expression(&word[j], word_num - 1, &s->expression) == NG){
 						printf("%d:%s expression error\n", s->line, SYNTAX_ERROR_PREFIX);
 						return 1;
 					}
-					//可変に引数を取るのでここで終わり
+					//移行の単語は読まないことにする(まずいかも)
 					return 0;
 				case SYNTAX_ARGVTYPE_VARIABLE:{
-					const char v = word[j+1][0];
-					if((v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z')){
+					const char v = word[j][0];
+					if(v >= 'a' && v <= 'z'){
 						s->value[j] = VALUE_VARIABLE;
 						s->variable = v;
 					}else{
-						printf("%d:%s variable must use [A-Za-z] %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j+1]);
+						printf("%d:%s variable must use [a-z] %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j]);
 						return 1;
 					}
 					}break;
+				case SYNTAX_ARGVTYPE_CONSTANT:{
+					const char v = word[j][0];
+					if(value_get(word[j], &(s->value[j])) == OK){
+						break;
+					}else if(v == STEP_CONST_CPUAREA || v == STEP_CONST_PPUAREA){
+						s->value[j] = VALUE_CONSTANT;
+						s->constant = v;
+					}else{
+						printf("%d:%s constant error %s %s\n", s->line, SYNTAX_ERROR_PREFIX, opword, word[j]);
+						return 1;
+					}
+					}break;
+				default:
+					s->value[j] = VALUE_UNDEF;
+					break;
 				}
 			}
 			//opcode found and 入力文字種正常
@@ -317,7 +360,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 		syntax++;
 		i--;
 	}
-	printf("%s unknown opcode %s\n", SYNTAX_ERROR_PREFIX, word[0]);
+	printf("%s unknown opcode %s\n", SYNTAX_ERROR_PREFIX, opword);
 	return 1;
 }
 
@@ -348,10 +391,25 @@ static int syntax_check(char **text, int text_num, struct script *s, int mode)
 logical_check() 用サブ関数とデータ
 */
 static const char LOGICAL_ERROR_PREFIX[] = "logical error:";
+static long logical_romsize_override(long size, const struct script **s, int count)
+{
+	int i;
+	if(size == 0){
+		return STEP_CONST_UNDEF;
+	}
+	for(i = 0; i < count; i++){
+		if((*s)->value[0] == size){
+			return (*s)->value[1];
+		}
+		s++;
+	}
+	printf("%s romsize error\n", LOGICAL_ERROR_PREFIX);
+	return STEP_CONST_UNDEF;
+}
 
 static void logical_print_capacityerror(int line, const char *area)
 {
-	printf("%d: %s %s area flash memory capacity error\n", line, LOGICAL_ERROR_PREFIX, area);
+	printf("%d:%s %s area flash memory capacity error\n", line, LOGICAL_ERROR_PREFIX, area);
 }
 
 static inline void logical_print_illgalarea(int line, const char *area, long address)
@@ -484,8 +542,15 @@ static int command_mask(const int region, const long address, const long offset,
 	return OK;
 }
 
+enum{
+	SCRIPT_MEMORYSIZE = 4
+};
 static int logical_check(const struct script *s, const struct st_config *c, struct romimage *r)
 {
+	//override (CPU|PPU)_ROMSIZE pointer. 変数が増える...
+	const struct script *script_cpu_romsize_data[SCRIPT_MEMORYSIZE];//	const struct script *script_ppu_romsize_data;
+	int script_cpu_romsize_count = 0;
+	
 	long cpu_romsize = 0, cpu_ramsize = 0, ppu_romsize = 0;
 	int imagesize = 0; //for write or program mode
 	int setting = SETTING;
@@ -493,7 +558,6 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
-		//printf("opcode exec %s\n", SCRIPT_SYNTAX[s->opcode].name);
 		if((setting == DUMP) && (s->opcode < SCRIPT_OPCODE_DUMP_START)){
 			printf("%d:%s config script include DUMP_START area\n", s->line, LOGICAL_ERROR_PREFIX);
 			error += 1;
@@ -502,7 +566,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 		//romimage open for write or program mode
 		if((imagesize == 0) && (setting == DUMP)){
 			switch(c->mode){
-			case MODE_RAM_WRITE:
+			case MODE_RAM_WRITE: //CPU_RAMSIZE check
 				assert(r->cpu_ram.attribute == MEMORY_ATTR_READ);
 				r->cpu_ram.data = buf_load_full(c->ramimage, &imagesize);
 				if(r->cpu_ram.data == NULL){
@@ -517,12 +581,19 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 					error += 1;
 				}
 				break;
-			case MODE_ROM_PROGRAM:
+			case MODE_ROM_PROGRAM: //MAPPER check
 				assert(c->cpu_flash_driver->write != NULL);
 				assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
 				assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
 					error += 1;
+				}
+				step_const_cpuarea = logical_romsize_override(r->cpu_rom.size, script_cpu_romsize_data, script_cpu_romsize_count);
+				if(step_const_cpuarea == STEP_CONST_UNDEF){
+					error++;
+				}
+				if(r->ppu_rom.size != 0){
+					step_const_ppuarea = 0;
 				}
 				imagesize = -1;
 				break;
@@ -543,13 +614,22 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			break;
 		case SCRIPT_OPCODE_CPU_ROMSIZE:{
 			const long size = s->value[0];
-			r->cpu_rom.size = size;
+			if(c->mode == MODE_ROM_PROGRAM){
+				if(script_cpu_romsize_count >= SCRIPT_MEMORYSIZE){
+					printf("%d:%s %s override count over\n", s->line, LOGICAL_ERROR_PREFIX, OPSTR_CPU_ROMSIZE);
+					error += 1;
+				}else{
+					script_cpu_romsize_data[script_cpu_romsize_count] = s;
+					script_cpu_romsize_count++;
+				}
+			}else{
+				r->cpu_rom.size = size;
+			}
 			if(memorysize_check(size, MEMORY_AREA_CPU_ROM)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_ROMSIZE);
 				error += 1;
 			}
 			//flash memory capacity check
-			//いまのところ == にして小さい容量もそのうち対応
 			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->cpu_flash_driver->capacity)){
 				logical_print_capacityerror(s->line, r->cpu_rom.name);
 				error += 1;
@@ -760,23 +840,32 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:{
-			int i;
+			long val[4];
 			{
-				const int v = s->value[1];
+				long v = s->value[1];
+				if(v == VALUE_CONSTANT){
+					v = constant_get(s->constant);
+				}
 				if((v < 0) || (v > 0xff)){
-					printf("%d:%s step start must 0-0xff 0x%x\n", s->line, LOGICAL_ERROR_PREFIX, v);
+					printf("%d:%s step start must 0-0xff 0x%x\n", s->line, LOGICAL_ERROR_PREFIX, (int) v);
 					error += 1;
 				}
+				val[1] = v;
 			}
+			int i;
 			for(i = 2; i <4; i++){
-				const int v = s->value[i];
+				long v = s->value[i];
+				if((i == 2) && (v == VALUE_CONSTANT)){
+					v = constant_get(s->constant);
+				}
 				if((v < 1) || (v > 0x100)){
-					printf("%d:%s end or next must 1-0x100 0x%x\n", s->line, LOGICAL_ERROR_PREFIX, v);
+					printf("%d:%s end or next must 1-0x100 0x%x\n", s->line, LOGICAL_ERROR_PREFIX, (int) v);
 					error += 1;
 				}
+				val[i] = v;
 			}
 			//ループの戻り先はこの命令の次なので s[1]
-			if(step_new(s->variable, s->value[1], s->value[2], s->value[3], &s[1]) == NG){
+			if(step_new(s->variable, val[1], val[2], val[3], &s[1]) == NG){
 				printf("%d:%s step loop too much\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 				return error;
@@ -1086,6 +1175,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		int end = 1;
+		//printf("%s\n", SCRIPT_SYNTAX[s->opcode].name);
 		switch(s->opcode){
 		case SCRIPT_OPCODE_CPU_COMMAND:
 			command_mask(MEMORY_AREA_CPU_ROM, s->value[0], s->value[1], s->value[2], &(r->cpu_flash));
@@ -1227,10 +1317,19 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			}
 			break;
-		case SCRIPT_OPCODE_STEP_START:
+		case SCRIPT_OPCODE_STEP_START:{
+			long val[4];
+			int i;
+			for(i=1; i<3; i++){
+				val[i] = s->value[i];
+				if(val[i] == VALUE_CONSTANT){
+					val[i] = constant_get(s->constant);
+				}
+			}
+			
 			//ループの戻り先はこの命令の次なので &s[1]
-			step_new(s->variable, s->value[1], s->value[2], s->value[3], &s[1]);
-			break;
+			step_new(s->variable, val[1], val[2], s->value[3], &s[1]);
+			}break;
 		case SCRIPT_OPCODE_DUMP_END:
 			end = 0;
 			break;

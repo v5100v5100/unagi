@@ -278,10 +278,11 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		//CPU
 		cpusize = ((long) buf[4]) * PROGRAM_ROM_MIN;
 		offset += cpusize;
-		if(nesfile_size_check(errorprefix, &r->cpu_rom, cpusize) == NG){
+		r->cpu_rom.size = cpusize;
+		/*if(nesfile_size_check(errorprefix, &r->cpu_rom, cpusize) == NG){
 			free(buf);
 			return NG;
-		}
+		}*/
 		//PPU
 		ppusize = ((long) buf[5]) * CHARCTER_ROM_MIN;
 		offset += ppusize;
