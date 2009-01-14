@@ -548,8 +548,9 @@ enum{
 static int logical_check(const struct script *s, const struct st_config *c, struct romimage *r)
 {
 	//override (CPU|PPU)_ROMSIZE pointer. 変数が増える...
-	const struct script *script_cpu_romsize_data[SCRIPT_MEMORYSIZE];//	const struct script *script_ppu_romsize_data;
+	const struct script *script_cpu_romsize_data[SCRIPT_MEMORYSIZE];	const struct script *script_ppu_romsize_data[SCRIPT_MEMORYSIZE];
 	int script_cpu_romsize_count = 0;
+	int script_ppu_romsize_count = 0;
 	
 	long cpu_romsize = 0, cpu_ramsize = 0, ppu_romsize = 0;
 	int imagesize = 0; //for write or program mode
@@ -593,7 +594,10 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 					error++;
 				}
 				if(r->ppu_rom.size != 0){
-					step_const_ppuarea = 0;
+					step_const_ppuarea = logical_romsize_override(r->ppu_rom.size, script_ppu_romsize_data, script_ppu_romsize_count);
+					if(step_const_ppuarea == STEP_CONST_UNDEF){
+						error++;
+					}
 				}
 				imagesize = -1;
 				break;
@@ -646,7 +650,17 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			break;
 		case SCRIPT_OPCODE_PPU_ROMSIZE:{
 			const long size = s->value[0];
-			r->ppu_rom.size = size;
+			if(c->mode == MODE_ROM_PROGRAM){
+				if(script_ppu_romsize_count >= SCRIPT_MEMORYSIZE){
+					printf("%d:%s %s override count over\n", s->line, LOGICAL_ERROR_PREFIX, OPSTR_PPU_ROMSIZE);
+					error += 1;
+				}else{
+					script_ppu_romsize_data[script_ppu_romsize_count] = s;
+					script_ppu_romsize_count++;
+				}
+			}else{
+				r->ppu_rom.size = size;
+			}
 			if(memorysize_check(size, MEMORY_AREA_PPU)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_PPU_ROMSIZE);
 				error += 1;

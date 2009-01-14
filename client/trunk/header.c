@@ -286,7 +286,8 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		//PPU
 		ppusize = ((long) buf[5]) * CHARCTER_ROM_MIN;
 		offset += ppusize;
-		if(ppusize != 0){
+		r->ppu_rom.size = ppusize;
+		if(0 && ppusize != 0){
 			if(nesfile_size_check(errorprefix, &r->ppu_rom, ppusize) == NG){
 				free(buf);
 				return NG;

@@ -114,8 +114,8 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 		name: OPSTR_PPU_ROMSIZE,
 		script_opcode: SCRIPT_OPCODE_PPU_ROMSIZE,
 		permittion: PERMITTION_ROM_DUMP | PERMITTION_ROM_PROGRAM,
-		argc: 1, compare: SYNTAX_COMPARE_EQ,
-		argv_type: ARGV_TYPE_VALUE_ONLY
+		argc: 1, compare: SYNTAX_COMPARE_GT,
+		argv_type: ARGV_TYPE_ADDRESS_LENGTH
 	},{
 		name: "CPU_COMMAND",
 		script_opcode: SCRIPT_OPCODE_CPU_COMMAND,
