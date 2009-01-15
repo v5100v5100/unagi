@@ -836,6 +836,9 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long end = address + length - 1;
 			
 			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
+			if(r->ppu_rom.size == 0){
+				break;
+			}
 			//length filter.
 			if(!is_range(length, 0x80, 0x1000)){
 				logical_print_illgallength(s->line, STR_REGION_PPU, length);
