@@ -392,7 +392,8 @@ logical_check() 用サブ関数とデータ
 */
 static const char LOGICAL_ERROR_PREFIX[] = "logical error:";
 enum{
-	SCRIPT_MEMORYSIZE = 4
+	SCRIPT_PPUSIZE_0 = 0,
+	SCRIPT_MEMORYSIZE = 4,
 };
 struct logical_romsize{
 	const struct script *data[SCRIPT_MEMORYSIZE];
@@ -402,7 +403,7 @@ static int logical_romsize_set(int region, long size, struct logical_romsize *l,
 {
 	//PPU 用データの 0 は size 0, 定数 0 として予約されており、0の場合はここを上書きする
 	if((region == MEMORY_AREA_PPU) && (size == 0)){
-		l->data[0] = s;
+		l->data[SCRIPT_PPUSIZE_0] = s;
 		return OK;
 	}
 	if(l->count >= SCRIPT_MEMORYSIZE){
