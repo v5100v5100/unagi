@@ -161,7 +161,7 @@ static const struct script_syntax SCRIPT_SYNTAX[] = {
 	},{
 		name: "PPU_RAMFIND",
 		script_opcode: SCRIPT_OPCODE_PPU_RAMFIND,
-		permittion: PERMITTION_ROM_DUMP | PERMITTION_ROM_PROGRAM,
+		permittion: PERMITTION_ROM_DUMP,
 		argc: 0, compare: SYNTAX_COMPARE_EQ,
 		argv_type: ARGV_TYPE_NULL
 	},{
