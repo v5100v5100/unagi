@@ -20,12 +20,16 @@ int text_load(char *buf, int length, char **text)
 	text[line] = buf;
 	line++;
 	while(length != 0){
-		int current_crlf = 0;
+		//正確な行数把握と手抜きのため CR only の改行コードを未サポートとする
+		int current_lf = 0;
+		
 		switch(*buf){
 		case '\n':
+			*buf = '\0';
+			current_lf = 1;
+			break;
 		case '\r':
 			*buf = '\0';
-			current_crlf = 1;
 			break;
 		}
 		switch(pastdata){
@@ -34,7 +38,7 @@ int text_load(char *buf, int length, char **text)
 				PRINT("line over")
 				return 0;
 			}
-			if(current_crlf == 0){
+			if(current_lf == 0){
 				text[line] = buf;
 				line++;
 			}

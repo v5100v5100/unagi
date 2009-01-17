@@ -360,7 +360,7 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 		syntax++;
 		i--;
 	}
-	printf("%s unknown opcode %s\n", SYNTAX_ERROR_PREFIX, opword);
+	printf("%d:%s unknown opcode %s\n", s->line, SYNTAX_ERROR_PREFIX, opword);
 	return 1;
 }
 
