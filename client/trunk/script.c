@@ -510,7 +510,7 @@ static const char STR_ACCESS_READ[] = "read";
 static const char STR_ACCESS_WRITE[] = "write";
 
 enum{
-	SETTING, DUMP, END
+	SETTING, DUMP, END, STEP_THOUGH
 };
 static int command_mask(const int region, const long address, const long offset, long size, struct flash_order *f)
 {
@@ -594,7 +594,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	//DUMP_START 直後に ROM or RAM image を開くフラグ
 	//use program mode or ram write mode
 	int imagesize = 0; //for write or program mode
-	int setting = SETTING;
+	int status = SETTING;
 	//override (CPU|PPU)_ROMSIZE pointer. Program mode only
 	struct logical_romsize script_cpu_romsize = {
 		.data = {NULL, NULL, NULL, NULL},
@@ -609,13 +609,13 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
-		if((setting == DUMP) && (s->opcode < SCRIPT_OPCODE_DUMP_START)){
+		if((status == DUMP) && (s->opcode < SCRIPT_OPCODE_DUMP_START)){
 			printf("%d:%s config script include DUMP_START area\n", s->line, LOGICAL_ERROR_PREFIX);
 			error += 1;
 		}
 
 		//romimage open for write or program mode
-		if((imagesize == 0) && (setting == DUMP)){
+		if((imagesize == 0) && (status == DUMP)){
 			switch(c->mode){
 			case MODE_RAM_WRITE: //CPU_RAMSIZE check
 				assert(r->cpu_ram.attribute == MEMORY_ATTR_READ);
@@ -718,7 +718,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			break;
 		case SCRIPT_OPCODE_DUMP_START:
-			setting = DUMP;
+			status = DUMP;
 			break;
 		case SCRIPT_OPCODE_CPU_READ:{
 			const long address = s->value[0];
@@ -740,7 +740,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			cpu_romsize += length;
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_WRITE:{
@@ -757,7 +757,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				logical_print_byteerror(s->line, STR_REGION_CPU, data);
 				error += 1;
 			}
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
@@ -786,7 +786,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			cpu_ramsize += length;
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_PROGRAM:{
@@ -810,7 +810,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			cpu_romsize += length;
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_RAMFIND:
@@ -847,7 +847,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			if((s->opcode == SCRIPT_OPCODE_PPU_READ) && is_region_ppurom(address)){
 				ppu_romsize += length;
 			}
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_WRITE:{
@@ -860,7 +860,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				printf("%d:%s expression calc error\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 			}
-			setting = DUMP;
+			status = DUMP;
 			if(!is_region_ppurom(address)){
 				logical_print_illgalarea(s->line, STR_REGION_PPU, address);
 				error += 1;
@@ -868,7 +868,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				logical_print_byteerror(s->line, STR_REGION_PPU, data);
 				error += 1;
 			}
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_PROGRAM:{
@@ -877,9 +877,8 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			const long end = address + length - 1;
 			
 			assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
-			if(r->ppu_rom.size == 0){
-				break;
-			}
+			assert(r->ppu_rom.size != 0);
+
 			//length filter.
 			if(!is_range(length, 0x80, 0x1000)){
 				logical_print_illgallength(s->line, STR_REGION_PPU, length);
@@ -894,7 +893,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			ppu_romsize += length;
-			setting = DUMP;
+			status = DUMP;
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:{
@@ -908,7 +907,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				{.start = 1, .end = 0x100, .constant = NG}
 			};
 			const char *NAME[STEP_NUM] = {
-				"value", "start", "end", "next"
+				"variable", "start", "end", "next"
 			};
 			long val[STEP_NUM];
 			int i;
@@ -918,33 +917,64 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 					v = constant_get(s->constant);
 				}
 				if(!is_range(v, RANGE[i].start, RANGE[i].end)){
-					printf("%d:%s step %s must 0-0xff 0x%x\n", s->line, NAME[i], LOGICAL_ERROR_PREFIX, (int) v);
+					printf("%d:%s step %s must %d-0x%x 0x%x\n", s->line, NAME[i], LOGICAL_ERROR_PREFIX, (int) RANGE[i].start, (int) RANGE[i].end, (int) v);
 					error += 1;
 				}
 				val[i] = v;
 			}
+			//PPU RAM の様に step 内部を行わない場合のscript状態の変更
+			if(val[STEP_START] >= val[STEP_END]){
+				status = STEP_THOUGH;
+			}
 			//ループの戻り先はこの命令の次なので s[1]
-			if(step_new(s->variable, val[STEP_START], val[STEP_END], val[STEP_NEXT], &s[1]) == NG){
+			else if(step_new(s->variable, val[STEP_START], val[STEP_END], val[STEP_NEXT], &s[1]) == NG){
 				printf("%d:%s step loop too much\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 				return error;
+			}else{
+				status = DUMP;
 			}
-			setting = DUMP;
 			}break;
 		case SCRIPT_OPCODE_DUMP_END:
-			setting = END;
+			status = END;
 			break;
 		}
-		if(setting == END){
+		
+		//status 別に script の制御. while を抜けるので switch を使えない
+		if(status == END){
 			break;
+		}else if(status == STEP_THOUGH){
+			int stepcount = 1;
+			int end = 0;
+			while(s->opcode != SCRIPT_OPCODE_DUMP_END){
+				switch(s->opcode){
+				case SCRIPT_OPCODE_STEP_START:
+					stepcount++;
+					break;
+				case SCRIPT_OPCODE_STEP_END:
+					stepcount--;
+					if(stepcount == 0){
+						end = 1;
+					}
+					break;
+				}
+				s++;
+				if(end == 1){
+					break;
+				}
+			}
+			status = DUMP;
 		}
+		//opcode 別に script の制御. while を抜けるので switch を使えない
 		if(s->opcode == SCRIPT_OPCODE_STEP_END){
 			if(variable_num == 0){
 				printf("%d:%s loop closed, missing STEP_START\n", s->line, LOGICAL_ERROR_PREFIX);
 				return error + 1;
 			}
 			s = step_end(&s[1]);
-			setting = DUMP;
+			status = DUMP;
+		}else if(s->opcode == SCRIPT_OPCODE_DUMP_END){
+			break;
 		}else{
 			s++;
 		}
@@ -1230,10 +1260,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	ppu_rom = r->ppu_rom;
 	cpu_ram = r->cpu_ram;
 	
+	int status = DUMP;
 	int programcount_cpu = 0, programcount_ppu = 0;
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
-		int end = 1;
 		//printf("%s\n", SCRIPT_SYNTAX[s->opcode].name);
 		switch(s->opcode){
 		case SCRIPT_OPCODE_CPU_COMMAND:
@@ -1261,7 +1291,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(c->mode == MODE_RAM_WRITE){
 				if(sramtest(MEMORY_AREA_CPU_RAM, d, address, length) != 0){
 					printf("SRAM test NG\n");
-					end = 0;
+					status = END;
 					break;
 				}
 			}
@@ -1298,7 +1328,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			cpu_rom.offset += length;
 			
 			if((DEBUG==0) && (result != 0)){
-				end = 0;
+				status = END;
 			}
 			}
 			break;
@@ -1309,7 +1339,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(ppu_ramfind(d) == PPU_TEST_RAM){
 				printf("PPU_RAMFIND: charcter RAM found\n");
 				r->ppu_rom.size = 0;
-				end = 0;
+				status = END;
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_SRAMTEST:{
@@ -1320,7 +1350,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				printf("%s\n", STR_OK);
 			}else{
 				printf("%s\n", STR_NG);
-				//end = 0;
+				//status = END;
 			}
 			}break;
 		case SCRIPT_OPCODE_PPU_READ:{
@@ -1372,7 +1402,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			ppu_rom.offset += length;
 			
 			if((DEBUG==0) && (result != 0)){
-				end = 0;
+				status = END;
 			}
 			}
 			break;
@@ -1387,16 +1417,43 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				}
 			}
 			
-			//ループの戻り先はこの命令の次なので &s[1]
-			step_new(s->variable, val[STEP_START], val[STEP_END], s->value[STEP_NEXT], &s[1]);
+			if(val[STEP_START] >= val[STEP_END]){
+				status = STEP_THOUGH;
+			}else{
+				//ループの戻り先はこの命令の次なので &s[1]
+				step_new(s->variable, val[STEP_START], val[STEP_END], s->value[STEP_NEXT], &s[1]);
+			}
 			}break;
 		case SCRIPT_OPCODE_DUMP_END:
-			end = 0;
+			status = END;
 			break;
 		}
-		if(end == 0){
+		if(status == END){
 			break;
+		}else if(status == STEP_THOUGH){
+			//こぴぺ
+			int stepcount = 1;
+			int end = 0;
+			while(s->opcode != SCRIPT_OPCODE_DUMP_END){
+				switch(s->opcode){
+				case SCRIPT_OPCODE_STEP_START:
+					stepcount++;
+					break;
+				case SCRIPT_OPCODE_STEP_END:
+					stepcount--;
+					if(stepcount == 0){
+						end = 1;
+					}
+					break;
+				}
+				s++;
+				if(end == 1){
+					break;
+				}
+			}
+			status = DUMP;
 		}
+		
 		if(s->opcode == SCRIPT_OPCODE_STEP_END){
 			s = step_end(++s);
 		}else{
