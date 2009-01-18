@@ -374,10 +374,14 @@ static int syntax_check(char **text, int text_num, struct script *s, int mode)
 		char *word[TEXT_MAXWORD];
 		const int n = word_load(text[i], word);
 		s->line = i + 1;
-		if(word[0][0] == '#'){
+		switch(word[0][0]){
+		case '#':
+		case '\0':
 			s->opcode = SCRIPT_OPCODE_COMMENT;
-		}else{
+			break;
+		default:
 			error += syntax_check_phase(word, n, s, mode);
+			break;
 		}
 		s++;
 	}
