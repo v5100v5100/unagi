@@ -196,6 +196,37 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	case 'f':
 		c->mode = MODE_ROM_PROGRAM;
 		c->romimage = argv[ARGC_PROGRAM_IN_NESFILE];
+		//容量が少ない ROM の詰め方のカスタマイズ
+		switch(argv[ARGC_MODE][1]){
+		case '\0':
+			c->transtype_cpu = VALUE_TRANSTYPE_TOP;
+			c->transtype_ppu = VALUE_TRANSTYPE_TOP;
+			break;
+		case 't':
+			c->transtype_cpu = VALUE_TRANSTYPE_TOP;
+			break;
+		case 'b':
+			c->transtype_cpu = VALUE_TRANSTYPE_BOTTOM;
+			break;
+		default:
+			printf("%s unkown flash trans mode cpu %c\n", PREFIX_CONFIG_ERROR, argv[ARGC_MODE][1]);
+			return NG;
+		}
+		if(argv[ARGC_MODE][1] == '\0'){
+			break;
+		}
+		switch(argv[ARGC_MODE][2]){
+		case '\0':
+		case 't':
+			c->transtype_ppu = VALUE_TRANSTYPE_TOP;
+			break;
+		case 'b':
+			c->transtype_ppu = VALUE_TRANSTYPE_BOTTOM;
+			break;
+		default:
+			printf("%s unkown flash trans mode ppu %c\n", PREFIX_CONFIG_ERROR, argv[ARGC_MODE][2]);
+			return NG;
+		}
 		break;
 	case 't':
 		if(DEBUG == 1){

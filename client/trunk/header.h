@@ -4,6 +4,7 @@
 struct memory{
 	const char *name;
 	int size, offset, attribute;
+	long transtype;
 	u8 *data;
 };
 /*
@@ -41,7 +42,12 @@ enum{
 	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU,
 	MEMORY_ATTR_READ, MEMORY_ATTR_WRITE, MEMORY_ATTR_NOTUSE
 };
-
+enum{
+	TRANSTYPE_EMPTY,
+	TRANSTYPE_TOP,
+	TRANSTYPE_BOTTOM,
+	TRANSTYPE_FULL,
+};
 #ifdef HEADEROUT
 void nesheader_set(const struct romimage *r, u8 *header);
 #endif

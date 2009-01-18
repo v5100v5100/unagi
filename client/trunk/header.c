@@ -167,26 +167,6 @@ void backupram_create(const struct memory *r, const char *ramfilename)
 	buf_save(r->data, ramfilename, r->size);
 }
 
-static int nesfile_size_check(const char *errorprefix, const struct memory *m, long size)
-{
-	if(size < m->size){
-		while(size == m->size){
-			if(size < 0){
-				printf("%s NES header %s romsize alignment error\n", errorprefix, m->name);
-				return NG;
-			}
-			size -= m->size;
-		}
-		return NG;
-	}
-	//
-	else if(size > m->size){
-		printf("%s NES header cpuromsize too large\n", errorprefix);
-		return NG;
-	}
-	return OK;
-}
-
 /*
 memory size は 2乗されていく値が正常値.
 ただし、region の最小値より小さい場合は test 用として正常にする
@@ -279,20 +259,10 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		cpusize = ((long) buf[4]) * PROGRAM_ROM_MIN;
 		offset += cpusize;
 		r->cpu_rom.size = cpusize;
-		/*if(nesfile_size_check(errorprefix, &r->cpu_rom, cpusize) == NG){
-			free(buf);
-			return NG;
-		}*/
 		//PPU
 		ppusize = ((long) buf[5]) * CHARCTER_ROM_MIN;
 		offset += ppusize;
 		r->ppu_rom.size = ppusize;
-		if(0 && ppusize != 0){
-			if(nesfile_size_check(errorprefix, &r->ppu_rom, ppusize) == NG){
-				free(buf);
-				return NG;
-			}
-		}
 		//NESfilesize
 		if(offset != imagesize){
 			printf("%s NES header filesize error\n", errorprefix);

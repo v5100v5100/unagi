@@ -71,27 +71,6 @@ static const struct variable_manage VARIABLE_INIT = {
 };
 static struct variable_manage variable_bank[VARIABLE_MAX];
 static int variable_num = 0;
-/*
-CPU_ROMSIZE, PPU_ROMSIZE 側で定義される定数名はそれぞれ C, P
-*/
-enum{
-	STEP_CONST_CPUAREA = 'C',
-	STEP_CONST_PPUAREA = 'P',
-	STEP_CONST_UNDEF = 0x4649
-};
-static long step_const_cpuarea = STEP_CONST_UNDEF;
-static long step_const_ppuarea = STEP_CONST_UNDEF;
-
-static long constant_get(char v)
-{
-	switch(v){
-	case STEP_CONST_CPUAREA:
-		return step_const_cpuarea;
-	case STEP_CONST_PPUAREA:
-		return step_const_ppuarea;
-	}
-	return STEP_CONST_UNDEF;
-}
 
 static void variable_init_single(int num)
 {
@@ -248,6 +227,20 @@ static int syntax_check_expression(char **word, int word_num, struct st_expressi
 	return OK;
 }
 
+static int strto_enum(const char **t, const char *word, int start, long *val)
+{
+	long i = start;
+	while(*t != NULL){
+		if(strcmp(*t, word) == 0){
+			*val = i;
+			return OK;
+		}
+		i++;
+		t++;
+	}
+	return NG;
+}
+
 static const char SYNTAX_ERROR_PREFIX[] = "syntax error:";
 
 /*
@@ -338,14 +331,18 @@ static int syntax_check_phase(char **word, int word_num, struct script *s, const
 					}
 					}break;
 				case SYNTAX_ARGVTYPE_CONSTANT:{
-					const char v = word[j][0];
 					if(value_get(word[j], &(s->value[j])) == OK){
 						break;
-					}else if(v == STEP_CONST_CPUAREA || v == STEP_CONST_PPUAREA){
-						s->value[j] = VALUE_CONSTANT;
-						s->constant = v;
+					}else if(strto_enum(STR_CONSTANTNAME, word[j], VALUE_CONTANT_CPU_STEP_START, &(s->value[j])) == OK){
+						break;
 					}else{
 						printf("%d:%s constant error %s %s\n", s->line, SYNTAX_ERROR_PREFIX, opword, word[j]);
+						return 1;
+					}
+					}break;
+				case SYNTAX_ARGVTYPE_TRANSTYPE:{
+					if(strto_enum(STR_TRANSTYPE, word[j], VALUE_TRANSTYPE_EMPTY, &(s->value[j])) == NG){
+						printf("%d:%s unknown trans type %s\n", s->line, SYNTAX_ERROR_PREFIX, word[j]);
 						return 1;
 					}
 					}break;
@@ -393,21 +390,22 @@ logical_check() 用サブ関数とデータ
 static const char LOGICAL_ERROR_PREFIX[] = "logical error:";
 enum{
 	SCRIPT_PPUSIZE_0 = 0,
-	SCRIPT_MEMORYSIZE = 4,
+	SCRIPT_MEMORYSIZE = 10,
 };
 struct logical_romsize{
-	const struct script *data[SCRIPT_MEMORYSIZE];
+	const struct script *data[SCRIPT_MEMORYSIZE], *constant;
 	int count;
 };
-static int logical_romsize_set(int region, long size, struct logical_romsize *l, const struct script *s)
+static int logical_flashsize_set(int region, struct logical_romsize *l, const struct script *s)
 {
 	//PPU 用データの 0 は size 0, 定数 0 として予約されており、0の場合はここを上書きする
-	if((region == MEMORY_AREA_PPU) && (size == 0)){
+	if((region == MEMORY_AREA_PPU) && (s->value[0] == 0)){
 		l->data[SCRIPT_PPUSIZE_0] = s;
 		return OK;
 	}
 	if(l->count >= SCRIPT_MEMORYSIZE){
 		const char *opstr;
+		opstr = OPSTR_CPU_ROMSIZE; //warning 対策
 		switch(region){
 		case MEMORY_AREA_CPU_ROM:
 			opstr = OPSTR_CPU_ROMSIZE;
@@ -426,18 +424,41 @@ static int logical_romsize_set(int region, long size, struct logical_romsize *l,
 	return OK;
 }
 
-static long logical_romsize_get(long size, const struct logical_romsize *l)
+static int logical_flashsize_get(long transtype, long size, struct logical_romsize *l)
 {
 	int i;
 	for(i = 0; i < l->count; i++){
 		const struct script *s;
 		s = l->data[i];
-		if(s->value[0] == size){
-			return s->value[1];
+		if((s->value[0] == size) && (
+			(s->value[1] == transtype) || 
+			(s->value[1] == VALUE_TRANSTYPE_FULL)
+		)){
+			l->constant = s;
+			return OK;
+		}else if((s->value[0] == size) && (s->value[1] == VALUE_TRANSTYPE_EMPTY)){
+			l->constant = s;
+			return OK;
 		}
 	}
-	printf("%s romsize error\n", LOGICAL_ERROR_PREFIX);
-	return STEP_CONST_UNDEF;
+	printf("%s flashsize not found\n", LOGICAL_ERROR_PREFIX);
+	return NG;
+}
+
+static long constant_get(long val, const struct script *cpu, const struct script *ppu)
+{
+	switch(val){
+	case VALUE_CONTANT_CPU_STEP_START:
+		return cpu->value[2];
+	case VALUE_CONTANT_CPU_STEP_END:
+		return cpu->value[3];
+	case VALUE_CONTANT_PPU_STEP_START:
+		return ppu->value[2];
+	case VALUE_CONTANT_PPU_STEP_END:
+		return ppu->value[3];
+	}
+	assert(0);
+	return -1;
 }
 
 static void logical_print_capacityerror(int line, const char *area)
@@ -582,9 +603,8 @@ enum{
 static const struct script SCRIPT_PPU_ROMSIZE_0 = {
 	.opcode = SCRIPT_OPCODE_PPU_ROMSIZE,
 	.line = -1,
-	.value = {0, 0, 0, 0},
+	.value = {0, VALUE_TRANSTYPE_EMPTY, 0, 0},
 	//.expression, .variable 未定義
-	.constant = 0
 };
 
 static int logical_check(const struct script *s, const struct st_config *c, struct romimage *r)
@@ -596,14 +616,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 	int imagesize = 0; //for write or program mode
 	int status = SETTING;
 	//override (CPU|PPU)_ROMSIZE pointer. Program mode only
-	struct logical_romsize script_cpu_romsize = {
-		.data = {NULL, NULL, NULL, NULL},
+	struct logical_romsize script_cpu_flashsize = {
+		.constant = NULL,
 		.count = 0
 	};
-	struct logical_romsize script_ppu_romsize = {
-		.data = {&SCRIPT_PPU_ROMSIZE_0, NULL, NULL, NULL},
+	struct logical_romsize script_ppu_flashsize = {
+		.constant = NULL,
 		.count = 1
 	};
+	script_ppu_flashsize.data[0] = &SCRIPT_PPU_ROMSIZE_0;
 	//logical error count. 戻り値
 	int error = 0;
 	
@@ -639,14 +660,21 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
 					error += 1;
 				}
-				step_const_cpuarea = logical_romsize_get(r->cpu_rom.size, &script_cpu_romsize);
 				//定数宣言エラーは無限ループの可能性があるのでスクリプト内部チェックをせずに止める
-				if(step_const_cpuarea == STEP_CONST_UNDEF){
+				if(logical_flashsize_get(c->transtype_cpu, r->cpu_rom.size, &script_cpu_flashsize) == NG){
 					return error + 1;
 				}
-				step_const_ppuarea = logical_romsize_get(r->ppu_rom.size, &script_ppu_romsize);
-				if(step_const_ppuarea == STEP_CONST_UNDEF){
+				if(logical_flashsize_get(c->transtype_ppu, r->ppu_rom.size, &script_ppu_flashsize) == NG){
 					return error + 1;
+				}
+				//flash memory capacity check
+				if(r->cpu_rom.size > c->cpu_flash_driver->capacity){
+					logical_print_capacityerror(s->line, r->cpu_rom.name);
+					error += 1;
+				}
+				if((r->ppu_rom.size != 0) && (r->ppu_rom.size > c->ppu_flash_driver->capacity)){
+					logical_print_capacityerror(s->line, r->ppu_rom.name);
+					error += 1;
 				}
 				imagesize = -1;
 				break;
@@ -667,22 +695,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			break;
 		case SCRIPT_OPCODE_CPU_ROMSIZE:{
 			const long size = s->value[0];
-			if(c->mode == MODE_ROM_PROGRAM){
-				if(logical_romsize_set(MEMORY_AREA_CPU_ROM, size, &script_cpu_romsize, s) == NG){
-					error += 1;
-				}
-			}else{
-				r->cpu_rom.size = size;
-			}
+			r->cpu_rom.size = size;
 			if(memorysize_check(size, MEMORY_AREA_CPU_ROM)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_CPU_ROMSIZE);
 				error += 1;
 			}
-			//flash memory capacity check
-			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->cpu_flash_driver->capacity)){
-				logical_print_capacityerror(s->line, r->cpu_rom.name);
+			}break;
+		case SCRIPT_OPCODE_CPU_FLASHSIZE:
+			if(logical_flashsize_set(MEMORY_AREA_CPU_ROM, &script_cpu_flashsize, s) == NG){
 				error += 1;
-			}
 			}break;
 		case SCRIPT_OPCODE_CPU_RAMSIZE:
 			//memory size は未確定要素が多いので check を抜く
@@ -695,21 +716,15 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			break;
 		case SCRIPT_OPCODE_PPU_ROMSIZE:{
 			const long size = s->value[0];
-			if(c->mode == MODE_ROM_PROGRAM){
-				if(logical_romsize_set(MEMORY_AREA_PPU, size, &script_ppu_romsize, s) == NG){
-					error += 1;
-				}
-			}else{
-				r->ppu_rom.size = size;
-			}
+			r->ppu_rom.size = size;
 			if(memorysize_check(size, MEMORY_AREA_PPU)){
 				printf("%s %s length error\n", LOGICAL_ERROR_PREFIX, OPSTR_PPU_ROMSIZE);
 				error += 1;
 			}
-			else if((c->mode == MODE_ROM_PROGRAM) && (size > c->ppu_flash_driver->capacity)){
-				logical_print_capacityerror(s->line, r->ppu_rom.name);
+			}break;
+		case SCRIPT_OPCODE_PPU_FLASHSIZE:
+			if(logical_flashsize_set(MEMORY_AREA_PPU, &script_ppu_flashsize, s) == NG){
 				error += 1;
-			}
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_COMMAND:
@@ -897,37 +912,37 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:{
-			const struct {
+			const struct step_syntax{
 				long start, end;
 				int constant;
+				const char *name;
 			} RANGE[STEP_NUM] = {
-				{.start = 0, .end = 0, .constant = NG},
-				{.start = 0, .end = 0xff, .constant = OK},
-				{.start = 0, .end = 0x100, .constant = OK},
-				{.start = 1, .end = 0x100, .constant = NG}
+				{.start = 0, .end = 0, .constant = NG, .name = "variable"},
+				{.start = 0, .end = 0xff, .constant = OK, .name = "start"},
+				{.start = 0, .end = 0x100, .constant = OK, .name = "end"},
+				{.start = 1, .end = 0x100, .constant = NG, .name = "next"}
 			};
-			const char *NAME[STEP_NUM] = {
-				"variable", "start", "end", "next"
-			};
-			long val[STEP_NUM];
 			int i;
 			for(i = STEP_START; i < STEP_NUM; i++){
-				long v = s->value[i];
-				if((RANGE[i].constant == OK) && (v == VALUE_CONSTANT)){
-					v = constant_get(s->constant);
+				const struct step_syntax *ss;
+				ss = &RANGE[i];
+				//定数object を実数に変換するため、const を外して書き換える
+				long *v;
+				v = (long *) &s->value[i];
+				if((ss->constant == OK) && (is_range(*v, VALUE_CONTANT_CPU_STEP_START, VALUE_CONTANT_PPU_STEP_END))){
+					*v = constant_get(*v, script_cpu_flashsize.constant, script_ppu_flashsize.constant);
 				}
-				if(!is_range(v, RANGE[i].start, RANGE[i].end)){
-					printf("%d:%s step %s must %d-0x%x 0x%x\n", s->line, NAME[i], LOGICAL_ERROR_PREFIX, (int) RANGE[i].start, (int) RANGE[i].end, (int) v);
+				if(!is_range(*v, ss->start, ss->end)){
+					printf("%d:%s step %s must %d-0x%x 0x%x\n", s->line, ss->name, LOGICAL_ERROR_PREFIX, (int) ss->start, (int) ss->end, (int) *v);
 					error += 1;
 				}
-				val[i] = v;
 			}
 			//PPU RAM の様に step 内部を行わない場合のscript状態の変更
-			if(val[STEP_START] >= val[STEP_END]){
+			if(s->value[STEP_START] >= s->value[STEP_END]){
 				status = STEP_THOUGH;
 			}
 			//ループの戻り先はこの命令の次なので s[1]
-			else if(step_new(s->variable, val[STEP_START], val[STEP_END], val[STEP_NEXT], &s[1]) == NG){
+			else if(step_new(s->variable, s->value[STEP_START], s->value[STEP_END], s->value[STEP_NEXT], &s[1]) == NG){
 				printf("%d:%s step loop too much\n", s->line, LOGICAL_ERROR_PREFIX);
 				error += 1;
 				return error;
@@ -1175,12 +1190,10 @@ static void read_result_print(const struct memory *m, long length)
 	fflush(stdout);
 }
 
-static void execute_program_begin(const struct memory *m)
+static void execute_program_begin(const struct memory *m, const long length)
 {
-	if(0){ //DEBUG==1){
-		return;
-	}
-	printf("writing %s area 0x%06x ... ", m->name, m->offset);
+	int tail = m->offset + (int) length - 1;
+	printf("writing %s area 0x%06x-0x%06x ... ", m->name, m->offset, tail);
 	fflush(stdout);
 }
 
@@ -1315,7 +1328,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			const long address = s->value[0];
 			const long length = s->value[1];
-			execute_program_begin(&cpu_rom);
+			execute_program_begin(&cpu_rom, length);
 			c->cpu_flash_driver->write(
 				&(r->cpu_flash),
 				address, length,
@@ -1389,7 +1402,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			const long address = s->value[0];
 			const long length = s->value[1];
-			execute_program_begin(&ppu_rom);
+			execute_program_begin(&ppu_rom, length);
 			c->ppu_flash_driver->write(
 				&(r->ppu_flash),
 				address, length,
@@ -1407,21 +1420,11 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			break;
 		case SCRIPT_OPCODE_STEP_START:{
-			long val[STEP_NUM];
-			int i;
-			//start と end の定数展開を行う
-			for(i=STEP_START; i<STEP_NEXT; i++){
-				val[i] = s->value[i];
-				if(val[i] == VALUE_CONSTANT){
-					val[i] = constant_get(s->constant);
-				}
-			}
-			
-			if(val[STEP_START] >= val[STEP_END]){
+			if(s->value[STEP_START] >= s->value[STEP_END]){
 				status = STEP_THOUGH;
 			}else{
 				//ループの戻り先はこの命令の次なので &s[1]
-				step_new(s->variable, val[STEP_START], val[STEP_END], s->value[STEP_NEXT], &s[1]);
+				step_new(s->variable, s->value[STEP_START], s->value[STEP_END], s->value[STEP_NEXT], &s[1]);
 			}
 			}break;
 		case SCRIPT_OPCODE_DUMP_END:

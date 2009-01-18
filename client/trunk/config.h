@@ -18,6 +18,7 @@ struct st_config{
 	const struct flash_driver *cpu_flash_driver, *ppu_flash_driver;
 	//data mode
 	int mode, syntaxtest;
+	long transtype_cpu, transtype_ppu;
 	//debug member
 	long write_wait;
 	char flash_test_device[CONFIG_STR_LENGTH];
