@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "type.h"
 #include "textutil.h"
 #include "script.h"
-#include "syntax.h"
+#include "script_syntax.h"
 
 static int syntax_check_expression(char **word, int word_num, struct st_expression *e)
 {

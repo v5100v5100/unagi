@@ -31,7 +31,7 @@ todo:
 #include "textutil.h"
 #include "config.h"
 #include "header.h"
-#include "syntax.h"
+#include "script_syntax.h"
 #include "script.h"
 
 /*
