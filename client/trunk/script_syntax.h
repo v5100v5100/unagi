@@ -2,29 +2,6 @@
 #define _SYNTAX_H_
 #include "config.h"
 #include "header.h"
-struct script_syntax{
-	const char *name;
-	int script_opcode;
-	int permittion;
-	int argc, compare;
-	const int *argv_type;
-};
-enum{
-	SYNTAX_ARGVTYPE_NULL,
-	SYNTAX_ARGVTYPE_VALUE,
-	SYNTAX_ARGVTYPE_HV,
-	SYNTAX_ARGVTYPE_EXPRESSION,
-	SYNTAX_ARGVTYPE_VARIABLE,
-	SYNTAX_ARGVTYPE_CONSTANT,
-	SYNTAX_ARGVTYPE_TRANSTYPE
-};
-enum{
-	SYNTAX_COMPARE_EQ,
-	SYNTAX_COMPARE_GT
-};
-enum{
-	SYNTAX_ARGV_TYPE_NUM = 4
-};
 enum{
 	SCRIPT_OPCODE_MAPPER,
 	SCRIPT_OPCODE_MIRROR,
@@ -50,13 +27,6 @@ enum{
 	SCRIPT_OPCODE_DUMP_END,
 	SCRIPT_OPCODE_COMMENT,
 	SCRIPT_OPCODE_NUM
-};
-enum{
-	PERMITTION_ROM_DUMP = 1 << MODE_ROM_DUMP,
-	PERMITTION_RAM_READ = 1 << MODE_RAM_READ,
-	PERMITTION_RAM_WRITE = 1 << MODE_RAM_WRITE,
-	PERMITTION_ROM_PROGRAM = 1 << MODE_ROM_PROGRAM,
-	PERMITTION_ALL = 0xffff
 };
 extern const char OPSTR_CPU_ROMSIZE[];
 extern const char OPSTR_CPU_RAMSIZE[];
