@@ -158,9 +158,9 @@ int value_get(const char *str, long *val)
 		//4M\0
 		if((error[1] == '\0') && (base == 10)){
 			switch(error[0]){
-			/*case 'K': いくつだっけ?
+			case 'K':
 				*val *= 0x400;
-				break;*/
+				break;
 			case 'M':
 				*val *= 0x20000;
 				break;
