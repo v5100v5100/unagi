@@ -57,7 +57,8 @@ static int flag_get(const char *flag, struct st_config *c)
 	}
 	return OK;
 }
-
+//patch... for reader_hongkongfc.c
+extern int hongkong_flash_patch;
 static const char PREFIX_CONFIG_ERROR[] = "config error:";
 static int config_file_load(struct st_config *c)
 {
@@ -87,6 +88,11 @@ static int config_file_load(struct st_config *c)
 		}
 		if(strcmp("DRIVER", word[0]) == 0){
 			c->reader = reader_driver_get(word[1]);
+		}else if(strcmp("HONGKONG_FLASH", word[0]) == 0){
+			hongkong_flash_patch = 0;
+			if(strcmp("0.5.3", word[1]) == 0){
+				hongkong_flash_patch = 1;
+			}
 		}else if((DEBUG == 1) && (strcmp("WRITE_WAIT", word[0]) == 0)){
 			if(value_get(word[1], &(c->write_wait)) == NG){
 				printf("%s write_wait parameter is illigal", PREFIX_CONFIG_ERROR);
@@ -120,7 +126,7 @@ static int config_file_load(struct st_config *c)
 	return OK;
 }
 
-static const struct flash_driver DRIVER_UNDEF = {
+static const struct flash_driver FLASH_UNDEF = {
 	.name = "undefined",
 	.capacity = 0,
 	.pagesize = 1,
@@ -176,8 +182,8 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
 	c->syntaxtest = 0;
-	c->cpu_flash_driver = &DRIVER_UNDEF;
-	c->ppu_flash_driver = &DRIVER_UNDEF;
+	c->cpu_flash_driver = &FLASH_UNDEF;
+	c->ppu_flash_driver = &FLASH_UNDEF;
 	c->write_wait = 0;
 	//mode 別 target file 初期化
 	switch(argv[ARGC_MODE][0]){

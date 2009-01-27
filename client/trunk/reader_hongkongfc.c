@@ -152,10 +152,11 @@ static void hk_cpu_read(long address, long length, u8 *data)
 	}
 }
 
-#define PPU_BUS_DEBUG (1)
+//patch. charcter の書き込みの安定が改善されたら削除する
+int hongkong_flash_patch = 0;
 static void hk_ppu_read(long address, long length, u8 *data)
 {
-	if(PPU_BUS_DEBUG){
+	if(hongkong_flash_patch == 0){
 		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 	}else{
 		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_PPU_READ);
@@ -164,7 +165,7 @@ static void hk_ppu_read(long address, long length, u8 *data)
 	address &= ADDRESS_MASK_A0toA12; //PPU charcter data area mask
 	address |= ADDRESS_MASK_A15; //CPU area disk
 	while(length != 0){
-		if(PPU_BUS_DEBUG){
+		if(hongkong_flash_patch == 0){
 			*data = data_port_get(address, BUS_CONTROL_PPU_READ);
 		}else{
 			*data = data_port_get(address, 0); 
@@ -172,7 +173,7 @@ static void hk_ppu_read(long address, long length, u8 *data)
 		address++;
 		data++;
 		length--;
-		if(PPU_BUS_DEBUG){
+		if(hongkong_flash_patch == 0){
 			data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 		}
 	}

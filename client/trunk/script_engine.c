@@ -739,6 +739,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				long *v;
 				v = (long *) &s->value[i];
 				if((ss->constant == OK) && (is_range(*v, VALUE_CONTANT_CPU_STEP_START, VALUE_CONTANT_PPU_STEP_END))){
+					//VALUE_CONSTANT_xxx を実際に使われる定数にして、スクリプトデータを張り替える
 					*v = constant_get(*v, script_cpu_flashsize.constant, script_ppu_flashsize.constant);
 				}
 				if(!is_range(*v, ss->start, ss->end)){
@@ -746,7 +747,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 					error += 1;
 				}
 			}
-			//PPU RAM の様に step 内部を行わない場合のscript状態の変更
+			//charcter RAM の様に step 内部を行わない場合のscript状態の変更
 			if(s->value[STEP_START] >= s->value[STEP_END]){
 				status = STEP_THOUGH;
 			}
