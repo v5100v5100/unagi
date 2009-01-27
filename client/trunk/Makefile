@@ -40,6 +40,6 @@ gz:
 	cd ..; \
 	tar cfz $(ARCHIVE_GZ) $(patsubst %,client/%,$(ARCHIVE_FILE))
 zip:
-	7za a $(ARCHIVE_ZIP) unagi.exe unagi.txt iodel.exe iodel.txt COPYING
+	7za a $(ARCHIVE_ZIP) unagi.exe unagi.txt iodel.exe iodel.txt COPYING ../script/syntax.txt
 	cd release; 7za a ../$(ARCHIVE_ZIP) unagi.cfg
 	mv $(ARCHIVE_ZIP) ..
