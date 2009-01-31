@@ -1,5 +1,5 @@
 famicom ROM cartridge utility - unagi
-client version 0.5.3
+client version 0.5.4
 by 鰻開発協同組合
 公式サイト http://unagi.sourceforge.jp/
 掲示板     http://unagi.sourceforge.jp/t/bbs.html
@@ -31,6 +31,11 @@ cmd.exe, rxvt などのコマンドラインシェル
 --ハードウェアの選択--
 クライアントについている unagi.cfg をテキストエディタで編集して使用す
 るハードを選んでください。行頭に # がついているものは無視されます。
+
+== hongkong fc での問題 == 
+キャラクタROM/RAM 判定の PPU_RAMFIND が正しく動作しない場合やキャラク
+タROM領域の書き込みが安定しない場合はコメントを外して試してみてくださ
+い。根本的な対処方法は不明です。
 
 --コマンドライン引数--
 unagi.exe [mode] [script file] [target file] ...

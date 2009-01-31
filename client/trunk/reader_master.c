@@ -4,10 +4,11 @@
 #include "reader_master.h"
 #include "reader_onajimi.h"
 #include "reader_hongkongfc.h"
+#include "reader_dozeu.h"
 
 //これを rodata にしたいけど const の付け方が分からん
 static const struct reader_driver *DRIVER_LIST[] = {
-	&DRIVER_ONAJIMI, &DRIVER_HONGKONGFC,
+	&DRIVER_ONAJIMI, &DRIVER_HONGKONGFC, &DRIVER_DOZEU,
 	NULL
 };
 

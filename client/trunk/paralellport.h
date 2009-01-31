@@ -12,14 +12,6 @@ enum{
 	PORT_BUSY,
 	PORT_CONTROL
 };
-enum{
-	ADDRESS_MASK_A0toA12 = 0x1fff,
-	ADDRESS_MASK_A0toA14 = 0x7fff,
-	ADDRESS_MASK_A15 = 0x8000
-};
-enum{ 
-	M2_CONTROL_TRUE, M2_CONTROL_FALSE
-};
 
 int _inp(int);
 #if ASM_ENABLE==0
@@ -34,29 +26,5 @@ static inline void _outp(int address, int data){
 	);
 }
 #endif
-
-/*
-static inline は共有マクロ扱い
-*/
-static inline int bit_set(int data, const int bit)
-{
-	data |= 1 << bit;
-	return data;
-}
-
-static inline int bit_clear(int data, const int bit)
-{
-	data &= ~(1 << bit);
-	return data;
-}
-
-static inline void wait(long msec)
-{
-	if(msec == 0){
-		return;
-	}
-	//const long waittime = 100000;
-	Sleep(msec);
-}
 
 #endif

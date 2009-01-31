@@ -4,8 +4,8 @@ ARCHIVE_FILE = \
 	*.c *.h *.mak Makefile COPYING \
 	debug/debug.mak profile/profile.mak release/release.mak \
 	unagi.rc unagi.ico
-ARCHIVE_GZ = unagi_client.0.5.3.tar.gz
-ARCHIVE_ZIP = unagi053.zip
+ARCHIVE_GZ = unagi_client.0.5.4.tar.gz
+ARCHIVE_ZIP = unagi054.zip
 TARGET_DIR = debug
 TARGET_MAK = debug.mak
 ifeq ($(PROFILE),1)
