@@ -102,27 +102,31 @@ static int variable_get(char name, long *val)
 	return NG;
 }
 
+static int expression_value_get(const struct st_variable *v, long *data)
+{
+	if(v->type == EXPRESSION_TYPE_VARIABLE){
+		if(variable_get(v->variable, data) == NG){
+			return NG;
+		}
+	}else{
+		*data = v->value;
+	}
+	return OK;
+}
+
 //ÊÑ¿ôÅ¸³«
 static int expression_calc(const struct st_expression *e, long *val)
 {
 	long left, right;
-	if(e->left.type == EXPRESSION_TYPE_VARIABLE){
-		if(variable_get(e->left.variable, &left) == NG){
-			return NG;
-		}
-	}else{
-		left = e->left.value;
+	if(expression_value_get(&e->left, &left) == NG){
+		return NG;
 	}
 	if(e->operator == OPERATOR_NONE){
 		*val = left;
 		return OK;
 	}
-	if(e->right.type == EXPRESSION_TYPE_VARIABLE){
-		if(variable_get(e->right.variable, &right) == NG){
-			return NG;
-		}
-	}else{
-		right = e->right.value;
+	if(expression_value_get(&e->right, &right) == NG){
+		return NG;
 	}
 	switch(e->operator){
 	case OPERATOR_PLUS:
