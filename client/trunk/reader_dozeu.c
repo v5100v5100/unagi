@@ -19,7 +19,7 @@ static int usb_open_or_close(int oc)
 	switch(oc){
 	case READER_OPEN:
 		ret = cusb_init(
-			CUSB_DEVICE_AUTOFIND, &handle_usb,
+			0, &handle_usb,
 			fw_bin, 
 			"F2FW", "V100"
 		);
@@ -62,7 +62,7 @@ static void dz_init(void)
 	cmd[i++] = DIRECTION_PORT_C;
 	cmd[i++] = CMD_OED;
 	cmd[i++] = DIRECTION_PORT_D;
-	usb_bulk_write(handle_usb, CPIPE, cmd, i);
+	usb_bulk_write(&handle_usb, CPIPE, cmd, i);
 	
 	//φ2の上げ下げって CTL 端子だけどどーやるんだ??
 
@@ -73,7 +73,7 @@ static void dz_init(void)
 	memcpy(cmd + i, WAVEFORM_INIT, INIT_SIZE);
 	i += INIT_SIZE;
 	assert(i < 0x40);
-	usb_bulk_write(handle_usb, CPIPE, cmd, i);
+	usb_bulk_write(&handle_usb, CPIPE, cmd, i);
 }
 
 static void address_set(long address)
@@ -86,7 +86,7 @@ static void address_set(long address)
 	cmd[i++] = CMD_OUTE;
 	cmd[i++] = address >> 8;
 	assert(i < 0x40);
-	usb_bulk_write(handle_usb, CPIPE, cmd, i);
+	usb_bulk_write(&handle_usb, CPIPE, cmd, i);
 }
 
 static void waveform_set(int num)
@@ -119,7 +119,7 @@ static void waveform_set(int num)
 			i += WAVE_SIZE;
 		}
 		assert(i < 0x200);
-		usb_bulk_write(handle_usb, CPIPE, cmd, i);
+		usb_bulk_write(&handle_usb, CPIPE, cmd, i);
 	}
 	waveform_bank = num;
 }
@@ -138,8 +138,8 @@ static void bus_read(long address, long length, u8 *data)
 	const u8 CMD = CMD_SREAD;
 	while(length != 0){
 		address_set(address);
-		usb_bulk_write(handle_usb, CPIPE, &CMD, 1);
-		usb_bulk_read(handle_usb, RFIFO, data, 1);
+		usb_bulk_write(&handle_usb, CPIPE, &CMD, 1);
+		usb_bulk_read(&handle_usb, 2, data, 1);
 		address++;
 		data++;
 		length--;
@@ -150,7 +150,7 @@ static void bus_write(long address, long data)
 {
 	address_set(address);
 	const u8 CMD[2] = {CMD_SWRITE, data};
-	usb_bulk_write(handle_usb, CPIPE, CMD, 2);
+	usb_bulk_write(&handle_usb, CPIPE, CMD, 2);
 }
 
 static void dz_cpu_read(long address, long length, u8 *data)

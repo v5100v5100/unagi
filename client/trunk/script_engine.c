@@ -606,10 +606,10 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				error += 1;
 			}
 			//address filter
-			else if(address < 0x6000 || address >= 0x8000){
+			else if(address < 0x5c00 || address >= 0xc000){
 				logical_print_illgalarea(s->line, STR_REGION_CPU, address);
 				error += 1;
-			}else if(end >= 0x8000){
+			}else if(0 && end >= 0x8000){
 				logical_print_overdump(s->line, STR_REGION_CPU, address, end);
 				error += 1;
 			}
