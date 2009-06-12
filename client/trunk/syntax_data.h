@@ -1,12 +1,5 @@
 //included from syntax.c only
-struct script_syntax{
-	const char *name;
-	int script_opcode;
-	int permittion;
-	int argc, compare;
-	const int *argv_type;
-};
-enum{
+enum syntax_argvtype{
 	SYNTAX_ARGVTYPE_NULL,
 	SYNTAX_ARGVTYPE_VALUE,
 	SYNTAX_ARGVTYPE_HV,
@@ -15,21 +8,29 @@ enum{
 	SYNTAX_ARGVTYPE_CONSTANT,
 	SYNTAX_ARGVTYPE_TRANSTYPE
 };
-enum{
+enum syntax_compare{
 	SYNTAX_COMPARE_EQ,
 	SYNTAX_COMPARE_GT
 };
 enum{
 	SYNTAX_ARGV_TYPE_NUM = 4
 };
-enum{
+enum syntax_permittion{
 	PERMITTION_ROM_DUMP = 1 << MODE_ROM_DUMP,
 	PERMITTION_RAM_READ = 1 << MODE_RAM_READ,
 	PERMITTION_RAM_WRITE = 1 << MODE_RAM_WRITE,
 	PERMITTION_ROM_PROGRAM = 1 << MODE_ROM_PROGRAM,
 	PERMITTION_ALL = 0xffff
 };
-//これらの文字列は script.c でも使用する
+struct script_syntax{
+	const char *name;
+	enum script_opcode script_opcode;
+	enum syntax_permittion permittion;
+	int argc;
+	enum syntax_compare compare;
+	const enum syntax_argvtype *argv_type;
+};
+//これらの文字列は script_engine.c でも使用する
 const char OPSTR_CPU_ROMSIZE[] = "CPU_ROMSIZE";
 const char OPSTR_CPU_RAMSIZE[] = "CPU_RAMSIZE";
 const char OPSTR_CPU_FLASHSIZE[] = "CPU_FLASHSIZE";
@@ -37,35 +38,43 @@ const char OPSTR_PPU_ROMSIZE[] = "PPU_ROMSIZE";
 const char OPSTR_PPU_FLASHSIZE[] = "PPU_FLASHSIZE";
 const char OPSTR_CPU_RAMRW[] = "CPU_RAMRW";
 
-static const int ARGV_TYPE_VALUE_ONLY[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_VALUE_ONLY[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL,
 	SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL
 };
-static const int ARGV_TYPE_HV[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_HV[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_HV, SYNTAX_ARGVTYPE_NULL,
 	SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL
 };
-static const int ARGV_TYPE_NULL[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_NULL[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL,
 	SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL
 };
-static const int ARGV_TYPE_ADDRESS_EXPRESSION[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_ADDRESS_EXPRESSION[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_VALUE,
 	SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION, SYNTAX_ARGVTYPE_EXPRESSION
 };
-static const int ARGV_TYPE_ADDRESS_LENGTH[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_ADDRESS_LENGTH[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE,
 	SYNTAX_ARGVTYPE_NULL, SYNTAX_ARGVTYPE_NULL
 };
-static const int ARGV_TYPE_STEP_START[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_STEP_START[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_VARIABLE, SYNTAX_ARGVTYPE_CONSTANT,
 	SYNTAX_ARGVTYPE_CONSTANT, SYNTAX_ARGVTYPE_VALUE
 };
-static const int ARGV_TYPE_ADDRESS_COMMAND[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_ADDRESS_COMMAND[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE,
 	SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_NULL
 };
-static const int ARGV_TYPE_FLASHSIZE[SYNTAX_ARGV_TYPE_NUM] = {
+static const enum syntax_argvtype 
+ARGV_TYPE_FLASHSIZE[SYNTAX_ARGV_TYPE_NUM] = {
 	SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_TRANSTYPE,
 	SYNTAX_ARGVTYPE_VALUE, SYNTAX_ARGVTYPE_VALUE
 };

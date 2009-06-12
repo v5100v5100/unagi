@@ -2,7 +2,7 @@
 #define _SYNTAX_H_
 #include "config.h"
 #include "header.h"
-enum{
+enum script_opcode{
 	SCRIPT_OPCODE_MAPPER,
 	SCRIPT_OPCODE_MIRROR,
 	SCRIPT_OPCODE_CPU_ROMSIZE,
