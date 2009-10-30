@@ -3,21 +3,27 @@
 #include "type.h"
 #include <windows.h>
 //C++ の Class もどきを C で実装している感が増してきた...
-struct reader_driver{
-	int (*open_or_close)(int oc);
-	void (*init)(void);
-	void (*cpu_read)(long address, long length, u8 *data);
-	void (*ppu_read)(long address, long length, u8 *data);
-	void (*cpu_6502_write)(long address, long data, long wait_msec);
-	void (*cpu_flash_write)(long address, long data);
-	void (*ppu_write)(long address, long data);
-	const char *name;
-};
-int paralellport_open_or_close(int oc);
-const struct reader_driver *reader_driver_get(const char *name);
-enum{
+enum reader_control{
 	READER_OPEN, READER_CLOSE
 };
+struct reader_driver{
+	const char *name;
+	int (*open_or_close)(enum reader_control oc);
+	void (*init)(void);
+	void (*cpu_read)(long address, long length, u8 *data);
+	void (*cpu_write_6502)(long address, long data, long wait_msec);
+	void (*ppu_read)(long address, long length, u8 *data);
+	void (*ppu_write)(long address, long data);
+	int flash_support;
+	void (*cpu_flash_config)(long c2aaa, long c5555, long unit);
+	void (*cpu_flash_erase)(long address);
+	void (*cpu_flash_program)(long address, long length, u8 *data);
+	void (*ppu_flash_config)(long c2aaa, long c5555, long unit);
+	void (*ppu_flash_erase)(long address);
+	void (*ppu_flash_program)(long address, long length, u8 *data);
+};
+int paralellport_open_or_close(enum reader_control oc);
+const struct reader_driver *reader_driver_get(const char *name);
 enum{
 	ADDRESS_MASK_A0toA12 = 0x1fff,
 	ADDRESS_MASK_A0toA14 = 0x7fff,
@@ -46,7 +52,6 @@ static inline void wait(long msec)
 	if(msec == 0){
 		return;
 	}
-	//const long waittime = 100000;
 	Sleep(msec);
 }
 #endif

@@ -30,7 +30,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "textutil.h"
 #include "config.h"
 #include "flashmemory.h"
-#include "client_test.h"
 
 static int flag_get(const char *flag, struct st_config *c)
 {
@@ -126,21 +125,6 @@ static int config_file_load(struct st_config *c)
 	return OK;
 }
 
-static const struct flash_driver FLASH_UNDEF = {
-	.name = "undefined",
-	.capacity = 0,
-	.pagesize = 1,
-	.erase_wait = 0,
-	.command_mask = 0,
-	.id_manufacurer = 0,
-	.id_device = 0,
-	.productid_check = NULL,
-#if DEBUG==1
-	.erase = NULL,
-#endif
-	.init = NULL,
-	.write = NULL
-};
 static int flash_pointer_init(const char *device, const struct flash_driver **f)
 {
 	*f = flash_driver_get(device);
@@ -182,8 +166,8 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 	c->backupram = CONFIG_OVERRIDE_UNDEF;
 	c->mapper = CONFIG_OVERRIDE_UNDEF;
 	c->syntaxtest = 0;
-	c->cpu_flash_driver = &FLASH_UNDEF;
-	c->ppu_flash_driver = &FLASH_UNDEF;
+	c->cpu_flash_driver = &FLASH_DRIVER_UNDEF;
+	c->ppu_flash_driver = &FLASH_DRIVER_UNDEF;
 	c->write_wait = 0;
 	//mode 別 target file 初期化
 	switch(argv[ARGC_MODE][0]){
@@ -300,22 +284,6 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 				return NG;
 			}
 			break;
-		}
-		break;
-	
-	case MODE_TEST:
-		if(DEBUG == 0){
-			break;
-		}
-		switch(argc){
-		case 3:
-			client_test(c->reader, argv[ARGC_TEST_OPTION], NULL, c->flash_test_device, c->flash_test_mapper);
-			break;
-		case 4:
-			client_test(c->reader, argv[ARGC_TEST_OPTION], argv[ARGC_TEST_FILE], c->flash_test_device, c->flash_test_mapper);
-			break;
-		default:
-			printf("%s test argc error\n", PREFIX_CONFIG_ERROR);
 		}
 		break;
 	}

@@ -292,7 +292,7 @@ R/W |HHLLH
 
 H:1, L:0, x:ROMareaaccess時0, それ以外1
 */
-static void cpu_6502_write(long address, long data, long wait_msec)
+static void cpu_write_6502(long address, long data, long wait_msec)
 {
 	int control = BUS_CONTROL_BUS_WRITE;
 	//address設定 + 全てのバスを止める
@@ -333,6 +333,7 @@ static void ppu_write(long address, long data)
 	bus_control(BUS_CONTROL_BUS_WRITE);
 }
 
+/*
 static const int BUS_CONTROL_CPU_FLASH_WRITE = (
 	ADDRESS_NOP | DATA_SHIFT_NOP |
 	(DATA_DIRECTION_READ << BITNUM_DATA_DIRECTION) |
@@ -360,15 +361,17 @@ static void cpu_flash_write(long address, long data)
 	//WE up
 	control = bit_set(control, BITNUM_CPU_RW);
 	bus_control(control);
-}
+}*/
 
 const struct reader_driver DRIVER_ONAJIMI = {
 	.name = "onajimi",
 	.open_or_close = paralellport_open_or_close,
 	.init = reader_init,
 	.cpu_read = cpu_read,
+	.cpu_write_6502 = cpu_write_6502,
 	.ppu_read = ppu_read,
-	.cpu_6502_write = cpu_6502_write,
-	.cpu_flash_write = cpu_flash_write,
-	.ppu_write = ppu_write
+	.ppu_write = ppu_write,
+	.flash_support = NG,
+	.cpu_flash_config = NULL, .cpu_flash_erase = NULL, .cpu_flash_program = NULL,
+	.ppu_flash_config = NULL, .ppu_flash_erase = NULL, .ppu_flash_program = NULL
 };

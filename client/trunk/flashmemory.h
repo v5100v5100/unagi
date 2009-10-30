@@ -30,10 +30,11 @@ struct flash_order{
 	long command_0000, command_2aaa, command_5555;
 	long command_mask;
 	long pagesize;
-	long erase_wait;
 	//struct reader_driver の関数ポインタを渡す場所
-	void (*flash_write)(long address, long data);
-	void (*read)(long address, long length, u8 *data);
+	void (*config)(long c2aaa, long c5555, long unit);
+	void (*erase)(long address);
+	void (*write)(long address, long length, u8 *data);
+	void (*program)(long address, long length, u8 *data);
 };
 
 struct memory;
@@ -41,16 +42,13 @@ struct flash_driver{
 	const char *name;
 	long capacity, pagesize;
 	long command_mask;
-	long erase_wait; //単位 msec
+	long erase_wait; //unit is msec
 	u8 id_manufacurer, id_device;
 	int (*productid_check)(const struct flash_order *d, const struct flash_driver *f);
-#if DEBUG==1
-	void (*erase)(const struct flash_order *d);
-#endif
 	void (*init)(const struct flash_order *d);
-	void (*write)(const struct flash_order *d, long address, long length, const struct memory *m);
+	void (*program)(const struct flash_order *d, long address, long length, const struct memory *m);
 };
-
+const struct flash_driver FLASH_DRIVER_UNDEF;
 const struct flash_driver *flash_driver_get(const char *name);
 
 //0x80 以降は本当のデバイス重複しないと思う. 誰か JEDEC のとこをしらべて.

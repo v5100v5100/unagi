@@ -467,7 +467,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				}
 				break;
 			case MODE_ROM_PROGRAM: //MAPPER check
-				assert(c->cpu_flash_driver->write != NULL);
+				assert(c->cpu_flash_driver->program != NULL);
 				assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
 				assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
 				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
@@ -912,7 +912,7 @@ static int ramtest(const int region, const struct reader_driver *d, long address
 	while(i != 0){
 		switch(region){
 		case MEMORY_AREA_CPU_RAM:
-			d->cpu_6502_write(a, filldata, 0);
+			d->cpu_write_6502(a, filldata, 0);
 			break;
 		case MEMORY_AREA_PPU:
 			d->ppu_write(a, filldata);
@@ -1036,7 +1036,7 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 		long l = length;
 		writedata = ram->data;
 		while(l != 0){
-			d->cpu_6502_write(a++, *writedata, wait);
+			d->cpu_write_6502(a++, *writedata, wait);
 			writedata += 1;
 			l--;
 		}
@@ -1089,12 +1089,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	
 	int status = DUMP;
 	int programcount_cpu = 0, programcount_ppu = 0;
+	int flashcommand_change_cpu = 0, flashcommand_change_ppu = 0;
 	variable_init_all();
 	while(s->opcode != SCRIPT_OPCODE_DUMP_END){
 		//printf("%s\n", SCRIPT_SYNTAX[s->opcode].name);
 		switch(s->opcode){
 		case SCRIPT_OPCODE_CPU_COMMAND:
 			command_mask(MEMORY_AREA_CPU_ROM, s->value[0], s->value[1], s->value[2], &(r->cpu_flash));
+			flashcommand_change_cpu = 1;
 			break;
 		case SCRIPT_OPCODE_CPU_READ:{
 			struct memory *m;
@@ -1109,7 +1111,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_CPU_WRITE:{
 			long data;
 			expression_calc(&s->expression, &data);
-			d->cpu_6502_write(s->value[0], data, c->write_wait);
+			d->cpu_write_6502(s->value[0], data, c->write_wait);
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
@@ -1132,6 +1134,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(c->cpu_flash_driver->id_device == FLASH_ID_DEVICE_DUMMY){
 				break;
 			}
+			if(flashcommand_change_cpu != 0){
+				r->cpu_flash.config(
+					r->cpu_flash.command_2aaa,
+					r->cpu_flash.command_5555,
+					r->cpu_flash.pagesize
+				);
+				flashcommand_change_cpu = 0;
+			}
 			if(programcount_cpu++ == 0){
 				printf(EXECUTE_PROGRAM_PREPARE, cpu_rom.name);
 				fflush(stdout);
@@ -1143,14 +1153,20 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			const long address = s->value[0];
 			const long length = s->value[1];
 			execute_program_begin(&cpu_rom, length);
-			c->cpu_flash_driver->write(
+			c->cpu_flash_driver->program(
 				&(r->cpu_flash),
 				address, length,
 				&cpu_rom
 			);
-			d->cpu_read(address, length, program_compare);
-			const int result = memcmp(program_compare, cpu_rom.data, length);
-			execute_program_finish(result);
+			int result;
+			if(1){
+				d->cpu_read(address, length, program_compare);
+				result = memcmp(program_compare, cpu_rom.data, length);
+				execute_program_finish(result);
+			}else{
+				puts("skip");
+				result = 1;
+			}
 			cpu_rom.data += length;
 			cpu_rom.offset += length;
 			
@@ -1161,6 +1177,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			break;
 		case SCRIPT_OPCODE_PPU_COMMAND:
 			command_mask(MEMORY_AREA_PPU, s->value[0], s->value[1], s->value[2], &(r->ppu_flash));
+			flashcommand_change_ppu = 1;
 			break;
 		case SCRIPT_OPCODE_PPU_RAMFIND:
 			if(ppu_ramfind(d) == PPU_TEST_RAM){
@@ -1207,6 +1224,14 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(c->ppu_flash_driver->id_device == FLASH_ID_DEVICE_DUMMY){
 				break;
 			}
+			if(flashcommand_change_ppu != 0){
+				r->ppu_flash.config(
+					r->ppu_flash.command_2aaa,
+					r->ppu_flash.command_5555,
+					r->ppu_flash.pagesize
+				);
+				flashcommand_change_ppu = 0;
+			}
 			if(programcount_ppu++ == 0){
 				printf(EXECUTE_PROGRAM_PREPARE, ppu_rom.name);
 				fflush(stdout);
@@ -1217,7 +1242,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			const long address = s->value[0];
 			const long length = s->value[1];
 			execute_program_begin(&ppu_rom, length);
-			c->ppu_flash_driver->write(
+			c->ppu_flash_driver->program(
 				&(r->ppu_flash),
 				address, length,
 				&ppu_rom
@@ -1346,20 +1371,22 @@ void script_load(const struct st_config *c)
 			.command_2aaa = 0,
 			.command_5555 = 0,
 			.pagesize = c->cpu_flash_driver->pagesize,
-			.erase_wait = c->cpu_flash_driver->erase_wait,
 			.command_mask = c->cpu_flash_driver->command_mask,
-			.flash_write = c->reader->cpu_flash_write,
-			.read = c->reader->cpu_read
+			.config = c->reader->cpu_flash_config,
+			.erase = c->reader->cpu_flash_erase,
+			.program = c->reader->cpu_flash_program,
+			.write = NULL //c->reader->cpu_write_6502
 		},
 		.ppu_flash = {
 			.command_0000 = 0,
 			.command_2aaa = 0,
 			.command_5555 = 0,
 			.pagesize = c->ppu_flash_driver->pagesize,
-			.erase_wait = c->ppu_flash_driver->erase_wait,
 			.command_mask = c->ppu_flash_driver->command_mask,
-			.flash_write = c->reader->ppu_write,
-			.read = c->reader->ppu_read
+			.config = c->reader->ppu_flash_config,
+			.erase = c->reader->ppu_flash_erase,
+			.program = c->reader->ppu_flash_program,
+			.write = NULL //c->reader->ppu_write
 		},
 		.mappernum = 0,
 		.mirror = MIRROR_PROGRAMABLE

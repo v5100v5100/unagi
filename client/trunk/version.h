@@ -1,5 +1,5 @@
 //include from unagi.c only
-static const char STR_VERSION[] = "0.5.4 "
+static const char STR_VERSION[] = "1.0.0 "
 #if DEBUG==1
 "debug "
 #else

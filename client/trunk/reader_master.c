@@ -4,18 +4,14 @@
 #include "reader_master.h"
 #include "reader_onajimi.h"
 #include "reader_hongkongfc.h"
-#include "reader_dozeu.h"
+//#include "reader_dozeu.h"
+#include "reader_kazzo.h"
 
-//これを rodata にしたいけど const の付け方が分からん
-static const struct reader_driver *DRIVER_LIST[] = {
-	&DRIVER_ONAJIMI, &DRIVER_HONGKONGFC, &DRIVER_DOZEU,
-	NULL
-};
-
-int paralellport_open_or_close(int oc)
+int paralellport_open_or_close(enum reader_control oc)
 {
 	static int giveio_status;
-	if(oc == READER_OPEN){
+	switch(oc){
+	case READER_OPEN:
 		giveio_status = giveio_start();
 		switch(giveio_status){
 		case GIVEIO_OPEN:
@@ -27,18 +23,26 @@ int paralellport_open_or_close(int oc)
 			//printf("%s Can't Access Direct IO %d\n", __FILE__, giveio_status);
 			return NG;
 		}
-	}else if(oc == READER_CLOSE){
+		break;
+	case READER_CLOSE:
 		if(giveio_status != GIVEIO_WIN95){
 			giveio_stop(GIVEIO_STOP);
 		}
-	}else{
+		break;
+	default:
 		assert(0);
+		break;
 	}
 	return OK;
 }
 
 const struct reader_driver *reader_driver_get(const char *name)
 {
+	static const struct reader_driver *DRIVER_LIST[] = {
+		&DRIVER_ONAJIMI, &DRIVER_HONGKONGFC, //&DRIVER_DOZEU,
+		&DRIVER_KAZZO,
+		NULL
+	};
 	const struct reader_driver **d;
 	d = DRIVER_LIST;
 	while(*d != NULL){

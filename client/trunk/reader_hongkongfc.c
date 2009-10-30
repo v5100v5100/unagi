@@ -184,7 +184,7 @@ static inline void cpu_romcs_set(long address)
 	data_port_latch(DATA_SELECT_A15toA8, address >> 8);
 }
 
-static void hk_cpu_6502_write(long address, long data, long wait_msec)
+static void hk_cpu_write_6502(long address, long data, long wait_msec)
 {
 	int c = BUS_CONTROL_BUS_STANDBY;
 	//全てのバスを止める
@@ -244,6 +244,7 @@ static void hk_ppu_write(long address, long data)
 	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
+#if 0
 static const int FLASH_CPU_WRITE = (
 	(1 << BITNUM_PPU_OUTPUT) |
 	(1 << BITNUM_PPU_RW) |
@@ -285,6 +286,7 @@ hongkong データ破壊+アドレス不安定になるので、/WE 制御にしないと動かない。
 	//CS up
 	cpu_romcs_set(address | ADDRESS_MASK_A15);
 }
+#endif
 
 const struct reader_driver DRIVER_HONGKONGFC = {
 	.name = "hongkongfc",
@@ -292,9 +294,11 @@ const struct reader_driver DRIVER_HONGKONGFC = {
 	.init = hk_init,
 	.cpu_read = hk_cpu_read,
 	.ppu_read = hk_ppu_read,
-	.cpu_6502_write = hk_cpu_6502_write,
+	.cpu_write_6502 = hk_cpu_write_6502,
 	.ppu_write = hk_ppu_write,
-	.cpu_flash_write = hk_cpu_flash_write
+	.flash_support = NG,
+	.cpu_flash_config = NULL, .cpu_flash_erase = NULL, .cpu_flash_program = NULL,
+	.ppu_flash_config = NULL, .ppu_flash_erase = NULL, .ppu_flash_program = NULL
 };
 
 #ifdef TEST
