@@ -848,7 +848,7 @@ static int execute_connection_check(const struct reader_driver *d)
 	int ret = OK;
 	const int testsize = 0x80;
 	int testcount = 3;
-	u8 *master, *reload;
+	uint8_t *master, *reload;
 	master = malloc(testsize);
 	reload = malloc(testsize);
 
@@ -869,35 +869,19 @@ static int execute_connection_check(const struct reader_driver *d)
 }
 
 enum {PPU_TEST_RAM, PPU_TEST_ROM};
-const u8 PPU_TEST_DATA[] = "PPU_TEST_DATA";
+const uint8_t PPU_TEST_DATA[] = "PPU_TEST_DATA";
 static int ppu_ramfind(const struct reader_driver *d)
 {
-	const int length = sizeof(PPU_TEST_DATA);
+	const long length = sizeof(PPU_TEST_DATA);
 	const long testaddr = 123;
+	uint8_t writedata[length];
 	//ppu ram data fill 0
-	{
-		int i = length;
-		long address = testaddr;
-		while(i != 0){
-			d->ppu_write(address++, 0);
-			i--;
-		}
-	}
+	memset(writedata, 0, length);
+	d->ppu_write(testaddr, length, writedata);
 	
 	//ppu test data write
-	{
-		const u8 *data;
-		int i = length;
-		long address = testaddr;
-		data = PPU_TEST_DATA;
-		while(i != 0){
-			d->ppu_write(address++, (long) *data);
-			data++;
-			i--;
-		}
-	}
+	d->ppu_write(testaddr, length, PPU_TEST_DATA);
 
-	u8 writedata[length];
 	d->ppu_read(testaddr, length, writedata);
 	if(memcmp(writedata, PPU_TEST_DATA, length) == 0){
 		return PPU_TEST_RAM;
@@ -905,23 +889,18 @@ static int ppu_ramfind(const struct reader_driver *d)
 	return PPU_TEST_ROM;
 }
 
-static int ramtest(const int region, const struct reader_driver *d, long address, long length, u8 *writedata, u8 *testdata, const long filldata)
+static int ramtest(const int region, const struct reader_driver *d, long address, long length, uint8_t *writedata, uint8_t *testdata, const long filldata)
 {
-	long i = length;
-	long a = address;
-	while(i != 0){
-		switch(region){
-		case MEMORY_AREA_CPU_RAM:
-			d->cpu_write_6502(a, filldata, 0);
-			break;
-		case MEMORY_AREA_PPU:
-			d->ppu_write(a, filldata);
-			break;
-		default:
-			assert(0);
-		}
-		a++;
-		i--;
+	memset(writedata, filldata, length);
+	switch(region){
+	case MEMORY_AREA_CPU_RAM:
+		d->cpu_write_6502(address, length, writedata);
+		break;
+	case MEMORY_AREA_PPU:
+		d->ppu_write(address, length, writedata);
+		break;
+	default:
+		assert(0);
 	}
 	switch(region){
 	case MEMORY_AREA_CPU_RAM:
@@ -933,7 +912,6 @@ static int ramtest(const int region, const struct reader_driver *d, long address
 	default:
 		assert(0);
 	}
-	memset(writedata, filldata, length);
 	if(memcmp(writedata, testdata, length) == 0){
 		return 0;
 	}
@@ -943,7 +921,7 @@ static int ramtest(const int region, const struct reader_driver *d, long address
 static const long SRAMTESTDATA[] = {0xff, 0xaa, 0x55, 0x00};
 static int sramtest(const int region, const struct reader_driver *d, long address, long length)
 {
-	u8 *writedata, *testdata;
+	uint8_t *writedata, *testdata;
 	int error = 0;
 	int i;
 	testdata = malloc(length);
@@ -964,7 +942,7 @@ static void readbuffer_print(const struct memory *m, long length)
 	}
 	printf("%s ROM 0x%05x:", m->name, m->offset);
 	int offset = 0;
-	const u8 *data;
+	const uint8_t *data;
 	data = m->data;
 	while(length != 0){
 		char safix;
@@ -986,7 +964,7 @@ static void readbuffer_print(const struct memory *m, long length)
 	}
 }
 
-static void checksum_print(const u8 *data, long length)
+static void checksum_print(const uint8_t *data, long length)
 {
 	int sum = 0;
 	while(length != 0){
@@ -1028,10 +1006,11 @@ static void execute_program_finish(int result)
 static const char EXECUTE_ERROR_PREFIX[] = "execute error:";
 static const char EXECUTE_PROGRAM_PREPARE[] = "%s device initialize ... ";
 static const char EXECUTE_PROGRAM_DONE[] = "done\n";
-static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length, long wait)
+static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory *ram, int mode, long address, long length)
 {
 	if(mode == MODE_RAM_WRITE){
-		const u8 *writedata;
+		d->cpu_write_6502(address, length, ram->data);
+/*		const uint8_t *writedata;
 		long a = address;
 		long l = length;
 		writedata = ram->data;
@@ -1039,8 +1018,8 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 			d->cpu_write_6502(a++, *writedata, wait);
 			writedata += 1;
 			l--;
-		}
-		u8 *compare;
+		}*/
+		uint8_t *compare;
 		compare = malloc(length);
 		d->cpu_read(address, length, compare);
 		if(memcmp(ram->data, compare, length) == 0){
@@ -1072,7 +1051,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		d->open_or_close(READER_CLOSE);
 		return NG;
 	}
-	u8 *program_compare;
+	uint8_t *program_compare;
 	program_compare = NULL;
 	if(c->mode == MODE_ROM_PROGRAM){
 		printf("flashmemory/SRAM program mode. To abort programming, press Ctrl+C\n");
@@ -1110,8 +1089,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}break;
 		case SCRIPT_OPCODE_CPU_WRITE:{
 			long data;
+			uint8_t d8;
 			expression_calc(&s->expression, &data);
-			d->cpu_write_6502(s->value[0], data, c->write_wait);
+			d8 = data & 0xff;
+			d->cpu_write_6502(s->value[0], 1, &d8);
 			}
 			break;
 		case SCRIPT_OPCODE_CPU_RAMRW:{
@@ -1124,7 +1105,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 					break;
 				}
 			}
-			execute_cpu_ramrw(d, &cpu_ram, c->mode, address, length, c->write_wait);
+			execute_cpu_ramrw(d, &cpu_ram, c->mode, address, length);
 			read_result_print(&cpu_ram, length);
 			cpu_ram.data += length;
 			cpu_ram.offset += length;
@@ -1203,7 +1184,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(length == 0){
 				/*for mmc2,4 protect.
 				このときは1byte読み込んで、その内容はバッファにいれない*/
-				u8 dummy;
+				uint8_t dummy;
 				d->ppu_read(address, 1, &dummy);
 			}else{
 				d->ppu_read(address, length, ppu_rom.data);
@@ -1216,8 +1197,10 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		case SCRIPT_OPCODE_PPU_WRITE:
 			if(DEBUG == 1){
 				long data;
+				uint8_t d8;
 				expression_calc(&s->expression, &data);
-				d->ppu_write(s->value[0], data);
+				d8 = data;
+				d->ppu_write(s->value[0], 1, &d8);
 			}
 			break;
 		case SCRIPT_OPCODE_PPU_PROGRAM:{

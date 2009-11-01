@@ -184,64 +184,75 @@ static inline void cpu_romcs_set(long address)
 	data_port_latch(DATA_SELECT_A15toA8, address >> 8);
 }
 
-static void hk_cpu_write_6502(long address, long data, long wait_msec)
+static void hk_cpu_write_6502(long address, long length, const uint8_t *data)
 {
-	int c = BUS_CONTROL_BUS_STANDBY;
-	//全てのバスを止める
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	// /rom を H にしてバスを止める
-	address_set(address | ADDRESS_MASK_A15);
-	
-	//φ2 = L, R/W=L, address set, data set
-	c = bit_clear(c, BITNUM_CPU_M2);
-	data_port_set(c, data); //latchはこの関数内部で行う
-	if(address & ADDRESS_MASK_A15){
-		cpu_romcs_set(address & ADDRESS_MASK_A0toA14);
+	while(length != 0){
+		int c = BUS_CONTROL_BUS_STANDBY;
+		//全てのバスを止める
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		// /rom を H にしてバスを止める
+		address_set(address | ADDRESS_MASK_A15);
+		
+		//φ2 = L, R/W=L, address set, data set
+		c = bit_clear(c, BITNUM_CPU_M2);
+		data_port_set(c, *data); //latchはこの関数内部で行う
+		if(address & ADDRESS_MASK_A15){
+			cpu_romcs_set(address & ADDRESS_MASK_A0toA14);
+		}
+		c = bit_clear(c, BITNUM_CPU_RW);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//wait(wait_msec);
+		//φ2 = H, data out
+		c = bit_set(c, BITNUM_CPU_M2);
+		c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//wait(wait_msec);
+		//φ2 = L, H にするまで R/W, address, Data を有効状態にする
+		c = bit_clear(c, BITNUM_CPU_M2);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//wait(wait_msec);
+		//φ2 = H, R/W = H, address disable, data out disable
+		if(address & ADDRESS_MASK_A15){
+			//address & ADDRESS_MASK_A15 で動いてた..?
+			cpu_romcs_set(address | ADDRESS_MASK_A15);
+		}
+		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
+		address += 1;
+		data += 1;
+		length -= 1;
 	}
-	c = bit_clear(c, BITNUM_CPU_RW);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	wait(wait_msec);
-	//φ2 = H, data out
-	c = bit_set(c, BITNUM_CPU_M2);
-	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	wait(wait_msec);
-	//φ2 = L, H にするまで R/W, address, Data を有効状態にする
-	c = bit_clear(c, BITNUM_CPU_M2);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	wait(wait_msec);
-	//φ2 = H, R/W = H, address disable, data out disable
-	if(address & ADDRESS_MASK_A15){
-		//address & ADDRESS_MASK_A15 で動いてた..?
-		cpu_romcs_set(address | ADDRESS_MASK_A15);
-	}
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
 }
 
 //onajimi だと /CS と /OE が同じになっているが、hongkongだと止められる。書き込み時に output enable は H であるべき。
-static void hk_ppu_write(long address, long data)
+static void hk_ppu_write(long address, long length, const uint8_t *data)
 {
-	int c = BUS_CONTROL_BUS_STANDBY;
-	c = bit_clear(c, BITNUM_CPU_M2); //たぶんいる
-	//c = bit_clear(c, BITNUM_CPU_RW);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	//cpu rom を止めたアドレスを渡す
-	address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15);
-	data_port_set(c, data); 
-//	data_port_latch(DATA_SELECT_CONTROL, c);
-	//CS down
-	c = bit_clear(c, BITNUM_PPU_SELECT);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	//WE down
-	c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
-	c = bit_clear(c, BITNUM_PPU_RW);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	//WE up
-	c = bit_set(c, BITNUM_PPU_RW);
-	data_port_latch(DATA_SELECT_CONTROL, c);
-	//CS up
-//	c = bit_set(c, BITNUM_WRITEDATA_OUTPUT);
-	data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
+	while(address != 0){
+		int c = BUS_CONTROL_BUS_STANDBY;
+		c = bit_clear(c, BITNUM_CPU_M2); //たぶんいる
+		//c = bit_clear(c, BITNUM_CPU_RW);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//cpu rom を止めたアドレスを渡す
+		address_set((address & ADDRESS_MASK_A0toA12) | ADDRESS_MASK_A15);
+		data_port_set(c, *data); 
+	//	data_port_latch(DATA_SELECT_CONTROL, c);
+		//CS down
+		c = bit_clear(c, BITNUM_PPU_SELECT);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//WE down
+		c = bit_clear(c, BITNUM_WRITEDATA_OUTPUT);
+		c = bit_clear(c, BITNUM_PPU_RW);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//WE up
+		c = bit_set(c, BITNUM_PPU_RW);
+		data_port_latch(DATA_SELECT_CONTROL, c);
+		//CS up
+	//	c = bit_set(c, BITNUM_WRITEDATA_OUTPUT);
+		data_port_latch(DATA_SELECT_CONTROL, BUS_CONTROL_BUS_STANDBY);
+		
+		address += 1;
+		data += 1;
+		length -= 1;
+	}
 }
 
 #if 0

@@ -47,7 +47,7 @@ enum{
 	TIMEOUT = 4000
 };
 //-------- read sequence --------
-static void device_read(usb_dev_handle *handle, enum request r, long address, long length, u8 *data)
+static void device_read(usb_dev_handle *handle, enum request r, long address, long length, uint8_t *data)
 {
 	int cnt = usb_control_msg(
 		handle, 
@@ -57,7 +57,7 @@ static void device_read(usb_dev_handle *handle, enum request r, long address, lo
 	);
 	assert(cnt == length);
 }
-static void read_main(const enum request r, long address, long length, u8 *data)
+static void read_main(const enum request r, long address, long length, uint8_t *data)
 {
 	while(length >= READ_PACKET_SIZE){
 		device_read(handle, r, address, READ_PACKET_SIZE, data);
@@ -69,43 +69,42 @@ static void read_main(const enum request r, long address, long length, u8 *data)
 		device_read(handle, r, address, length, data);
 	}
 }
-static void kazzo_cpu_read(long address, long length, u8 *data)
+static void kazzo_cpu_read(long address, long length, uint8_t *data)
 {
 	read_main(REQUEST_CPU_READ, address, length, data);
 }
-static void kazzo_ppu_read(long address, long length, u8 *data)
+static void kazzo_ppu_read(long address, long length, uint8_t *data)
 {
 	read_main(REQUEST_PPU_READ, address, length, data);
 }
 //-------- write sequence --------
-static void device_write(usb_dev_handle *handle, enum request w, long address, long length, u8 *data)
+static void device_write(usb_dev_handle *handle, enum request w, long address, long length, const uint8_t *data)
 {
+	//const を外して無理矢理渡すしかない
 	int cnt = usb_control_msg(
 		handle, 
 		USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_OUT,
 		w, address, 
-		0, data, length, TIMEOUT
+		0, (uint8_t *) data, length, TIMEOUT
 	);
 	assert(cnt == length);
 }
 
-static void kazzo_cpu_write_6502(long address, long data, long wait_msec)
+static void kazzo_cpu_write_6502(long address, long length, const uint8_t *data)
 {
-	u8 d = (u8) (data & 0xff);
-	device_write(handle, REQUEST_CPU_WRITE_6502, address, 1, &d);
+	device_write(handle, REQUEST_CPU_WRITE_6502, address, length, data);
 }
 static void kazzo_cpu_write_flash(long address, long data)
 {
-	u8 d = (u8) (data & 0xff);
+	uint8_t d = (uint8_t) (data & 0xff);
 	device_write(handle, REQUEST_CPU_WRITE_FLASH, address, 1, &d);
 }
-static void kazzo_ppu_write(long address, long data)
+static void kazzo_ppu_write(long address, long length, const uint8_t *data)
 {
-	u8 d = (u8) (data & 0xff);
-	device_write(handle, REQUEST_PPU_WRITE, address, 1, &d);
+	device_write(handle, REQUEST_PPU_WRITE, address, length, data);
 }
 
-static inline void pack_short_le(long l, u8 *t)
+static inline void pack_short_le(long l, uint8_t *t)
 {
 	t[0] = l & 0xff;
 	t[1] = (l >> 8) & 0xff;
@@ -113,7 +112,7 @@ static inline void pack_short_le(long l, u8 *t)
 static flash_config(enum request r, long c2aaa, long c5555, long unit)
 {
 	const int size = 2 * 3;
-	u8 t[size];
+	uint8_t t[size];
 	assert(unit >= 1 && unit < 0x400);
 	pack_short_le(c2aaa, t);
 	pack_short_le(c5555, t + 2);
@@ -129,9 +128,9 @@ static void kazzo_ppu_flash_config(long c2aaa, long c5555, long unit)
 	flash_config(REQUEST_PPU_FLASH_CONFIG_SET, c2aaa, c5555, unit);
 }
 
-static inline void flash_execute(enum request p, enum request s, long address, u8 *data, int size)
+static inline void flash_execute(enum request p, enum request s, long address, uint8_t *data, int size)
 {
-	u8 status;
+	uint8_t status;
 	device_write(handle, p, address, size, data);
 	do{
 		wait(1);
@@ -147,7 +146,7 @@ static void kazzo_ppu_flash_erase(long address)
 	flash_execute(REQUEST_PPU_FLASH_ERASE, REQUEST_PPU_FLASH_STATUS, address, NULL, 0);
 }
 
-static void flash_program(enum request p, enum request s, long address, long length, u8 *data)
+static void flash_program(enum request p, enum request s, long address, long length, uint8_t *data)
 {
 	while(length >= READ_PACKET_SIZE){
 		flash_execute(p, s, address, data, READ_PACKET_SIZE);
@@ -156,13 +155,13 @@ static void flash_program(enum request p, enum request s, long address, long len
 		length -= READ_PACKET_SIZE;
 	}
 }
-static void kazzo_cpu_flash_program(long address, long length, u8 *data)
+static void kazzo_cpu_flash_program(long address, long length, uint8_t *data)
 {
 	enum request p = REQUEST_CPU_FLASH_PROGRAM;
 	enum request s = REQUEST_CPU_FLASH_STATUS;
 	flash_program(p, s, address, length, data);
 }
-static void kazzo_ppu_flash_program(long address, long length, u8 *data)
+static void kazzo_ppu_flash_program(long address, long length, uint8_t *data)
 {
 	flash_program(REQUEST_PPU_FLASH_PROGRAM, REQUEST_PPU_FLASH_STATUS, address, length, data);
 }
