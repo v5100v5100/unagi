@@ -1,0 +1,93 @@
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <squirrel.h>
+#include <sqstdio.h>
+#include <sqstdaux.h>
+
+#ifdef SQUNICODE 
+#define scvprintf vwprintf 
+#else 
+#define scvprintf vprintf 
+#endif 
+static void printfunc(HSQUIRRELVM v, const SQChar *s, ...) 
+{
+	va_list arglist;
+	va_start(arglist, s);
+	scvprintf(s, arglist);
+	va_end(arglist);
+}
+
+HSQUIRRELVM qr_open(void)
+{
+	HSQUIRRELVM v = sq_open(0x400);
+	sqstd_seterrorhandlers(v);
+	sq_setprintfunc(v, printfunc);
+	sq_pushroottable(v);
+	return v;
+}
+
+//SQInteger 
+void qr_function_register_global(HSQUIRRELVM v, const char *name, SQFUNCTION f)
+{
+	sq_pushroottable(v);
+	sq_pushstring(v, name, -1);
+	sq_newclosure(v, f, 0);
+	sq_createslot(v, -3); 
+	sq_pop(v, 1);
+}
+
+void qr_call(HSQUIRRELVM v, const SQChar *functionname, bool settop, int argnum, ...)
+{
+	SQInteger top = sq_gettop(v);
+	sq_pushroottable(v);
+	sq_pushstring(v, _SC(functionname), -1);
+	if(SQ_SUCCEEDED(sq_get(v,-2))){
+		int i;
+		va_list ap;
+		va_start(ap, argnum);
+		sq_pushroottable(v);
+		for(i = 0; i < argnum; i++){
+			sq_pushinteger(v, va_arg(ap, long));
+		}
+		sq_call(v, 1 + argnum, SQFalse, SQTrue); //calls the function 
+	}
+	if(settop == true){
+		sq_settop(v, top); //restores the original stack size
+	}
+}
+
+void qr_close(HSQUIRRELVM v)
+{
+	sq_pop(v, 1);
+	sq_close(v); 
+}
+
+static bool long_get(HSQUIRRELVM v, SQInteger index, long *d)
+{
+	if(sq_gettype(v, index) != OT_INTEGER){
+		return false;
+	}
+	SQInteger i;
+	if(SQ_FAILED(sq_getinteger(v, index, &i))){
+		return false;
+	}
+	*d = (long) i;
+	return true;
+}
+
+SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...)
+{
+	va_list ap;
+	if(sq_gettop(v) != (num + 1)){
+		return sq_throwerror(v, "argument number error");
+	}
+	va_start(ap, num);
+	SQInteger i;
+	for(i = 0; i < num; i++){
+		if(long_get(v, i + 2, va_arg(ap, long *)) == false){
+			return sq_throwerror(v, "argument type error");
+		}
+	}
+	return 0;
+}
