@@ -34,7 +34,7 @@ flashmemory.c だけの警告
 /*
 ---- erase ----
 */
-#if DEBUG==1
+#if 0 //DEBUG==1
 static void sram_erase(const struct flash_order *d)
 {
 	//bank 切り替えが伴うので実装できない
@@ -48,7 +48,7 @@ static void init_nop(const struct flash_order *d)
 static void init_erase(const struct flash_order *d)
 {
 	assert(d->pagesize > 0);
-	d->erase(d->command_2aaa);
+	d->erase(d->command_2aaa, true);
 }
 
 static void program_dummy(const struct flash_order *d, long address, long length, const struct memory *m)
@@ -60,7 +60,7 @@ static void program_sram(const struct flash_order *d, long address, long length,
 }
 static void program_flash(const struct flash_order *d, long address, long length, const struct memory *m)
 {
-	d->program(address, length, m->data);
+	d->program(address, length, m->data, true);
 }
 /*
 デバイスリスト

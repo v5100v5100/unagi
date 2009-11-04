@@ -25,6 +25,7 @@ todo:
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "memory_manage.h"
 #include "type.h"
 #include "file.h"
 #include "reader_master.h"
@@ -460,7 +461,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 					error += 1;
 				}else if(r->cpu_ram.size != imagesize){
 					printf("%s RAM image size is not same\n", LOGICAL_ERROR_PREFIX);
-					free(r->cpu_ram.data);
+					Free(r->cpu_ram.data);
 					r->cpu_ram.data = NULL;
 					imagesize = -1;
 					error += 1;
@@ -470,7 +471,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				assert(c->cpu_flash_driver->program != NULL);
 				assert(r->cpu_rom.attribute == MEMORY_ATTR_READ);
 				assert(r->ppu_rom.attribute == MEMORY_ATTR_READ);
-				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== NG){
+				if(nesfile_load(LOGICAL_ERROR_PREFIX, c->romimage, r)== false){
 					error += 1;
 				}
 				//定数宣言エラーは無限ループの可能性があるのでスクリプト内部チェックをせずに止める
@@ -849,8 +850,8 @@ static int execute_connection_check(const struct reader_driver *d)
 	const int testsize = 0x80;
 	int testcount = 3;
 	uint8_t *master, *reload;
-	master = malloc(testsize);
-	reload = malloc(testsize);
+	master = Malloc(testsize);
+	reload = Malloc(testsize);
 
 	d->cpu_read(0xfee0, testsize, master);
 	
@@ -863,8 +864,8 @@ static int execute_connection_check(const struct reader_driver *d)
 		testcount--;
 	}
 	
-	free(master);
-	free(reload);
+	Free(master);
+	Free(reload);
 	return ret;
 }
 
@@ -924,14 +925,14 @@ static int sramtest(const int region, const struct reader_driver *d, long addres
 	uint8_t *writedata, *testdata;
 	int error = 0;
 	int i;
-	testdata = malloc(length);
-	writedata = malloc(length);
+	testdata = Malloc(length);
+	writedata = Malloc(length);
 	for(i = 0; i < sizeof(SRAMTESTDATA) / sizeof(long); i++){
 		const long filldata = SRAMTESTDATA[i];
 		error += ramtest(region, d, address, length, testdata, writedata, filldata);
 	}
-	free(testdata);
-	free(writedata);
+	Free(testdata);
+	Free(writedata);
 	return error;
 }
 
@@ -1020,14 +1021,14 @@ static void execute_cpu_ramrw(const struct reader_driver *d, const struct memory
 			l--;
 		}*/
 		uint8_t *compare;
-		compare = malloc(length);
+		compare = Malloc(length);
 		d->cpu_read(address, length, compare);
 		if(memcmp(ram->data, compare, length) == 0){
 			printf("RAM data write success\n");
 		}else{
 			printf("RAM data write failed\n");
 		}
-		free(compare);
+		Free(compare);
 	}else{
 		d->cpu_read(address, length, ram->data);
 	}
@@ -1059,7 +1060,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 		if(size < r->ppu_rom.size){
 			size = r->ppu_rom.size;
 		}
-		program_compare = malloc(size);
+		program_compare = Malloc(size);
 	}
 	struct memory cpu_rom, ppu_rom, cpu_ram;
 	cpu_rom = r->cpu_rom;
@@ -1117,6 +1118,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			if(flashcommand_change_cpu != 0){
 				r->cpu_flash.config(
+					r->cpu_flash.command_0000,
 					r->cpu_flash.command_2aaa,
 					r->cpu_flash.command_5555,
 					r->cpu_flash.pagesize
@@ -1209,6 +1211,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			}
 			if(flashcommand_change_ppu != 0){
 				r->ppu_flash.config(
+					r->ppu_flash.command_0000,
 					r->ppu_flash.command_2aaa,
 					r->ppu_flash.command_5555,
 					r->ppu_flash.pagesize
@@ -1287,7 +1290,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 	}
 	d->open_or_close(READER_CLOSE);
 	if(program_compare != NULL){
-		free(program_compare);
+		Free(program_compare);
 	}
 	return OK;
 }
@@ -1305,15 +1308,15 @@ void script_load(const struct st_config *c)
 			return;
 		}
 		char **text;
-		text = malloc(sizeof(char*) * TEXT_MAXLINE);
+		text = Malloc(sizeof(char*) * TEXT_MAXLINE);
 		const int text_num = text_load(buf, scriptsize, text);
 		if(text_num == 0){
 			printf("script line too much\n");
-			free(buf);
-			free(text);
+			Free(buf);
+			Free(text);
 			return;
 		}
-		s = malloc(sizeof(struct script) * (text_num + 1));
+		s = Malloc(sizeof(struct script) * (text_num + 1));
 		//logical_check, execute 共に s->opcode が DUMP_END になるまで続ける。DUMP_END の入れ忘れ用に末尾のscriptに必ず DUMP_END をいれる
 		{
 			struct script *k;
@@ -1322,10 +1325,10 @@ void script_load(const struct st_config *c)
 			k->opcode = SCRIPT_OPCODE_DUMP_END;
 		}
 		const int error = syntax_check(text, text_num, s, c->mode);
-		free(buf);
-		free(text);
+		Free(buf);
+		Free(text);
 		if(error != 0){
-			free(s);
+			Free(s);
 			return;
 		}
 	}
@@ -1350,7 +1353,7 @@ void script_load(const struct st_config *c)
 		},
 		//device に応じた関数ポインタを flash_order に渡す
 		.cpu_flash = {
-			.command_0000 = 0,
+			.command_0000 = 0x8000,
 			.command_2aaa = 0,
 			.command_5555 = 0,
 			.pagesize = c->cpu_flash_driver->pagesize,
@@ -1396,10 +1399,10 @@ void script_load(const struct st_config *c)
 	
 	if(logical_check(s, c, &r) == 0){
 		//dump RAM 領域取得
-		if(nesbuffer_malloc(&r, c->mode) == NG){
-			free(s);
+		if(nesbuffer_malloc(&r, c->mode) == false){
+			Free(s);
 			if((c->mode == MODE_RAM_WRITE) && (r.cpu_ram.data != NULL)){
-				free(r.cpu_ram.data);
+				Free(r.cpu_ram.data);
 			}
 			return;
 		}
@@ -1418,8 +1421,8 @@ void script_load(const struct st_config *c)
 		//dump RAM 領域解放
 		nesbuffer_free(&r, c->mode);
 		if((c->mode == MODE_RAM_WRITE) && (r.cpu_ram.data != NULL)){
-			free(r.cpu_ram.data);
+			Free(r.cpu_ram.data);
 		}
 	}
-	free(s);
+	Free(s);
 }

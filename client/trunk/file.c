@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include "memory_manage.h"
 #include "file.h"
 
 int buf_load(u8 *buf, const char *file, int size)
@@ -33,7 +33,7 @@ void* buf_load_full(const char *file, int *size)
 		return NULL;
 	}
 	fseek(fp, 0, SEEK_SET);
-	buf = malloc(*size);
+	buf = Malloc(*size);
 	fread(buf, sizeof(u8), *size, fp);
 	fclose(fp);
 	return buf;

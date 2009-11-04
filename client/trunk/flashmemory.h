@@ -31,10 +31,10 @@ struct flash_order{
 	long command_mask;
 	long pagesize;
 	//struct reader_driver の関数ポインタを渡す場所
-	void (*config)(long c2aaa, long c5555, long unit);
-	void (*erase)(long address);
-	void (*write)(long address, long length, u8 *data);
-	void (*program)(long address, long length, u8 *data);
+	void (*config)(long c000, long c2aaa, long c5555, long unit);
+	void (*erase)(long address, bool dowait);
+	void (*write)(long address, long length, uint8_t *data);
+	long (*program)(long address, long length, const uint8_t *data, bool dowait);
 };
 
 struct memory;

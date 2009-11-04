@@ -1,10 +1,20 @@
 #ifndef _HEADER_H_
 #define _HEADER_H_
 #include "flashmemory.h"
+enum trastype{
+	TRANSTYPE_EMPTY,
+	TRANSTYPE_TOP,
+	TRANSTYPE_BOTTOM,
+	TRANSTYPE_FULL,
+};
+enum memory_attribute{
+	MEMORY_ATTR_READ, MEMORY_ATTR_WRITE, MEMORY_ATTR_NOTUSE
+};
 struct memory{
 	const char *name;
-	int size, offset, attribute;
-	long transtype;
+	int size, offset;
+	enum memory_attribute attribute;
+	enum trastype transtype;
 	u8 *data;
 };
 /*
@@ -26,35 +36,29 @@ MODE_ROM_PROGRAM
 	ppu_rom ROM 書き込みバッファ, file in
 	cpu_ram 未使用
 */
-struct romimage{
-	struct memory cpu_rom, ppu_rom, cpu_ram;
-	struct flash_order cpu_flash, ppu_flash;
-	long mappernum;
-	int mirror, backupram;
-};
-
-enum{
+enum vram_mirroring{
 	MIRROR_HORIZONAL = 0,
 	MIRROR_VERTICAL,
 	MIRROR_PROGRAMABLE = MIRROR_HORIZONAL
 };
-enum{
-	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU,
-	MEMORY_ATTR_READ, MEMORY_ATTR_WRITE, MEMORY_ATTR_NOTUSE
+struct romimage{
+	struct memory cpu_rom, ppu_rom, cpu_ram;
+	struct flash_order cpu_flash, ppu_flash;
+	long mappernum;
+	enum vram_mirroring mirror;
+	int backupram;
 };
+
 enum{
-	TRANSTYPE_EMPTY,
-	TRANSTYPE_TOP,
-	TRANSTYPE_BOTTOM,
-	TRANSTYPE_FULL,
+	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU
 };
 #ifdef HEADEROUT
 void nesheader_set(const struct romimage *r, u8 *header);
 #endif
-int nesbuffer_malloc(struct romimage *r, int mode);
+bool nesbuffer_malloc(struct romimage *r, int mode);
 void nesfile_create(struct romimage *r, const char *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);
 void backupram_create(const struct memory *r, const char *ramfilename);
 int memorysize_check(const long size, int region);
-int nesfile_load(const char *errorprefix, const char *file, struct romimage *r);
+bool nesfile_load(const char *errorprefix, const char *file, struct romimage *r);
 #endif

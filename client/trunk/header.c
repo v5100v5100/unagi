@@ -6,6 +6,7 @@ iNES header/buffer control
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "memory_manage.h"
 #include "type.h"
 #include "file.h"
 #include "crc32.h"
@@ -65,7 +66,7 @@ static int mirroring_fix(struct memory *m, long min)
 	
 	u8 *ffdata;
 	int ret = 0;
-	ffdata = malloc(min);
+	ffdata = Malloc(min);
 	memset(ffdata, 0xff, min);
 	if(memcmp(ffdata, m->data, min) == 0){
 		printf("error: data is all 0xff\n");
@@ -74,7 +75,7 @@ static int mirroring_fix(struct memory *m, long min)
 		printf("mirroring %s rom fixed\n", m->name);
 		m->size = min;
 	}
-	free(ffdata);
+	Free(ffdata);
 	
 	return ret;
 }
@@ -128,11 +129,11 @@ static inline void memory_malloc(struct memory *m)
 {
 	m->data = NULL;
 	if(m->size != 0){
-		m->data = malloc(m->size);
+		m->data = Malloc(m->size);
 	}
 }
 
-int nesbuffer_malloc(struct romimage *r, int mode)
+bool nesbuffer_malloc(struct romimage *r, int mode)
 {
 	switch(mode){
 	case MODE_ROM_DUMP:
@@ -143,13 +144,13 @@ int nesbuffer_malloc(struct romimage *r, int mode)
 		memory_malloc(&(r->cpu_ram));
 		break;
 	}
-	return OK;
+	return true;
 }
 
 static inline void memory_free(struct memory *m)
 {
 	if(m->size != 0){
-		free(m->data);
+		Free(m->data);
 		m->data = NULL;
 	}
 }
@@ -212,7 +213,7 @@ static void nesfile_datapointer_set(const u8 *buf, struct memory *m, long size)
 	u8 *data;
 	assert((size % CHARCTER_ROM_MIN) == 0);
 	assert((m->size % CHARCTER_ROM_MIN) == 0);
-	data = malloc(size);
+	data = Malloc(size);
 	m->data = data;
 	if(size < m->size){
 		long fillsize = m->size - size;
@@ -225,7 +226,7 @@ static void nesfile_datapointer_set(const u8 *buf, struct memory *m, long size)
 }
 
 //flashmemory device capacity check が抜けてるけどどこでやるか未定
-int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
+bool nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 {
 	int imagesize;
 	u8 *buf;
@@ -233,23 +234,27 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 	buf = buf_load_full(file, &imagesize);
 	if(buf == NULL || imagesize < (NES_HEADER_SIZE + PROGRAM_ROM_MIN)){
 		printf("%s ROM image open error\n", errorprefix);
-		return NG;
+		return false;
 	}
 	//nes header check
 	if(memcmp(buf, NES_HEADER_INIT, 4) != 0){
 		printf("%s NES header identify error\n", errorprefix);
-		free(buf);
-		return NG;
+		Free(buf);
+		return false;
 	}
 	//mapper number check
 	{
 		long mapper = (buf[6] >> 4) & 0x0f;
 		mapper |= buf[7] & 0xf0;
+#if ANAGO == 1
+		r->mappernum = mapper;
+#else
 		if(r->mappernum != mapper){
 			printf("%s NES header mapper error\n", errorprefix);
-			free(buf);
-			return NG;
+			Free(buf);
+			return false;
 		}
+#endif
 	}
 	//NES/CPU/PPU imagesize check
 	long cpusize, ppusize;
@@ -266,8 +271,8 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		//NESfilesize
 		if(offset != imagesize){
 			printf("%s NES header filesize error\n", errorprefix);
-			free(buf);
-			return NG;
+			Free(buf);
+			return false;
 		}
 	}
 	/*
@@ -284,7 +289,7 @@ int nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		}
 	}
 
-	free(buf);
-	return OK;
+	Free(buf);
+	return true;
 }
 #endif

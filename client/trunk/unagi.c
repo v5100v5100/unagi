@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "memory_manage.h"
 #include "type.h"
 #include "reader_master.h"
 #include "giveio.h"
@@ -70,12 +71,12 @@ static int config_file_load(struct st_config *c)
 		return NG;
 	}
 	char **text;
-	text = malloc(sizeof(char*) * TEXT_MAXLINE);
+	text = Malloc(sizeof(char*) * TEXT_MAXLINE);
 	const int text_num = text_load(buf, size, text);
 	if(text_num == 0){
 		printf("%s script line too much\n", PREFIX_CONFIG_ERROR);
-		free(buf);
-		free(text);
+		Free(buf);
+		Free(text);
 		return NG;
 	}
 	int i;
@@ -95,8 +96,8 @@ static int config_file_load(struct st_config *c)
 		}else if((DEBUG == 1) && (strcmp("WRITE_WAIT", word[0]) == 0)){
 			if(value_get(word[1], &(c->write_wait)) == NG){
 				printf("%s write_wait parameter is illigal", PREFIX_CONFIG_ERROR);
-				free(buf);
-				free(text);
+				Free(buf);
+				Free(text);
 				return NG;
 			}
 		}else if(strcmp("TEST_DEVICE", word[0]) == 0){
@@ -109,19 +110,19 @@ static int config_file_load(struct st_config *c)
 			}
 		}else{
 			printf("%s unknown config title %s", PREFIX_CONFIG_ERROR, word[1]);
-			free(buf);
-			free(text);
+			Free(buf);
+			Free(text);
 			return NG;
 		}
 	}
 	
-	free(text);
+	Free(text);
 	if(c->reader == NULL){
 		printf("%s hardware not selected or not found\n", PREFIX_CONFIG_ERROR);
-		free(buf);
+		Free(buf);
 		return NG;
 	}
-	free(buf);
+	Free(buf);
 	return OK;
 }
 
@@ -296,6 +297,7 @@ int main(int c, char **v)
 {
 	struct st_config config;
 	int config_result = NG;
+	mm_init();
 	switch(c){
 	case 3: //t testmode target
 		if(DEBUG == 0){
@@ -321,5 +323,6 @@ int main(int c, char **v)
 	if((config.mode != MODE_TEST) && (config_result == OK)){
 		script_load(&config);
 	}
+	mm_end();
 	return 0;
 }
