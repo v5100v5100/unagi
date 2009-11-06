@@ -1,6 +1,8 @@
 #ifndef _HEADER_H_
 #define _HEADER_H_
+#if ANAGO==0
 #include "flashmemory.h"
+#endif
 enum trastype{
 	TRANSTYPE_EMPTY,
 	TRANSTYPE_TOP,
@@ -43,7 +45,9 @@ enum vram_mirroring{
 };
 struct romimage{
 	struct memory cpu_rom, ppu_rom, cpu_ram;
+#if ANAGO==0
 	struct flash_order cpu_flash, ppu_flash;
+#endif
 	long mappernum;
 	enum vram_mirroring mirror;
 	int backupram;

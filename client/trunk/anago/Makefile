@@ -5,7 +5,8 @@ VPATH = ..
 CFLAGS = -g -O0 -Wall -Werror -I.. -I$(LIBUSB)/include -I$(SQUIRREL)/include -DDEBUG=1 -DANAGO=1
 LDFLAG = -L. -L$(LIBUSB)/lib/gcc -L$(SQUIRREL)/lib
 CC = gcc
-OBJ = anago.o flashmemory.o header.o crc32.o file.o script.o \
+OBJ = anago.o header.o crc32.o file.o script.o \
+	flash_device.o \
 	reader_dummy.o reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
 clean:
 	rm -f $(OBJ)

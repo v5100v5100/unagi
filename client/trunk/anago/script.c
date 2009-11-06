@@ -6,14 +6,16 @@
 #include "header.h"
 #include "reader_master.h"
 #include "squirrel_wrap.h"
+#include "flash_device.h"
 #include "script.h"
 
 struct anago_driver{
 	struct anago_flash_order{
 		bool command_change;
 		long address, length;
-		long c000x, c2aaa, c5555, unit;
-		struct memory *memory;
+		long c000x, c2aaa, c5555;
+		struct memory *const memory;
+		struct flash_device *const device;
 		void (*const config)(long c000x, long c2aaa, long c5555, long unit);
 		void (*const device_get)(uint8_t s[2]);
 		void (*const write)(long address, long length, const uint8_t *data);
@@ -89,11 +91,13 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 }
 static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const char *region)
 {
-	t->config(t->c000x, t->c2aaa, t->c5555, t->unit);
+	t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize);
 	t->command_change = false;
-	t->erase(t->c2aaa, false);
-	printf("erasing %s memory...\n", region);
-	fflush(stdout);
+	if(t->device->erase_require == true){
+		t->erase(t->c2aaa, false);
+		printf("erasing %s memory...\n", region);
+		fflush(stdout);
+	}
 	return 0; //sq_suspendvm(v);
 }
 static SQInteger cpu_erase(HSQUIRRELVM v)
@@ -121,7 +125,7 @@ static SQInteger program_regist(HSQUIRRELVM v, const char *name, struct anago_fl
 		return r;
 	}
 	if(t->command_change == true){
-		t->config(t->c000x, t->c2aaa, t->c5555, t->unit);
+		t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize);
 		t->command_change = false;
 	}
 	
@@ -172,24 +176,6 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 	}while((s[0] != 0) && (s[1] != 0));
 	return 0;
 }
-/*static void execute_main(HSQUIRRELVM v, struct config *c)
-{
-	if(SQ_FAILED(sqstd_dofile(v, _SC("flashmode.nut"), SQFalse, SQTrue)))
-	{
-		return;
-	}
-	if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue)))
-	{
-		printf("%s open error\n", c->script);
-		return;
-	}
-	qr_call(
-		v, "program", NULL, true, 
-		5, c->rom.mappernum, 
-		order_cpu.memory->transtype, order_cpu.memory->size, 
-		order_ppu.memory->transtype, order_ppu.memory->size
-	);
-}*/
 
 static SQInteger program_main(HSQUIRRELVM v)
 {
@@ -238,7 +224,7 @@ void script_execute(struct config *c)
 	struct anago_driver d = {
 		.order_cpu = {
 			.command_change = true,
-			.unit = c->flash_cpu->pagesize,
+			.device = &c->flash_cpu,
 			.memory = &c->rom.cpu_rom,
 			.config = c->reader->cpu_flash_config,
 			.device_get = c->reader->cpu_flash_device_get,
@@ -249,11 +235,11 @@ void script_execute(struct config *c)
 		},
 		.order_ppu = {
 			.command_change = true,
-			.unit = c->flash_ppu->pagesize,
+			.device = &c->flash_ppu,
 			.memory = &c->rom.ppu_rom,
 			.config = c->reader->ppu_flash_config,
 			.device_get = c->reader->ppu_flash_device_get,
-			.write = c->reader->ppu_write, //warning ¤ÏÌµ»ë
+			.write = c->reader->ppu_write,
 			.read = c->reader->ppu_read,
 			.erase = c->reader->ppu_flash_erase,
 			.program = c->reader->ppu_flash_program,
@@ -272,11 +258,10 @@ void script_execute(struct config *c)
 	qr_function_register_global(v, "program_main", program_main);
 	qr_function_register_global(v, "erase_wait", erase_wait);
 	
-	if(SQ_FAILED(sqstd_dofile(v, _SC("flashmode.nut"), SQFalse, SQTrue))){
-		return;
+	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
+		printf("flash core script error\n");
 	}else if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue))){
 		printf("%s open error\n", c->script);
-		return;
 	}else{
 		qr_call(
 			v, "program", (SQUserPointer) &d, true, 

@@ -2,7 +2,8 @@
 #include <stdbool.h>
 #include "memory_manage.h"
 #include "type.h"
-#include "flashmemory.h"
+//#include "flashmemory.h"
+#include "flash_device.h"
 #include "header.h"
 #include "reader_master.h"
 #include "reader_kazzo.h"
@@ -60,20 +61,19 @@ static bool config_parse(const char *romimage, const char *device_cpu, const cha
 	}
 	c->rom.cpu_rom.offset = 0;
 	c->rom.ppu_rom.offset = 0;
-	c->flash_cpu = flash_driver_get(device_cpu);
-	if(device_ppu != NULL){
-		c->flash_ppu = flash_driver_get(device_ppu);
-	}else{
-		c->flash_ppu = flash_driver_get("dummy");
-	}
-	if(c->flash_cpu == NULL || c->flash_ppu == NULL){
+	if(flash_device_get(device_cpu, &c->flash_cpu) == false){
+		printf("unkown flash memory device %s\n", device_cpu);
 		return false;
 	}
-	if(c->flash_cpu->id_device == FLASH_ID_DEVICE_DUMMY){
+	if(flash_device_get(device_ppu, &c->flash_ppu) == false){
+		printf("unkown flash memory device %s\n", device_ppu);
+		return false;
+	}
+	if(c->flash_cpu.id_device == FLASH_ID_DEVICE_DUMMY){
 		c->rom.cpu_rom.transtype = TRANSTYPE_EMPTY;
 	}
 	if(
-		(c->flash_ppu->id_device == FLASH_ID_DEVICE_DUMMY) ||
+		(c->flash_ppu.id_device == FLASH_ID_DEVICE_DUMMY) ||
 		(c->rom.ppu_rom.size == 0)
 	){
 		c->rom.ppu_rom.transtype = TRANSTYPE_EMPTY;
@@ -84,7 +84,6 @@ static void anago(int c, char **v)
 {
 	struct config config;
 	config.script = v[2];
-	config.flash_ppu = &FLASH_DRIVER_UNDEF;
 	config.reader = &DRIVER_KAZZO;
 	if(v[1][0] == 'd'){
 		config.reader = &DRIVER_DUMMY;
@@ -95,7 +94,7 @@ static void anago(int c, char **v)
 	}
 	switch(c){
 	case 5: //mode script target cpu_flash_device
-		if(config_parse(v[3], v[4], NULL, &config) == false){
+		if(config_parse(v[3], v[4], "dummy", &config) == false){
 			nesbuffer_free(&config.rom, 0);
 			return;
 		}
