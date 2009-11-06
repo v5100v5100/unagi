@@ -8,19 +8,21 @@
 #include "squirrel_wrap.h"
 #include "script.h"
 
-static struct anago_flash_order{
-	bool command_change;
-	long address, length;
-	long c000x, c2aaa, c5555, unit;
-	struct memory *memory;
-	void (*config)(long c000x, long c2aaa, long c5555, long unit);
-	void (*device_get)(uint8_t s[2]);
-	void (*flash_status)(uint8_t s[2]);
-	void (*write)(long address, long length, const uint8_t *data);
-	void (*read)(long address, long length, u8 *data);
-	void (*erase)(long address, bool dowait);
-	long (*program)(long address, long length, const u8 *data, bool dowait);
-}order_cpu, order_ppu;
+struct anago_driver{
+	struct anago_flash_order{
+		bool command_change;
+		long address, length;
+		long c000x, c2aaa, c5555, unit;
+		struct memory *memory;
+		void (*const config)(long c000x, long c2aaa, long c5555, long unit);
+		void (*const device_get)(uint8_t s[2]);
+		void (*const write)(long address, long length, const uint8_t *data);
+		void (*const read)(long address, long length, u8 *data);
+		void (*const erase)(long address, bool dowait);
+		long (*const program)(long address, long length, const u8 *data, bool dowait);
+	}order_cpu, order_ppu;
+	void (*const flash_status)(uint8_t s[2]);
+};
 
 static SQInteger command_set(HSQUIRRELVM v, struct anago_flash_order *t)
 {
@@ -49,11 +51,21 @@ static SQInteger command_set(HSQUIRRELVM v, struct anago_flash_order *t)
 }
 static SQInteger cpu_command(HSQUIRRELVM v)
 {
-	return command_set(v, &order_cpu);
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return command_set(v, &d->order_cpu);
 }
 static SQInteger ppu_command(HSQUIRRELVM v)
 {
-	return command_set(v, &order_ppu);
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return command_set(v, &d->order_ppu);
 }
 static SQInteger write(HSQUIRRELVM v, struct anago_flash_order *t)
 {
@@ -68,7 +80,12 @@ static SQInteger write(HSQUIRRELVM v, struct anago_flash_order *t)
 }
 static SQInteger cpu_write(HSQUIRRELVM v)
 {
-	return write(v, &order_cpu);
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return write(v, &d->order_cpu);
 }
 static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const char *region)
 {
@@ -81,11 +98,21 @@ static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const cha
 }
 static SQInteger cpu_erase(HSQUIRRELVM v)
 {
-	return erase_set(v, &order_cpu, "program");
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return erase_set(v, &d->order_cpu, "program");
 }
 static SQInteger ppu_erase(HSQUIRRELVM v)
 {
-	return erase_set(v, &order_ppu, "charcter");
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return erase_set(v, &d->order_ppu, "charcter");
 }
 static SQInteger program_regist(HSQUIRRELVM v, const char *name, struct anago_flash_order *t)
 {
@@ -110,26 +137,42 @@ static void program_execute(struct anago_flash_order *t)
 	t->address += w;
 	t->length -= w;
 	t->memory->offset += w;
+	t->memory->offset &= t->memory->size - 1;
 }
 static SQInteger cpu_program(HSQUIRRELVM v)
 {
-	return program_regist(v, "program", &order_cpu);
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return program_regist(v, "program", &d->order_cpu);
 }
 static SQInteger ppu_program(HSQUIRRELVM v)
 {
-	return program_regist(v, "charcter", &order_ppu);
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return program_regist(v, "charcter", &d->order_ppu);
 }
 
 static SQInteger erase_wait(HSQUIRRELVM v)
 {
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
 	uint8_t s[2];
 	do{
 		Sleep(2);
-		order_cpu.flash_status(s);
+		d->flash_status(s);
 	}while((s[0] != 0) && (s[1] != 0));
 	return 0;
 }
-static void execute_main(HSQUIRRELVM v, struct config *c)
+/*static void execute_main(HSQUIRRELVM v, struct config *c)
 {
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashmode.nut"), SQFalse, SQTrue)))
 	{
@@ -137,44 +180,32 @@ static void execute_main(HSQUIRRELVM v, struct config *c)
 	}
 	if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue)))
 	{
+		printf("%s open error\n", c->script);
 		return;
 	}
 	qr_call(
-		v, "program_init", true, 5, c->rom.mappernum, 
+		v, "program", NULL, true, 
+		5, c->rom.mappernum, 
 		order_cpu.memory->transtype, order_cpu.memory->size, 
 		order_ppu.memory->transtype, order_ppu.memory->size
 	);
-}
-#if 0
-	HSQUIRRELVM co_cpu = sq_newthread(v, 0x400);
-	HSQUIRRELVM co_ppu = sq_newthread(v, 0x400);
-	SQInteger state_cpu, state_ppu;
-	qr_call(v, "initalize", true);
-	if(order_cpu.memory->size == 0 || c->flash_cpu->id_device == FLASH_ID_DEVICE_DUMMY){
-		state_cpu = SQ_VMSTATE_IDLE;
-	}else{
-		qr_call(co_cpu, "program_cpu", false);
-		state_cpu = sq_getvmstate(co_cpu);
-/*	config.reader->ppu_flash_device_get(s);
-	printf("ppu device %02x %02x\n", s[0], s[1]);*/
-	}
-	if(order_ppu.memory->size == 0 || c->flash_ppu->id_device == FLASH_ID_DEVICE_DUMMY){
-		state_ppu = SQ_VMSTATE_IDLE;
-	}else{
-		qr_call(co_ppu, "program_ppu", false);
-		state_ppu = sq_getvmstate(co_ppu);
-	}
-#endif
+}*/
+
 static SQInteger program_main(HSQUIRRELVM v)
 {
-	if(sq_gettop(v) != (2 + 1)){
+	if(sq_gettop(v) != (1 + 3)){ //roottable, userpointer, co_cpu, co_ppu
 		return sq_throwerror(v, "argument number error");
 	}
+	struct anago_driver *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
 	HSQUIRRELVM co_cpu, co_ppu;
-	if(SQ_FAILED(sq_getthread(v, 2, &co_cpu))){
+	if(SQ_FAILED(sq_getthread(v, 3, &co_cpu))){
 		return sq_throwerror(v, "thread error");
 	}
-	if(SQ_FAILED(sq_getthread(v, 3, &co_ppu))){
+	if(SQ_FAILED(sq_getthread(v, 4, &co_ppu))){
 		return sq_throwerror(v, "thread error");
 	}
 	SQInteger state_cpu = sq_getvmstate(co_cpu);
@@ -182,21 +213,21 @@ static SQInteger program_main(HSQUIRRELVM v)
 	while(state_cpu != SQ_VMSTATE_IDLE || state_ppu != SQ_VMSTATE_IDLE){
 		uint8_t s[2];
 		Sleep(2);
-		order_cpu.flash_status(s);
+		d->flash_status(s);
 		if(state_cpu != SQ_VMSTATE_IDLE && s[0] == 0){
-			if(order_cpu.length == 0){
+			if(d->order_cpu.length == 0){
 				sq_wakeupvm(co_cpu, SQFalse, SQFalse, SQTrue/*, SQTrue*/);
 				state_cpu = sq_getvmstate(co_cpu);
 			}else{
-				program_execute(&order_cpu);
+				program_execute(&d->order_cpu);
 			}
 		}
 		if(state_ppu != SQ_VMSTATE_IDLE && s[1] == 0){
-			if(order_ppu.length == 0){
+			if(d->order_ppu.length == 0){
 				sq_wakeupvm(co_ppu, SQFalse, SQFalse, SQTrue/*, SQTrue*/);
 				state_ppu = sq_getvmstate(co_ppu);
 			}else{
-				program_execute(&order_ppu);
+				program_execute(&d->order_ppu);
 			}
 		}
 	}
@@ -204,27 +235,31 @@ static SQInteger program_main(HSQUIRRELVM v)
 }
 void script_execute(struct config *c)
 {
-	order_cpu.command_change = true;
-	order_cpu.unit = c->flash_cpu->pagesize;
-	order_cpu.memory = &c->rom.cpu_rom;
-	order_cpu.config = c->reader->cpu_flash_config;
-	order_cpu.device_get = c->reader->cpu_flash_device_get;
-	order_cpu.write = c->reader->cpu_write_6502;
-	order_cpu.read = c->reader->cpu_read;
-	order_cpu.erase = c->reader->cpu_flash_erase;
-	order_cpu.program = c->reader->cpu_flash_program;
-	order_cpu.flash_status = c->reader->flash_status;
-	
-	order_ppu.command_change = true;
-	order_ppu.unit = c->flash_ppu->pagesize;
-	order_ppu.memory = &c->rom.ppu_rom;
-	order_ppu.config = c->reader->ppu_flash_config;
-	order_ppu.device_get = c->reader->ppu_flash_device_get;
-	order_ppu.write = c->reader->ppu_write; //warning ¤ÏÌµ»ë
-	order_ppu.read = c->reader->ppu_read;
-	order_ppu.erase = c->reader->ppu_flash_erase;
-	order_ppu.program = c->reader->ppu_flash_program;
-	order_ppu.flash_status = c->reader->flash_status;
+	struct anago_driver d = {
+		.order_cpu = {
+			.command_change = true,
+			.unit = c->flash_cpu->pagesize,
+			.memory = &c->rom.cpu_rom,
+			.config = c->reader->cpu_flash_config,
+			.device_get = c->reader->cpu_flash_device_get,
+			.write = c->reader->cpu_write_6502,
+			.read = c->reader->cpu_read,
+			.erase = c->reader->cpu_flash_erase,
+			.program = c->reader->cpu_flash_program
+		},
+		.order_ppu = {
+			.command_change = true,
+			.unit = c->flash_ppu->pagesize,
+			.memory = &c->rom.ppu_rom,
+			.config = c->reader->ppu_flash_config,
+			.device_get = c->reader->ppu_flash_device_get,
+			.write = c->reader->ppu_write, //warning ¤ÏÌµ»ë
+			.read = c->reader->ppu_read,
+			.erase = c->reader->ppu_flash_erase,
+			.program = c->reader->ppu_flash_program,
+		},
+		.flash_status = c->reader->flash_status
+	};
 	
 	HSQUIRRELVM v = qr_open(); 
 	qr_function_register_global(v, "cpu_write", cpu_write);
@@ -237,7 +272,19 @@ void script_execute(struct config *c)
 	qr_function_register_global(v, "program_main", program_main);
 	qr_function_register_global(v, "erase_wait", erase_wait);
 	
-	execute_main(v, c);
+	if(SQ_FAILED(sqstd_dofile(v, _SC("flashmode.nut"), SQFalse, SQTrue))){
+		return;
+	}else if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue))){
+		printf("%s open error\n", c->script);
+		return;
+	}else{
+		qr_call(
+			v, "program", (SQUserPointer) &d, true, 
+			5, c->rom.mappernum, 
+			d.order_cpu.memory->transtype, d.order_cpu.memory->size, 
+			d.order_ppu.memory->transtype, d.order_ppu.memory->size
+		);
+	}
 
 	qr_close(v);
 }

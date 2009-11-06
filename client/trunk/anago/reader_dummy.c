@@ -25,7 +25,7 @@ static void dummy_cpu_flash_config(long c000x, long c2aaa, long c5555, long unit
 {
 	printf("%s %04x %04x %04x %04x\n", __FUNCTION__, (int) c000x, (int) c2aaa, (int) c5555, (int) unit);
 }
-static long dummy_cpu_flash_program(long address, long length, u8 *data, bool dowait)
+static long dummy_cpu_flash_program(long address, long length, const u8 *data, bool dowait)
 {
 	int i = 0x10;
 	printf("%s %06x\n", __FUNCTION__, (int) address);
@@ -57,7 +57,7 @@ static void dummy_ppu_flash_config(long c000x, long c2aaa, long c5555, long unit
 {
 	printf("%s %04x %04x %04x %04x\n", __FUNCTION__, (int) c000x, (int) c2aaa, (int) c5555, (int) unit);
 }
-static long dummy_ppu_flash_program(long address, long length, u8 *data, bool dowait)
+static long dummy_ppu_flash_program(long address, long length, const u8 *data, bool dowait)
 {
 	int i = 0x10;
 	printf("%s %06x\n", __FUNCTION__, (int) address);

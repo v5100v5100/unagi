@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -37,7 +38,7 @@ void qr_function_register_global(HSQUIRRELVM v, const char *name, SQFUNCTION f)
 	sq_pop(v, 1);
 }
 
-void qr_call(HSQUIRRELVM v, const SQChar *functionname, bool settop, int argnum, ...)
+void qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool settop, int argnum, ...)
 {
 	SQInteger top = sq_gettop(v);
 	sq_pushroottable(v);
@@ -47,10 +48,11 @@ void qr_call(HSQUIRRELVM v, const SQChar *functionname, bool settop, int argnum,
 		va_list ap;
 		va_start(ap, argnum);
 		sq_pushroottable(v);
+		sq_pushuserpointer(v, up);
 		for(i = 0; i < argnum; i++){
 			sq_pushinteger(v, va_arg(ap, long));
 		}
-		sq_call(v, 1 + argnum, SQFalse, SQTrue); //calls the function 
+		sq_call(v, 2 + argnum, SQFalse, SQTrue); //calls the function 
 	}
 	if(settop == true){
 		sq_settop(v, top); //restores the original stack size
@@ -79,15 +81,26 @@ static bool long_get(HSQUIRRELVM v, SQInteger index, long *d)
 SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...)
 {
 	va_list ap;
-	if(sq_gettop(v) != (num + 1)){
+	if(sq_gettop(v) != (num + 2)){ //roottable, up, arguments...
 		return sq_throwerror(v, "argument number error");
 	}
 	va_start(ap, num);
 	SQInteger i;
 	for(i = 0; i < num; i++){
-		if(long_get(v, i + 2, va_arg(ap, long *)) == false){
+		if(long_get(v, i + 3, va_arg(ap, long *)) == false){
 			return sq_throwerror(v, "argument type error");
 		}
 	}
-	return 0;
+	return SQ_OK;
+}
+
+SQRESULT qr_userpointer_get(HSQUIRRELVM v, SQUserPointer *up)
+{
+	SQRESULT r;
+	assert(sq_gettype(v, 2) == OT_USERPOINTER);
+	r = sq_getuserpointer(v, 2, up);
+	if(SQ_FAILED(r)){
+		return sq_throwerror(v, "1st argument must be d (userpointer)");
+	}
+	return r;
 }
