@@ -1129,7 +1129,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 				printf(EXECUTE_PROGRAM_PREPARE, cpu_rom.name);
 				fflush(stdout);
 				//device によっては erase
-				c->cpu_flash_driver->init(&(r->cpu_flash));
+				c->cpu_flash_driver->init(&(r->cpu_flash), c->cpu_flash_driver->erase_wait);
 				printf(EXECUTE_PROGRAM_DONE);
 				fflush(stdout);
 			}
@@ -1221,7 +1221,7 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 			if(programcount_ppu++ == 0){
 				printf(EXECUTE_PROGRAM_PREPARE, ppu_rom.name);
 				fflush(stdout);
-				c->ppu_flash_driver->init(&(r->ppu_flash));
+				c->ppu_flash_driver->init(&(r->ppu_flash), c->ppu_flash_driver->erase_wait);
 				printf(EXECUTE_PROGRAM_DONE);
 				fflush(stdout);
 			}

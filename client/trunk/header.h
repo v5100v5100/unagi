@@ -17,7 +17,7 @@ struct memory{
 	int size, offset;
 	enum memory_attribute attribute;
 	enum trastype transtype;
-	u8 *data;
+	uint8_t *data;
 };
 /*
 ROM image 内 struct memory のモード別の使い方
@@ -57,7 +57,7 @@ enum{
 	MEMORY_AREA_CPU_RAM, MEMORY_AREA_CPU_ROM, MEMORY_AREA_PPU
 };
 #ifdef HEADEROUT
-void nesheader_set(const struct romimage *r, u8 *header);
+void nesheader_set(const struct romimage *r, uint8_t *header);
 #endif
 bool nesbuffer_malloc(struct romimage *r, int mode);
 void nesfile_create(struct romimage *r, const char *romfilename);

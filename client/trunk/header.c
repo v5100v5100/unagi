@@ -149,7 +149,7 @@ bool nesbuffer_malloc(struct romimage *r, int mode)
 
 static inline void memory_free(struct memory *m)
 {
-	if(m->size != 0){
+	if(m->data != NULL){
 		Free(m->data);
 		m->data = NULL;
 	}
@@ -286,6 +286,9 @@ bool nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		d += cpusize;
 		if(ppusize != 0){
 			nesfile_datapointer_set(d, &r->ppu_rom, ppusize);
+		}else{
+			r->ppu_rom.data = NULL;
+			r->ppu_rom.size = 0;
 		}
 	}
 

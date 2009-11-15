@@ -45,7 +45,7 @@ struct flash_driver{
 	long erase_wait; //unit is msec
 	u8 id_manufacurer, id_device;
 	int (*productid_check)(const struct flash_order *d, const struct flash_driver *f);
-	void (*init)(const struct flash_order *d);
+	void (*init)(const struct flash_order *d, long wait);
 	void (*program)(const struct flash_order *d, long address, long length, const struct memory *m);
 };
 const struct flash_driver FLASH_DRIVER_UNDEF;

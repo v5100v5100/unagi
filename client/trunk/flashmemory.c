@@ -41,14 +41,15 @@ static void sram_erase(const struct flash_order *d)
 }
 #endif
 
-static void init_nop(const struct flash_order *d)
+static void init_nop(const struct flash_order *d, long wait)
 {
 }
 
-static void init_erase(const struct flash_order *d)
+static void init_erase(const struct flash_order *d, long wait)
 {
 	assert(d->pagesize > 0);
 	d->erase(d->command_2aaa, true);
+	Sleep(wait);
 }
 
 static void program_dummy(const struct flash_order *d, long address, long length, const struct memory *m)
