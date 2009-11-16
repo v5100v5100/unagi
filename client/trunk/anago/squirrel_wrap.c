@@ -38,8 +38,9 @@ void qr_function_register_global(HSQUIRRELVM v, const char *name, SQFUNCTION f)
 	sq_pop(v, 1);
 }
 
-void qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool settop, int argnum, ...)
+SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool settop, int argnum, ...)
 {
+	SQRESULT r = SQ_ERROR;
 	SQInteger top = sq_gettop(v);
 	sq_pushroottable(v);
 	sq_pushstring(v, _SC(functionname), -1);
@@ -52,11 +53,12 @@ void qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool s
 		for(i = 0; i < argnum; i++){
 			sq_pushinteger(v, va_arg(ap, long));
 		}
-		sq_call(v, 2 + argnum, SQFalse, SQTrue); //calls the function 
+		r = sq_call(v, 2 + argnum, SQFalse, SQTrue); //calls the function 
 	}
 	if(settop == true){
 		sq_settop(v, top); //restores the original stack size
 	}
+	return r;
 }
 
 void qr_close(HSQUIRRELVM v)

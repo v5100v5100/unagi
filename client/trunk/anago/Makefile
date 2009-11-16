@@ -5,12 +5,13 @@ VPATH = ..
 CFLAGS = -g -O0 -Wall -Werror -I.. -I$(LIBUSB)/include -I$(SQUIRREL)/include -DDEBUG=1 -DANAGO=1
 LDFLAG = -L. -L$(LIBUSB)/lib/gcc -L$(SQUIRREL)/lib
 CC = gcc
-OBJ = anago.o header.o crc32.o file.o script.o progress.o \
-	flash_device.o \
+OBJ = anago.o header.o crc32.o file.o script_flash.o script_dump.o \
+	progress.o flash_device.o \
 	reader_dummy.o reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
 clean:
 	rm -f $(OBJ)
 anago.exe: $(OBJ) 
 	g++ -o $@ $(LDFLAG) $(OBJ) -lusb -lsqstdlib -lsquirrel
 
-script.o: squirrel_wrap.h
+script_flash.o: squirrel_wrap.h
+script_dump.o: squirrel_wrap.h

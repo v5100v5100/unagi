@@ -46,7 +46,7 @@ function program(d, mapper, cpu_trans, cpu_size, ppu_trans, ppu_size)
 		ppu_erase(d);
 	}
 	erase_wait(d);
-	if(cpu_trans != 0){
+	if(cpu_trans != trans_empty){
 		co_cpu.call(d, cpu_loop);
 	}
 	if(ppu_trans != trans_empty){

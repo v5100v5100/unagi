@@ -8,7 +8,7 @@
 #include "squirrel_wrap.h"
 #include "flash_device.h"
 #include "progress.h"
-#include "script.h"
+#include "script_flash.h"
 
 struct anago_driver{
 	struct anago_flash_order{
@@ -284,7 +284,7 @@ static SQInteger ppu_program_count(HSQUIRRELVM v)
 	return program_count(v, &d->order_ppu);
 }
 
-static bool script_testrun(struct config *c, struct anago_driver *d)
+static bool script_testrun(struct config_flash *c, struct anago_driver *d)
 {
 	static const char *functionname[] = {
 		"cpu_write", "cpu_erase", "cpu_command",
@@ -318,7 +318,7 @@ static bool script_testrun(struct config *c, struct anago_driver *d)
 	qr_close(v);
 	return ret;
 }
-void script_execute(struct config *c)
+void script_flash_execute(struct config_flash *c)
 {
 	struct anago_driver d = {
 		.order_cpu = {
