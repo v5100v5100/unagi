@@ -191,13 +191,19 @@ static void kazzo_ppu_flash_device_get(uint8_t s[2])
 {
 	read_main(REQUEST_PPU_FLASH_DEVICE, 0, 2, s);
 }
+static uint8_t kazzo_vram_connection(void)
+{
+	uint8_t s;
+	read_main(REQUEST_VRAM_CONNECTION, 0, 1, &s);
+	return s;
+}
 const struct reader_driver DRIVER_KAZZO = {
 	.name = "kazzo",
 	.open_or_close = kazzo_open_close,
 	.init = kazzo_init,
 	.cpu_read = kazzo_cpu_read, .ppu_read = kazzo_ppu_read,
 	.cpu_write_6502 = kazzo_cpu_write_6502,
-	.flash_support = OK,
+	.flash_support = true,
 	.ppu_write = kazzo_ppu_write,
 	.cpu_flash_config = kazzo_cpu_flash_config,
 	.cpu_flash_erase = kazzo_cpu_flash_erase,
@@ -207,5 +213,6 @@ const struct reader_driver DRIVER_KAZZO = {
 	.ppu_flash_erase = kazzo_ppu_flash_erase,
 	.ppu_flash_program = kazzo_ppu_flash_program,
 	.ppu_flash_device_get = kazzo_ppu_flash_device_get,
-	.flash_status = kazzo_flash_status
+	.flash_status = kazzo_flash_status,
+	.vram_connection = kazzo_vram_connection
 };

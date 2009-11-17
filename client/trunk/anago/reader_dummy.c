@@ -85,13 +85,17 @@ static void dummy_flash_device_get(uint8_t s[2])
 	s[0] = 0x01;
 	s[1] = 0xa4;
 }
+static uint8_t dummy_vram_connection(void)
+{
+	return 0x05;
+}
 const struct reader_driver DRIVER_DUMMY = {
 	.name = "tester",
 	.open_or_close = dummy_open_close,
 	.init = dummy_init,
 	.cpu_read = dummy_cpu_read, .ppu_read = dummy_ppu_read,
 	.cpu_write_6502 = dummy_cpu_write_6502,
-	.flash_support = OK,
+	.flash_support = true,
 	.ppu_write = dummy_ppu_write,
 	.cpu_flash_config = dummy_cpu_flash_config,
 	.cpu_flash_erase = dummy_cpu_flash_erase,
@@ -101,5 +105,6 @@ const struct reader_driver DRIVER_DUMMY = {
 	.ppu_flash_erase = dummy_ppu_flash_erase,
 	.ppu_flash_program = dummy_ppu_flash_program,
 	.ppu_flash_device_get = dummy_flash_device_get,
-	.flash_status = dummy_flash_status
+	.flash_status = dummy_flash_status,
+	.vram_connection = dummy_vram_connection
 };

@@ -9,6 +9,7 @@
 #include "memory_manage.h"
 #include "reader_master.h"
 #include "squirrel_wrap.h"
+#include "script_common.h"
 #include "script_dump.h"
 
 struct dump_driver{
@@ -19,6 +20,7 @@ struct dump_driver{
 		void (*const write)(long address, long length, const uint8_t *data);
 		void (*const read)(long address, long length, u8 *data);
 	}cpu, ppu;
+	uint8_t (*const vram_connection)(void);
 	bool progress;
 };
 static SQInteger write(HSQUIRRELVM v, struct memory_driver *t)
@@ -179,7 +181,8 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 		return r;
 	}
 	struct romimage image;
-	r = qr_argument_get(v, 1, &image.mappernum);
+	long mirrorfind;
+	r = qr_argument_get(v, 2, &image.mappernum, &mirrorfind);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -187,6 +190,13 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 	image.cpu_ram.data = NULL;
 	image.ppu_rom = d->ppu.memory;
 	image.mirror = MIRROR_PROGRAMABLE;
+	if(mirrorfind == 1){
+		if(d->vram_connection() == 0x05){
+			image.mirror = MIRROR_VERTICAL;
+		}else{
+			image.mirror = MIRROR_HORIZONAL;
+		}
+	}
 	image.backupram = 0;
 	nesfile_create(&image, d->target);
 	nesbuffer_free(&image, 0); //0 is MODE_xxx_xxxx
@@ -223,22 +233,7 @@ static SQInteger length_check(HSQUIRRELVM v)
 	}
 	return r;
 }
-static SQInteger script_nop(HSQUIRRELVM v)
-{
-	return 0;
-}
 
-struct range{
-	long start, end;
-};
-static SQInteger range_check(HSQUIRRELVM v, const char *name, long target, const struct range *range)
-{
-	if((target < range->start) || (target > range->end)){
-		printf("%s range must be 0x%06x to 0x%06x", name, (int) range->start, (int) range->end);
-		return sq_throwerror(v, "script logical error");
-	}
-	return 0;
-}
 static SQInteger read_count(HSQUIRRELVM v, struct memory_driver *t, const struct range *range_address, const struct range *range_length)
 {
 	long address, length;
@@ -282,21 +277,6 @@ static SQInteger ppu_read_count(HSQUIRRELVM v)
 	return read_count(v, &d->ppu, &range_address, &range_length);
 }
 
-static SQInteger cpu_write_check(HSQUIRRELVM v)
-{
-	static const struct range range_address = {0x4000, 0x10000};
-	static const struct range range_data = {0x0, 0xff};
-	long address, data;
-	SQRESULT r = qr_argument_get(v, 2, &address, &data);
-	if(SQ_FAILED(r)){
-		return r;
-	}
-	r = range_check(v, "address", address, &range_address);
-	if(SQ_FAILED(r)){
-		return r;
-	}
-	return range_check(v, "data", data, &range_data);
-}
 static bool script_execute(HSQUIRRELVM v, struct config_dump *c, struct dump_driver *d)
 {
 	bool ret = true;
@@ -348,6 +328,7 @@ void script_dump_execute(struct config_dump *c)
 			.write = c->reader->ppu_write,
 			.read = c->reader->ppu_read
 		},
+		.vram_connection = c->reader->vram_connection,
 		.target = c->target,
 		.progress = c->progress
 	};

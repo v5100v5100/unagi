@@ -8,6 +8,7 @@
 #include "squirrel_wrap.h"
 #include "flash_device.h"
 #include "progress.h"
+#include "script_common.h"
 #include "script_flash.h"
 
 struct anago_driver{
@@ -99,7 +100,7 @@ static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const cha
 		printf("erasing %s memory...\n", region);
 		fflush(stdout);
 	}
-	return 0; //sq_suspendvm(v);
+	return 0;
 }
 static SQInteger cpu_erase(HSQUIRRELVM v)
 {
@@ -250,55 +251,49 @@ static SQInteger program_main(HSQUIRRELVM v)
 	return 0;
 }
 
-static SQInteger script_nop(HSQUIRRELVM v)
-{
-	return 0;
-}
-
-static SQInteger program_count(HSQUIRRELVM v, struct anago_flash_order *t)
+static SQInteger program_count(HSQUIRRELVM v, struct anago_flash_order *t, const struct range *range_address, const struct range *range_length)
 {
 	SQRESULT r = qr_argument_get(v, 2, &t->address, &t->length);
 	if(SQ_FAILED(r)){
 		return r;
+	}
+	r = range_check(v, "length", t->length, range_length);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	if((t->address < range_address->start) || ((t->address + t->length) > range_address->end)){
+		printf("address range must be 0x%06x to 0x%06x", (int) range_address->start, (int) range_address->end);
+		return sq_throwerror(v, "script logical error");;
 	}
 	t->program_count += t->length;
 	return 0;
 }
 static SQInteger cpu_program_count(HSQUIRRELVM v)
 {
+	static const struct range range_address = {0x8000, 0x10000};
+	static const struct range range_length = {0x0100, 0x4000};
 	struct anago_driver *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return program_count(v, &d->order_cpu);
+	return program_count(v, &d->order_cpu, &range_address, &range_length);
 }
 
 static SQInteger ppu_program_count(HSQUIRRELVM v)
 {
+	static const struct range range_address = {0x0000, 0x2000};
+	static const struct range range_length = {0x0100, 0x2000};
 	struct anago_driver *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return program_count(v, &d->order_ppu);
+	return program_count(v, &d->order_ppu, &range_address, &range_length);
 }
 
-static bool script_testrun(struct config_flash *c, struct anago_driver *d)
+static bool script_execute(HSQUIRRELVM v, struct config_flash *c, struct anago_driver *d)
 {
-	static const char *functionname[] = {
-		"cpu_write", "cpu_erase", "cpu_command",
-		"ppu_write", "ppu_erase", "ppu_command",
-		"erase_wait", "program_main"
-	};
-	HSQUIRRELVM v = qr_open();
-	int i;
-	for(i = 0; i < sizeof(functionname)/sizeof(char *); i++){
-		qr_function_register_global(v, functionname[i], script_nop);
-	}
-	qr_function_register_global(v, "cpu_program", cpu_program_count);
-	qr_function_register_global(v, "ppu_program", ppu_program_count);
-
 	bool ret = true;
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
 		printf("flash core script error\n");
@@ -307,17 +302,19 @@ static bool script_testrun(struct config_flash *c, struct anago_driver *d)
 		printf("%s open error\n", c->script);
 		ret = false;
 	}else{
-		qr_call(
+		SQRESULT r = qr_call(
 			v, "program", (SQUserPointer) d, true, 
 			5, c->rom.mappernum, 
 			d->order_cpu.memory->transtype, d->order_cpu.memory->size, 
 			d->order_ppu.memory->transtype, d->order_ppu.memory->size
 		);
+		if(SQ_FAILED(r)){
+			ret = false;
+		}
 	}
-
-	qr_close(v);
 	return ret;
 }
+
 void script_flash_execute(struct config_flash *c)
 {
 	struct anago_driver d = {
@@ -349,33 +346,43 @@ void script_flash_execute(struct config_flash *c)
 		},
 		.flash_status = c->reader->flash_status
 	};
-	if(script_testrun(c, &d) == false){
-		return;
+	{
+		static const char *functionname[] = {
+			"cpu_erase", "ppu_erase",
+			"erase_wait", "program_main"
+		};
+		HSQUIRRELVM v = qr_open();
+		int i;
+		for(i = 0; i < sizeof(functionname)/sizeof(char *); i++){
+			qr_function_register_global(v, functionname[i], script_nop);
+		}
+		qr_function_register_global(v, "cpu_write", cpu_write_check);
+		qr_function_register_global(v, "cpu_command", cpu_command);
+		qr_function_register_global(v, "cpu_program", cpu_program_count);
+		
+		qr_function_register_global(v, "ppu_program", ppu_program_count);
+		qr_function_register_global(v, "ppu_command", ppu_command);
+		
+		if(script_execute(v, c, &d) == false){
+			qr_close(v);
+			return;
+		}
+		qr_close(v);
 	}
-	
-	HSQUIRRELVM v = qr_open(); 
-	qr_function_register_global(v, "cpu_write", cpu_write);
-	qr_function_register_global(v, "cpu_erase", cpu_erase);
-	qr_function_register_global(v, "cpu_program", cpu_program_memory);
-	qr_function_register_global(v, "cpu_command", cpu_command);
-	qr_function_register_global(v, "ppu_erase", ppu_erase);
-	qr_function_register_global(v, "ppu_program", ppu_program_memory);
-	qr_function_register_global(v, "ppu_command", ppu_command);
-	qr_function_register_global(v, "program_main", program_main);
-	qr_function_register_global(v, "erase_wait", erase_wait);
-	
-	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
-		printf("flash core script error\n");
-	}else if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue))){
-		printf("%s open error\n", c->script);
-	}else{
-		qr_call(
-			v, "program", (SQUserPointer) &d, true, 
-			5, c->rom.mappernum, 
-			d.order_cpu.memory->transtype, d.order_cpu.memory->size, 
-			d.order_ppu.memory->transtype, d.order_ppu.memory->size
-		);
+	d.order_cpu.command_change = true;
+	d.order_ppu.command_change = true;
+	{
+		HSQUIRRELVM v = qr_open(); 
+		qr_function_register_global(v, "cpu_write", cpu_write);
+		qr_function_register_global(v, "cpu_erase", cpu_erase);
+		qr_function_register_global(v, "cpu_program", cpu_program_memory);
+		qr_function_register_global(v, "cpu_command", cpu_command);
+		qr_function_register_global(v, "ppu_erase", ppu_erase);
+		qr_function_register_global(v, "ppu_program", ppu_program_memory);
+		qr_function_register_global(v, "ppu_command", ppu_command);
+		qr_function_register_global(v, "program_main", program_main);
+		qr_function_register_global(v, "erase_wait", erase_wait);
+		script_execute(v, c, &d);
+		qr_close(v);
 	}
-
-	qr_close(v);
 }
