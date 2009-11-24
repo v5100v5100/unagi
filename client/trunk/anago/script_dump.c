@@ -340,6 +340,7 @@ void script_dump_execute(struct config_dump *c)
 		qr_function_register_global(v, "nesfile_save", length_check);
 		qr_function_register_global(v, "cpu_read", cpu_read_count);
 		qr_function_register_global(v, "ppu_read", ppu_read_count);
+		qr_function_register_global(v, "require", script_require);
 		if(script_execute(v, c, &d) == false){
 			qr_close(v);
 			return;
@@ -357,6 +358,7 @@ void script_dump_execute(struct config_dump *c)
 		qr_function_register_global(v, "cpu_read", cpu_read);
 		qr_function_register_global(v, "ppu_read", ppu_read);
 		qr_function_register_global(v, "ppu_ramfind", ppu_ramfind);
+		qr_function_register_global(v, "require", script_require);
 		script_execute(v, c, &d);
 		qr_close(v);
 	}
