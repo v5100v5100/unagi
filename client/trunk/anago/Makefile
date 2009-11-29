@@ -1,8 +1,9 @@
 all: anago.exe
 LIBUSB = d:/dev/LibUSB-Win32
 SQUIRREL = ../SQUIRREL2
+KAZZO = ../../kazzo
 VPATH = ..
-CFLAGS = -g -O0 -Wall -Werror -I.. -I$(LIBUSB)/include -I$(SQUIRREL)/include -DDEBUG=1 -DANAGO=1
+CFLAGS = -g -O0 -Wall -Werror -I.. -I$(LIBUSB)/include -I$(SQUIRREL)/include -I$(KAZZO) -DDEBUG=1 -DANAGO=1
 LDFLAG = -L. -L$(LIBUSB)/lib/gcc -L$(SQUIRREL)/lib
 CC = gcc
 OBJ = anago.o header.o crc32.o file.o \

@@ -1,9 +1,9 @@
 #include <assert.h>
+#include <stdlib.h>
 #include <usb.h>
+#include <kazzo_request.h>
 #include "reader_master.h"
 #include "usb_device.h"
-#include "../kazzo/request.h"
-#include "../kazzo/usbconfig.h"
 #include "reader_kazzo.h"
 
 static usb_dev_handle *device_open(void)
@@ -39,10 +39,6 @@ static int kazzo_open_close(enum reader_control oc)
 	}
 	return NG;
 }
-static void kazzo_init(void)
-{
-	//no operation
-}
 enum{
 	TIMEOUT = 4000
 };
@@ -55,15 +51,19 @@ static void device_read(usb_dev_handle *handle, enum request r, long address, lo
 		r, address, 
 		0, data, length, TIMEOUT
 	);
-	assert(cnt == length);
+	if(cnt != length){
+		usb_strerror();
+		exit(1);
+	}
 }
 static void read_main(const enum request r, long address, long length, uint8_t *data)
 {
-	while(length >= READ_PACKET_SIZE){
-		device_read(handle, r, address, READ_PACKET_SIZE, data);
-		data += READ_PACKET_SIZE;
-		address += READ_PACKET_SIZE;
-		length -= READ_PACKET_SIZE;
+	const int packet = READ_PACKET_SIZE;
+	while(length >= packet){
+		device_read(handle, r, address, packet, data);
+		data += packet;
+		address += packet;
+		length -= packet;
 	}
 	if(length != 0){
 		device_read(handle, r, address, length, data);
@@ -81,7 +81,7 @@ static void kazzo_ppu_read(long address, long length, uint8_t *data)
 //-------- write sequence --------
 static void device_write(usb_dev_handle *handle, enum request w, long address, long length, const uint8_t *data)
 {
-	//const を外して無理矢理渡すしかない
+	//Removing const attribute is not good method....
 	int cnt = usb_control_msg(
 		handle, 
 		USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_OUT,
@@ -89,8 +89,14 @@ static void device_write(usb_dev_handle *handle, enum request w, long address, l
 		0, (uint8_t *) data, length, TIMEOUT
 	);
 	if(cnt != length){
-		assert(cnt == length);
+		usb_strerror();
+		exit(1);
 	}
+}
+
+static void kazzo_init(void)
+{
+	device_write(handle, REQUEST_PHI2_INIT, 0, 0, NULL);
 }
 
 static void kazzo_cpu_write_6502(long address, long length, const uint8_t *data)
