@@ -30,6 +30,9 @@ function program(d, mapper, cpu_trans, cpu_size, ppu_trans, ppu_size)
 	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_size);
 	local co_cpu = newthread(cpu_transfer);
 	local co_ppu = newthread(ppu_transfer);
+	if(board.vram_mirrorfind == true){
+		vram_mirrorfind(d);
+	}
 	initalize(d, board.cpu.banksize, board.ppu.banksize);
 	if(cpu_trans != trans_empty){
 		cpu_erase(d);

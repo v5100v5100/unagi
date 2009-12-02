@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include "memory_manage.h"
 #include "type.h"
-//#include "flashmemory.h"
 #include "flash_device.h"
 #include "header.h"
 #include "reader_master.h"
@@ -34,7 +33,7 @@ static bool transtype_flash_set(char mode, struct memory *t)
 static bool transtype_set(const char *mode, struct romimage *t)
 {
 	switch(mode[0]){
-	case 'a': case 'f':
+	case 'a': case 'f': case 'g':
 		if(mode[1] == '\0'){
 			t->cpu_rom.transtype = TRANSTYPE_FULL;
 			t->ppu_rom.transtype = TRANSTYPE_FULL;
@@ -84,11 +83,19 @@ static bool config_parse(const char *romimage, const char *device_cpu, const cha
 static void program(int c, char **v)
 {
 	struct config_flash config;
+	config.rom.cpu_rom.data = NULL;
+	config.rom.ppu_rom.data = NULL;
 	config.script = v[2];
 	config.reader = &DRIVER_KAZZO;
-	if(v[1][0] == 'a'){
+	config.compare = false;
+	switch(v[1][0]){
+	case 'a':
 		config.reader = &DRIVER_DUMMY;
-	}	
+		break;
+	case 'g':
+		config.compare = true;
+		break;
+	}
 	if(transtype_set(v[1], &config.rom) == false){
 		puts("mode argument error");
 		return;
@@ -115,6 +122,7 @@ static void program(int c, char **v)
 		nesbuffer_free(&config.rom, 0);
 		return;
 	}
+	config.reader->init();
 	script_flash_execute(&config);
 	nesbuffer_free(&config.rom, 0);
 	config.reader->open_or_close(READER_CLOSE);
@@ -122,7 +130,7 @@ static void program(int c, char **v)
 static void dump(int c, char **v)
 {
 	struct config_dump config;
-	if(c != 4){
+	if(c < 4){
 		puts("argument error");
 		return;
 	}
@@ -156,10 +164,14 @@ static void dump(int c, char **v)
 	config.target = v[3];
 	config.reader = &DRIVER_KAZZO;
 	config.mappernum = -1;
+	if(c == 5){
+		config.mappernum = atoi(v[4]);
+	}
 	if(config.reader->open_or_close(READER_OPEN) == NG){
 		puts("reader open error");
 		return;
 	}
+	config.reader->init();
 	script_dump_execute(&config);
 	config.reader->open_or_close(READER_CLOSE);
 }
@@ -173,7 +185,7 @@ int main(int c, char **v)
 	mm_init();
 	if(c >= 2){
 		switch(v[1][0]){
-		case 'a': case 'f':
+		case 'a': case 'f': case 'g':
 			program(c, v);
 			break;
 		case 'd': case 'D':
@@ -181,7 +193,7 @@ int main(int c, char **v)
 			break;
 		default:
 			usage(v[0]);
-			puts("mode are a, d, f");
+			puts("mode are a, d, D, f, g");
 			break;
 		}
 	}else{

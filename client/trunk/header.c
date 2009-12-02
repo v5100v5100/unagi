@@ -242,6 +242,12 @@ bool nesfile_load(const char *errorprefix, const char *file, struct romimage *r)
 		Free(buf);
 		return false;
 	}
+	//vram mirroring set
+	if((buf[6] & 1) == 0){
+		r->mirror = MIRROR_HORIZONAL;
+	}else{
+		r->mirror = MIRROR_VERTICAL;
+	}
 	//mapper number check
 	{
 		long mapper = (buf[6] >> 4) & 0x0f;

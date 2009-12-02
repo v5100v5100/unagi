@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <usb.h>
 #include <kazzo_request.h>
+#include <kazzo_task.h>
 #include "reader_master.h"
 #include "usb_device.h"
 #include "reader_kazzo.h"
@@ -146,7 +147,7 @@ static inline void flash_execute(enum request p, enum request s, long address, c
 		do{
 			wait(1);
 			device_read(handle, s, 0, 1, &status);
-		}while(status != 0);
+		}while(status != KAZZO_TASK_FLASH_IDLE);
 	}
 }
 static void kazzo_cpu_flash_erase(long address, bool dowait)
