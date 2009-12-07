@@ -6,6 +6,7 @@ struct flash_device{
 	long erase_wait; //unit is msec
 	bool erase_require;
 	uint8_t id_manufacurer, id_device;
+	long command_mask;
 };
 
 bool flash_device_get(const char *name, struct flash_device *t);

@@ -87,6 +87,9 @@ bool flash_device_get(const char *name, struct flash_device *t)
 	if(bool_get(v, "erase_require", &t->erase_require) == false){
 		goto field_error;
 	}
+	if(long_get(v, "command_mask", &t->command_mask) == false){
+		goto field_error;
+	}
 	long dd;
 	if(long_get(v, "id_manufacurer", &dd) == false){
 		goto field_error;
