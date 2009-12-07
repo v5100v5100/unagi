@@ -33,7 +33,7 @@ static bool transtype_flash_set(char mode, struct memory *t)
 static bool transtype_set(const char *mode, struct romimage *t)
 {
 	switch(mode[0]){
-	case 'a': case 'f': case 'g':
+	case 'a': case 'f': case 'F':
 		if(mode[1] == '\0'){
 			t->cpu_rom.transtype = TRANSTYPE_FULL;
 			t->ppu_rom.transtype = TRANSTYPE_FULL;
@@ -71,12 +71,18 @@ static bool config_parse(const char *romimage, const char *device_cpu, const cha
 	}
 	if(c->flash_cpu.id_device == FLASH_ID_DEVICE_DUMMY){
 		c->rom.cpu_rom.transtype = TRANSTYPE_EMPTY;
+	}else if(c->flash_cpu.capacity < c->rom.cpu_rom.size){
+		puts("cpu area ROM image size is larger than target device");
+		return false;
 	}
 	if(
 		(c->flash_ppu.id_device == FLASH_ID_DEVICE_DUMMY) ||
 		(c->rom.ppu_rom.size == 0)
 	){
 		c->rom.ppu_rom.transtype = TRANSTYPE_EMPTY;
+	}else if(c->flash_ppu.capacity < c->rom.ppu_rom.size){
+		puts("ppu area ROM image size is larger than target device");
+		return false;
 	}
 	return true;
 }
@@ -92,7 +98,7 @@ static void program(int c, char **v)
 	case 'a':
 		config.reader = &DRIVER_DUMMY;
 		break;
-	case 'g':
+	case 'F':
 		config.compare = true;
 		break;
 	}
@@ -185,7 +191,7 @@ int main(int c, char **v)
 	mm_init();
 	if(c >= 2){
 		switch(v[1][0]){
-		case 'a': case 'f': case 'g':
+		case 'a': case 'f': case 'F':
 			program(c, v);
 			break;
 		case 'd': case 'D':

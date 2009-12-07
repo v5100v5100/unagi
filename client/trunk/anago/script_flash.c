@@ -344,9 +344,9 @@ static bool script_execute(HSQUIRRELVM v, struct config_flash *c, struct anago_d
 	}else{
 		SQRESULT r = qr_call(
 			v, "program", (SQUserPointer) d, true, 
-			5, c->rom.mappernum, 
-			d->order_cpu.memory->transtype, d->order_cpu.memory->size, 
-			d->order_ppu.memory->transtype, d->order_ppu.memory->size
+			1 + 3 * 2, c->rom.mappernum, 
+			d->order_cpu.memory->transtype, d->order_cpu.memory->size, d->order_cpu.device->capacity,
+			d->order_ppu.memory->transtype, d->order_ppu.memory->size, d->order_ppu.device->capacity
 		);
 		if(SQ_FAILED(r)){
 			ret = false;

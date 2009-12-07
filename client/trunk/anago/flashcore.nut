@@ -1,16 +1,19 @@
 mega <- 0x20000;
-function loopsize_get(t, trans, romsize)
+function loopsize_get(t, trans, image_size, device_size)
 {
 	local trans_full = 3, trans_top = 1, trans_bottom = 2; //header.h enum transtype
-	local loop = {start = 0, end = t.maxsize / t.banksize};
+	local loop = {start = 0, end = 0};
 	switch(trans){
-	case trans_full:
-		break;
+	case trans_full:{
+		local size = device_size < t.maxsize ? device_size : t.maxsize;
+		loop.end = size / t.banksize;
+		}break;
 	case trans_top:
-		loop.end = romsize / t.banksize;
+		loop.end = image_size / t.banksize;
 		break;
 	case trans_bottom:
-		loop.start = (t.maxsize - romsize) / t.banksize;
+		loop.start = (t.maxsize - image_size) / t.banksize;
+		loop.end = t.maxsize / t.banksize;
 		break;
 	default:
 		loop.start = 0;
@@ -19,15 +22,19 @@ function loopsize_get(t, trans, romsize)
 	}
 	return loop;
 }
-function program(d, mapper, cpu_trans, cpu_size, ppu_trans, ppu_size)
+function program(
+	d, mapper, 
+	cpu_trans, cpu_image_size, cpu_device_size,
+	ppu_trans, ppu_image_size, ppu_device_size
+)
 {
 	local trans_empty = 0;
 	if(board.mappernum != mapper){
 		print("mapper number not connected");
 		return;
 	}
-	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_size);
-	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_size);
+	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_image_size, cpu_device_size);
+	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_image_size, ppu_device_size);
 	local co_cpu = newthread(cpu_transfer);
 	local co_ppu = newthread(ppu_transfer);
 	if(board.vram_mirrorfind == true){
