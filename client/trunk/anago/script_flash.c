@@ -270,7 +270,7 @@ static SQInteger program_main(HSQUIRRELVM v)
 	}
 	SQInteger state_cpu = sq_getvmstate(co_cpu);
 	SQInteger state_ppu = sq_getvmstate(co_ppu);
-	const long sleepms = d->compare == true ? 6 : 2; //W29C040 で compare をすると、error が出るので出ない値に調整 (やっつけ対応)
+	const long sleepms = d->compare == true ? 11 : 2; //W29C040 で compare をすると、error が出るので出ない値に調整 (やっつけ対応)
 	
 	progress_init();
 	while((state_cpu != SQ_VMSTATE_IDLE) || (state_ppu != SQ_VMSTATE_IDLE)){
@@ -279,10 +279,14 @@ static SQInteger program_main(HSQUIRRELVM v)
 		Sleep(sleepms);
 		d->flash_status(s);
 		if(state_cpu != SQ_VMSTATE_IDLE && s[0] == KAZZO_TASK_FLASH_IDLE){
-			program_memoryarea(co_cpu, &d->order_cpu, d->compare, "program", &state_cpu, &console_update);
+			if(program_memoryarea(co_cpu, &d->order_cpu, d->compare, "program", &state_cpu, &console_update) == false){
+				return 0;
+			}
 		}
 		if(state_ppu != SQ_VMSTATE_IDLE && s[1] == KAZZO_TASK_FLASH_IDLE){
-			program_memoryarea(co_ppu, &d->order_ppu, d->compare, "charcter", &state_ppu, &console_update);
+			if(program_memoryarea(co_ppu, &d->order_ppu, d->compare, "charcter", &state_ppu, &console_update) == false){
+				return 0;
+			}
 		}
 		if(console_update == true){
 			progress_draw(d->order_cpu.programming.offset, d->order_cpu.programming.count, d->order_ppu.programming.offset, d->order_ppu.programming.count);

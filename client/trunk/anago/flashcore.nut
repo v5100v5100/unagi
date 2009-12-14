@@ -30,7 +30,7 @@ function program(
 {
 	local trans_empty = 0;
 	if(board.mappernum != mapper){
-		print("mapper number not connected");
+		print("mapper number not connected\n");
 		return;
 	}
 	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_image_size, cpu_device_size);
@@ -49,6 +49,7 @@ function program(
 	}
 	erase_wait(d);
 	if(cpu_trans != trans_empty){
+		//cpu_transfer(d, cpu_loop.start, cpu_loop.end, board.cpu.banksize);
 		co_cpu.call(d, cpu_loop.start, cpu_loop.end, board.cpu.banksize);
 	}
 	if(ppu_trans != trans_empty){

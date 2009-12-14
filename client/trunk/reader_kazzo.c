@@ -3,6 +3,7 @@
 #include <usb.h>
 #include <kazzo_request.h>
 #include <kazzo_task.h>
+#include "memory_manage.h"
 #include "reader_master.h"
 #include "usb_device.h"
 #include "reader_kazzo.h"
@@ -53,7 +54,8 @@ static void device_read(usb_dev_handle *handle, enum request r, long address, lo
 		0, data, length, TIMEOUT
 	);
 	if(cnt != length){
-		usb_strerror();
+		puts(__FUNCTION__);
+		puts(usb_strerror());
 		exit(1);
 	}
 }
@@ -83,16 +85,20 @@ static void kazzo_ppu_read(long address, long length, uint8_t *data)
 static void device_write(usb_dev_handle *handle, enum request w, long address, long length, const uint8_t *data)
 {
 	//Removing const attribute is not good method....
+	uint8_t *d = Malloc(length);
+	memcpy(d, data, length);
 	int cnt = usb_control_msg(
 		handle, 
 		USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_OUT,
 		w, address, 
-		0, (uint8_t *) data, length, TIMEOUT
+		0, d, length, TIMEOUT
 	);
 	if(cnt != length){
-		usb_strerror();
+		puts(__FUNCTION__);
+		puts(usb_strerror());
 		exit(1);
 	}
+	Free(d);
 }
 
 static void kazzo_init(void)
@@ -145,7 +151,7 @@ static inline void flash_execute(enum request p, enum request s, long address, c
 	device_write(handle, p, address, size, data);
 	if(dowait == true){
 		do{
-			wait(1);
+			wait(10);
 			device_read(handle, s, 0, 1, &status);
 		}while(status != KAZZO_TASK_FLASH_IDLE);
 	}
@@ -166,13 +172,19 @@ static long flash_program(enum request p, enum request s, long address, long len
 		return FLASH_PACKET_SIZE;
 	}
 	long count = 0;
+	uint8_t *d = Malloc(FLASH_PACKET_SIZE);
 	while(length >= FLASH_PACKET_SIZE){
 		flash_execute(p, s, address, data, FLASH_PACKET_SIZE, dowait);
+		device_read(handle, REQUEST_PPU_FLASH_BUFFER_GET, 0, FLASH_PACKET_SIZE, d);
+		if(memcmp(d, data, FLASH_PACKET_SIZE) != 0){
+			puts("packet send error");
+		}
 		address += FLASH_PACKET_SIZE;
 		data += FLASH_PACKET_SIZE;
 		count += FLASH_PACKET_SIZE;
 		length -= FLASH_PACKET_SIZE;
 	}
+	Free(d);
 	return count;
 }
 static long kazzo_cpu_flash_program(long address, long length, const uint8_t *data, bool dowait)

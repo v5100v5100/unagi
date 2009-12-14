@@ -267,6 +267,10 @@ static int config_init(const int argc, const char **argv, struct st_config *c)
 		}
 		break;
 	case MODE_ROM_PROGRAM:
+		if(c->reader->flash_support == false){
+			puts("this reader is not supported flash memory programming mode");
+			return NG;
+		}
 		switch(argc){
 		case 3:
 		case 4:
