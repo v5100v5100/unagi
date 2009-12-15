@@ -82,11 +82,18 @@ static void kazzo_ppu_read(long address, long length, uint8_t *data)
 	read_main(REQUEST_PPU_READ, INDEX_IMPLIED, address, length, data);
 }
 //-------- write sequence --------
+/*
+When host send data that contains 0xff many times, v-usb losts some 
+bits. To prevent losting bits, mask data xor 0xa5;
+*/
 static void device_write(usb_dev_handle *handle, enum request w, enum index index, long address, long length, const uint8_t *data)
 {
-	//Removing const attribute is not good method....
 	uint8_t *d = Malloc(length);
+	int i;
 	memcpy(d, data, length);
+	for(i = 0; i < length; i++){
+		d[i] ^= 0xa5;
+	}
 	int cnt = usb_control_msg(
 		handle, 
 		USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_OUT,
@@ -186,7 +193,7 @@ static void dump(const uint8_t *w, const uint8_t *r, long length)
 		length -= 0x10;
 	}
 }
-static long flash_program(enum request buffer_get, enum index index, long address, long length, const uint8_t *data, bool dowait)
+static long flash_program(enum index index, long address, long length, const uint8_t *data, bool dowait)
 {
 	enum request p = REQUEST_FLASH_PROGRAM;
 	enum request s = REQUEST_FLASH_STATUS;
@@ -199,7 +206,7 @@ static long flash_program(enum request buffer_get, enum index index, long addres
 	while(length >= FLASH_PACKET_SIZE){
 		flash_execute(p, s, index, address, data, FLASH_PACKET_SIZE, dowait);
 		if(0){
-			device_read(handle, buffer_get, index, 0, FLASH_PACKET_SIZE, d);
+			//device_read(handle, REQUEST_FLASH_BUFFER_GET, index, 0, FLASH_PACKET_SIZE, d);
 			if(memcmp(d, data, FLASH_PACKET_SIZE) != 0){
 				puts("packet send error");
 				dump(data, d, FLASH_PACKET_SIZE);
@@ -215,16 +222,16 @@ static long flash_program(enum request buffer_get, enum index index, long addres
 }
 static long kazzo_cpu_flash_program(long address, long length, const uint8_t *data, bool dowait)
 {
-	return flash_program(REQUEST_FLASH_BUFFER_GET, INDEX_CPU, address, length, data, dowait);
+	return flash_program(INDEX_CPU, address, length, data, dowait);
 }
 static long kazzo_ppu_flash_program(long address, long length, const uint8_t *data, bool dowait)
 {
-	return flash_program(REQUEST_FLASH_BUFFER_GET, INDEX_PPU, address, length, data, dowait);
+	return flash_program(INDEX_PPU, address, length, data, dowait);
 }
 
 static void kazzo_flash_status(uint8_t s[2])
 {
-	read_main(REQUEST_BOTH_FLASH_STATUS, INDEX_BOTH, 0, 2, s);
+	read_main(REQUEST_FLASH_STATUS, INDEX_BOTH, 0, 2, s);
 }
 static void kazzo_cpu_flash_device_get(uint8_t s[2])
 {
