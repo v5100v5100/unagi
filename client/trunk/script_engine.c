@@ -598,7 +598,7 @@ static int logical_check(const struct script *s, const struct st_config *c, stru
 				assert(r->cpu_ram.attribute == MEMORY_ATTR_WRITE);
 				break;
 			case MODE_RAM_WRITE:
-				assert(r->cpu_ram.attribute = MEMORY_ATTR_READ);
+				assert(r->cpu_ram.attribute == MEMORY_ATTR_READ);
 				break;
 			}
 			//length filter. 0 ¤Ï¤À¤á

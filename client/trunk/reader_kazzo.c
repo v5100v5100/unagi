@@ -113,9 +113,19 @@ static void kazzo_init(void)
 	device_write(handle, REQUEST_PHI2_INIT, INDEX_IMPLIED, 0, 0, NULL);
 }
 
+static void write_memory(enum request r, long address, long length, const uint8_t *data)
+{
+	while(length != 0){
+		long l = length >= FLASH_PACKET_SIZE ? FLASH_PACKET_SIZE : length;
+		device_write(handle, r, INDEX_IMPLIED, address, l, data);
+		address += l;
+		data += l;
+		length -= l;
+	}
+}
 static void kazzo_cpu_write_6502(long address, long length, const uint8_t *data)
 {
-	device_write(handle, REQUEST_CPU_WRITE_6502, INDEX_IMPLIED, address, length, data);
+	write_memory(REQUEST_CPU_WRITE_6502, address, length, data);
 }
 /*static void kazzo_cpu_write_flash(long address, long data)
 {
@@ -124,7 +134,7 @@ static void kazzo_cpu_write_6502(long address, long length, const uint8_t *data)
 }*/
 static void kazzo_ppu_write(long address, long length, const uint8_t *data)
 {
-	device_write(handle, REQUEST_PPU_WRITE, INDEX_IMPLIED, address, length, data);
+	write_memory(REQUEST_PPU_WRITE, address, length, data);
 }
 
 static inline void pack_short_le(long l, uint8_t *t)

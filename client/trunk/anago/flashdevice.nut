@@ -45,11 +45,12 @@ function flash_device_get(name)
 			id_manufacurer = 0x01, id_device = 0xa4,
 			command_mask = mask_get(10)
 		},
-		["AM29F002"] = {
+		//command mask is not written in datasheet!
+		["PM29F002T"] = {
 			capacity = 2 * mega, pagesize = 1,
-			erase_wait = 1000, erase_require = true,
-			id_manufacurer = 0x01, id_device = 0xB0,
-			command_mask = mask_get(11)
+			erase_wait = 500, erase_require = true,
+			id_manufacurer = 0x9d, id_device = 0x1d,
+			command_mask = mask_get(10) //maybe A10-A0
 		},
 		//chip erase time is not written in datasheet!!
 		["MBM29F080A"] = {

@@ -1,11 +1,17 @@
 OBJ_HK = giveio.o reader_hongkongfc.o
 OBJ_HD = head/nesheader.o head/header.o file.o
-ARCHIVE_FILE = \
+SOURCE_UNAGI = \
 	*.c *.h *.mak Makefile COPYING \
 	debug/debug.mak profile/profile.mak release/release.mak \
 	unagi.rc unagi.ico
-ARCHIVE_GZ = unagi_client.0.5.4.tar.gz
-ARCHIVE_ZIP = unagi054.zip
+SOURCE_ANAGO = \
+	Makefile anago.c flash_device.c progress.c reader_dummy.c \
+	script_common.c script_dump.c script_flash.c squirrel_wrap.c \
+	flash_device.h progress.h reader_dummy.h script_common.h  script_dump.h script_flash.h squirrel_wrap.h \
+	flashcore.nut flashdevice.nut \
+	anago_en.txt anago_ja.txt porting.txt
+ARCHIVE_GZ = unagi_client_source.0.6.0.tar.gz
+ARCHIVE_ZIP = unagi_client_windows_060.zip
 TARGET_DIR = debug
 TARGET_MAK = debug.mak
 ifeq ($(PROFILE),1)
@@ -38,8 +44,10 @@ nesheader.exe: $(OBJ_HD)
 	$(CC) -o $@ $(OBJ_HD)
 gz:
 	cd ..; \
-	tar cfz $(ARCHIVE_GZ) $(patsubst %,client/%,$(ARCHIVE_FILE))
+	tar cfz $(ARCHIVE_GZ) $(addprefix client/,$(SOURCE_UNAGI)) $(addprefix client/anago/,$(SOURCE_ANAGO))
 zip:
-	7za a $(ARCHIVE_ZIP) unagi.exe unagi.txt iodel.exe iodel.txt COPYING ../script/syntax.txt
+	7za a $(ARCHIVE_ZIP) \
+		unagi.exe unagi.txt iodel.exe iodel.txt COPYING ../script/syntax.txt \
+		$(addprefix anago/,anago.exe *.ad *.af anago_en.txt anago_ja.txt flashcore.nut flashdevice.nut dumpcore.nut)
 	cd release; 7za a ../$(ARCHIVE_ZIP) unagi.cfg
 	mv $(ARCHIVE_ZIP) ..

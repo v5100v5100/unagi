@@ -1,3 +1,4 @@
+LIBUSB_PATH = d:/dev/LibUSB-Win32
 OBJ = \
 	unagi.o header.o crc32.o \
 	script_engine.o script_syntax.o \
@@ -8,4 +9,5 @@ OBJ = \
 TARGET = unagi.exe
 CC = gcc
 CFLAGS += -Wall -Werror -Wmissing-declarations -I..
-#CFLAGS += -I$(EZUSBDRV)
+CFLAGS = -I$(LIBUSB_PATH)/include -I.. -I../../kazzo/firmware
+LDFLAG = -L$(LIBUSB_PATH)/lib/gcc -lusb

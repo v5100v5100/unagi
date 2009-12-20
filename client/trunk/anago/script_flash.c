@@ -39,7 +39,7 @@ struct anago_driver{
 static SQInteger vram_mirrorfind(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -76,7 +76,7 @@ static SQInteger command_set(HSQUIRRELVM v, struct anago_flash_order *t)
 static SQInteger cpu_command(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -85,7 +85,7 @@ static SQInteger cpu_command(HSQUIRRELVM v)
 static SQInteger ppu_command(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -105,7 +105,7 @@ static SQInteger write(HSQUIRRELVM v, struct anago_flash_order *t)
 static SQInteger cpu_write(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -125,7 +125,7 @@ static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const cha
 static SQInteger cpu_erase(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -134,7 +134,7 @@ static SQInteger cpu_erase(HSQUIRRELVM v)
 static SQInteger ppu_erase(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -181,7 +181,7 @@ static bool program_compare(struct anago_flash_order *t)
 static SQInteger cpu_program_memory(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -190,7 +190,7 @@ static SQInteger cpu_program_memory(HSQUIRRELVM v)
 static SQInteger ppu_program_memory(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -211,7 +211,7 @@ static long erase_timer_get(struct anago_flash_order *t)
 static SQInteger erase_wait(HSQUIRRELVM v)
 {
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -257,7 +257,7 @@ static SQInteger program_main(HSQUIRRELVM v)
 		return sq_throwerror(v, "argument number error");
 	}
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -270,7 +270,7 @@ static SQInteger program_main(HSQUIRRELVM v)
 	}
 	SQInteger state_cpu = sq_getvmstate(co_cpu);
 	SQInteger state_ppu = sq_getvmstate(co_ppu);
-	const long sleepms = d->compare == true ? 11 : 2; //W29C040 で compare をすると、error が出るので出ない値に調整 (やっつけ対応)
+	const long sleepms = d->compare == true ? 6 : 2; //W29C040 で compare をすると、error が出るので出ない値に調整 (やっつけ対応)
 	
 	progress_init();
 	while((state_cpu != SQ_VMSTATE_IDLE) || (state_ppu != SQ_VMSTATE_IDLE)){
@@ -317,7 +317,7 @@ static SQInteger cpu_program_count(HSQUIRRELVM v)
 	static const struct range range_address = {0x8000, 0x10000};
 	static const struct range range_length = {0x0100, 0x4000};
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -329,7 +329,7 @@ static SQInteger ppu_program_count(HSQUIRRELVM v)
 	static const struct range range_address = {0x0000, 0x2000};
 	static const struct range range_length = {0x0100, 0x2000};
 	struct anago_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}

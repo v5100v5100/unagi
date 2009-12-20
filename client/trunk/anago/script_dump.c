@@ -37,7 +37,7 @@ static SQInteger write(HSQUIRRELVM v, struct memory_driver *t)
 static SQInteger cpu_write(HSQUIRRELVM v)
 {
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -99,7 +99,7 @@ static SQInteger read(HSQUIRRELVM v, struct memory_driver *t, bool progress)
 static SQInteger cpu_read(HSQUIRRELVM v)
 {
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -111,7 +111,7 @@ static SQInteger cpu_read(HSQUIRRELVM v)
 static SQInteger ppu_read(HSQUIRRELVM v)
 {
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -131,7 +131,7 @@ static SQInteger ppu_ramfind(HSQUIRRELVM v)
 	static const uint8_t test_str[testsize] = "pputest";
 	uint8_t test_result[testsize];
 
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -157,7 +157,7 @@ static SQInteger ppu_ramfind(HSQUIRRELVM v)
 static SQInteger memory_new(HSQUIRRELVM v)
 {
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -176,7 +176,7 @@ static SQInteger memory_new(HSQUIRRELVM v)
 static SQInteger nesfile_save(HSQUIRRELVM v)
 {
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -210,7 +210,7 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 static SQInteger length_check(HSQUIRRELVM v)
 {
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -258,7 +258,7 @@ static SQInteger cpu_read_count(HSQUIRRELVM v)
 	//length == 0 は 対象アドレスを呼んで、バッファにいれない。mmc2, mmc4 で使用する。
 	static const struct range range_length = {0x0000, 0x4000};
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
@@ -270,7 +270,7 @@ static SQInteger ppu_read_count(HSQUIRRELVM v)
 	static const struct range range_address = {0x0000, 0x2000};
 	static const struct range range_length = {0x0001, 0x2000};
 	struct dump_driver *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer *) &d);
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
