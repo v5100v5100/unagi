@@ -29,12 +29,14 @@ static long dummy_cpu_flash_program(long address, long length, const u8 *data, b
 {
 	int i = 0x10;
 	printf("%s %06x\n", __FUNCTION__, (int) address);
-	while(i != 0){
-		printf("%02x ", *data);
-		data++;
-		i--;
+	if(0){
+		while(i != 0){
+			printf("%02x ", *data);
+			data++;
+			i--;
+		}
+		printf("\n");
 	}
-	printf("\n");
 	return 0x100;
 }
 
@@ -61,12 +63,14 @@ static long dummy_ppu_flash_program(long address, long length, const u8 *data, b
 {
 	int i = 0x10;
 	printf("%s %06x\n", __FUNCTION__, (int) address);
-	while(i != 0){
-		printf("%02x ", *data);
-		data++;
-		i--;
+	if(0){
+		while(i != 0){
+			printf("%02x ", *data);
+			data++;
+			i--;
+		}
+		printf("\n");
 	}
-	printf("\n");
 	return 0x100;
 }
 

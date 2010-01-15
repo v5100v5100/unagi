@@ -22,7 +22,8 @@ function loopsize_get(t, trans, image_size, device_size)
 	}
 	return loop;
 }
-function program(
+
+function testrun(
 	d, mapper, 
 	cpu_trans, cpu_image_size, cpu_device_size,
 	ppu_trans, ppu_image_size, ppu_device_size
@@ -35,11 +36,29 @@ function program(
 	}
 	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_image_size, cpu_device_size);
 	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_image_size, ppu_device_size);
-	local co_cpu = newthread(cpu_transfer);
-	local co_ppu = newthread(ppu_transfer);
 	if(board.vram_mirrorfind == true){
 		vram_mirrorfind(d);
 	}
+	initalize(d, board.cpu.banksize, board.ppu.banksize);
+	if(cpu_trans != trans_empty){
+		cpu_transfer(d, cpu_loop.start, cpu_loop.end, board.cpu.banksize);
+	}
+	if(ppu_trans != trans_empty){
+		ppu_transfer(d, ppu_loop.start, ppu_loop.end, board.ppu.banksize);
+	}
+}
+
+function program(
+	d, mapper, 
+	cpu_trans, cpu_image_size, cpu_device_size,
+	ppu_trans, ppu_image_size, ppu_device_size
+)
+{
+	local trans_empty = 0;
+	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_image_size, cpu_device_size);
+	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_image_size, ppu_device_size);
+	local co_cpu = newthread(cpu_transfer);
+	local co_ppu = newthread(ppu_transfer);
 	initalize(d, board.cpu.banksize, board.ppu.banksize);
 	if(cpu_trans != trans_empty){
 		cpu_erase(d);
@@ -53,8 +72,8 @@ function program(
 		co_cpu.call(d, cpu_loop.start, cpu_loop.end, board.cpu.banksize);
 	}
 	if(ppu_trans != trans_empty){
+		//ppu_transfer(d, ppu_loop.start, ppu_loop.end, board.ppu.banksize);
 		co_ppu.call(d, ppu_loop.start, ppu_loop.end, board.ppu.banksize);
 	}
 	program_main(d, co_cpu, co_ppu)
 }
-

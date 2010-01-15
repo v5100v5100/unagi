@@ -97,6 +97,7 @@ static void program(int c, char **v)
 	switch(v[1][0]){
 	case 'a':
 		config.reader = &DRIVER_DUMMY;
+		config.testrun = true;
 		break;
 	case 'F':
 		config.compare = true;

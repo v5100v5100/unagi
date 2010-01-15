@@ -17,6 +17,7 @@ static void call(HSQUIRRELVM v, const char *devicename)
 		sq_pushstring(v, _SC(devicename), -1);
 		SQRESULT r = sq_call(v, 2, SQTrue, SQTrue);
 		assert(r == SQ_OK);
+		r++; //avoid unused variable with -DNDEBUG
 	}
 }
 static bool long_get(HSQUIRRELVM v, const char *field, long *ret)

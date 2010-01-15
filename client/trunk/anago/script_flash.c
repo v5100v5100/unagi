@@ -33,7 +33,7 @@ struct anago_driver{
 	void (*const flash_status)(uint8_t s[2]);
 	uint8_t (*const vram_connection)(void);
 	const enum vram_mirroring vram_mirroring;
-	bool compare;
+	bool compare, testrun;
 };
 
 static SQInteger vram_mirrorfind(HSQUIRRELVM v)
@@ -288,7 +288,7 @@ static SQInteger program_main(HSQUIRRELVM v)
 				return 0;
 			}
 		}
-		if(console_update == true){
+		if((console_update == true) && (d->testrun == false)){
 			progress_draw(d->order_cpu.programming.offset, d->order_cpu.programming.count, d->order_ppu.programming.offset, d->order_ppu.programming.count);
 		}
 	}
@@ -336,7 +336,7 @@ static SQInteger ppu_program_count(HSQUIRRELVM v)
 	return program_count(v, &d->order_ppu, &range_address, &range_length);
 }
 
-static bool script_execute(HSQUIRRELVM v, struct config_flash *c, struct anago_driver *d)
+static bool script_execute(HSQUIRRELVM v, const char *function, struct config_flash *c, struct anago_driver *d)
 {
 	bool ret = true;
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
@@ -347,7 +347,7 @@ static bool script_execute(HSQUIRRELVM v, struct config_flash *c, struct anago_d
 		ret = false;
 	}else{
 		SQRESULT r = qr_call(
-			v, "program", (SQUserPointer) d, true, 
+			v, function, (SQUserPointer) d, true, 
 			1 + 3 * 2, c->rom.mappernum, 
 			d->order_cpu.memory->transtype, d->order_cpu.memory->size, d->order_cpu.device->capacity,
 			d->order_ppu.memory->transtype, d->order_ppu.memory->size, d->order_ppu.device->capacity
@@ -393,7 +393,8 @@ void script_flash_execute(struct config_flash *c)
 		.flash_status = c->reader->flash_status,
 		.vram_connection = c->reader->vram_connection,
 		.vram_mirroring = c->rom.mirror,
-		.compare = c->compare
+		.compare = c->compare,
+		.testrun = c->testrun
 	};
 	{
 		static const char *functionname[] = {
@@ -413,7 +414,7 @@ void script_flash_execute(struct config_flash *c)
 		qr_function_register_global(v, "ppu_command", ppu_command);
 		qr_function_register_global(v, "vram_mirrorfind", vram_mirrorfind);
 		
-		if(script_execute(v, c, &d) == false){
+		if(script_execute(v, "testrun", c, &d) == false){
 			qr_close(v);
 			return;
 		}
@@ -444,7 +445,7 @@ void script_flash_execute(struct config_flash *c)
 		qr_function_register_global(v, "program_main", program_main);
 		qr_function_register_global(v, "erase_wait", erase_wait);
 		qr_function_register_global(v, "vram_mirrorfind", script_nop);
-		script_execute(v, c, &d);
+		script_execute(v, "program", c, &d);
 		qr_close(v);
 	}
 }
