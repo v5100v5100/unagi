@@ -94,6 +94,7 @@ static void program(int c, char **v)
 	config.script = v[2];
 	config.reader = &DRIVER_KAZZO;
 	config.compare = false;
+	config.testrun = false;
 	switch(v[1][0]){
 	case 'a':
 		config.reader = &DRIVER_DUMMY;

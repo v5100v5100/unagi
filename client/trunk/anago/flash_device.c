@@ -17,7 +17,7 @@ static void call(HSQUIRRELVM v, const char *devicename)
 		sq_pushstring(v, _SC(devicename), -1);
 		SQRESULT r = sq_call(v, 2, SQTrue, SQTrue);
 		assert(r == SQ_OK);
-		r++; //avoid unused variable with -DNDEBUG
+		r++; //avoid warning unused variable with -DNDEBUG
 	}
 }
 static bool long_get(HSQUIRRELVM v, const char *field, long *ret)
@@ -86,6 +86,9 @@ bool flash_device_get(const char *name, struct flash_device *t)
 		goto field_error;
 	}
 	if(bool_get(v, "erase_require", &t->erase_require) == false){
+		goto field_error;
+	}
+	if(bool_get(v, "retry", &t->retry) == false){
 		goto field_error;
 	}
 	if(long_get(v, "command_mask", &t->command_mask) == false){

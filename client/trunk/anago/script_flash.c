@@ -23,12 +23,12 @@ struct anago_driver{
 		long c000x, c2aaa, c5555;
 		struct memory *const memory;
 		struct flash_device *const device;
-		void (*const config)(long c000x, long c2aaa, long c5555, long unit);
+		void (*const config)(long c000x, long c2aaa, long c5555, long unit, bool retry);
 		void (*const device_get)(uint8_t s[2]);
 		void (*const write)(long address, long length, const uint8_t *data);
 		void (*const read)(long address, long length, u8 *data);
 		void (*const erase)(long address, bool dowait);
-		long (*const program)(long address, long length, const u8 *data, bool dowait);
+		long (*const program)(long address, long length, const u8 *data, bool dowait, bool skip);
 	}order_cpu, order_ppu;
 	void (*const flash_status)(uint8_t s[2]);
 	uint8_t (*const vram_connection)(void);
@@ -113,7 +113,7 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 }
 static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const char *region)
 {
-	t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize);
+	t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize, t->device->retry);
 	t->command_change = false;
 	if(t->device->erase_require == true){
 		t->erase(t->c2aaa, false);
@@ -149,7 +149,7 @@ static SQInteger program_regist(HSQUIRRELVM v, const char *name, struct anago_fl
 	t->compare = t->programming;
 	t->compare.offset = t->memory->offset & (t->memory->size - 1);
 	if(t->command_change == true){
-		t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize);
+		t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize, t->device->retry);
 		t->command_change = false;
 	}
 	
@@ -159,7 +159,7 @@ static SQInteger program_regist(HSQUIRRELVM v, const char *name, struct anago_fl
 }
 static void program_execute(struct anago_flash_order *t)
 {
-	const long w = t->program(t->programming.address, t->programming.length, t->memory->data + t->memory->offset, false);
+	const long w = t->program(t->programming.address, t->programming.length, t->memory->data + t->memory->offset, false, t->device->erase_require);
 	t->programming.address += w;
 	t->programming.length -= w;
 	t->memory->offset += w;
@@ -171,6 +171,19 @@ static bool program_compare(struct anago_flash_order *t)
 {
 	uint8_t *comparea = Malloc(t->compare.length);
 	bool ret = false;
+	if(t->device->erase_require == true){
+		memset(comparea, 0xff, t->compare.length);
+		int doread = memcmp(comparea, t->memory->data + t->compare.offset, t->compare.length);
+		if(0){
+			memset(comparea, 0, t->compare.length);
+			doread &= memcmp(comparea, t->memory->data + t->compare.offset, t->compare.length);
+		}
+		if(doread == 0){
+			Free(comparea);
+			return true;
+		}
+	}
+	
 	t->read(t->compare.address, t->compare.length, comparea);
 	if(memcmp(comparea, t->memory->data + t->compare.offset, t->compare.length) == 0){
 		ret = true;
@@ -227,7 +240,8 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 		do{
 			Sleep(2);
 			d->flash_status(s);
-		}while((s[0] != 0) && (s[1] != 0));
+		//本来の意図からではここの条件式は && ではなく || だが、先に erase が終わったデバイスが動かせるので残しておく
+		}while((s[0] != KAZZO_TASK_FLASH_IDLE) && (s[1] != KAZZO_TASK_FLASH_IDLE));
 	}
 	return 0;
 }

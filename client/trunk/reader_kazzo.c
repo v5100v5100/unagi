@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+//#include <stdbool.h>
 #include <usb.h>
 #include <kazzo_request.h>
 #include <kazzo_task.h>
@@ -142,30 +143,49 @@ static inline void pack_short_le(long l, uint8_t *t)
 	t[0] = l & 0xff;
 	t[1] = (l >> 8) & 0xff;
 }
-static void flash_config(enum request r, enum index index, long c000x, long c2aaa, long c5555, long unit)
+static void flash_config(enum request r, enum index index, long c000x, long c2aaa, long c5555, long unit, bool retry)
 {
-	const int size = 2 * 4;
-	uint8_t t[size];
+	const int size = 2 * 4 + 1;
+	uint8_t buf[10]; //[size];
+	uint8_t *t = buf;
 	assert(unit >= 1 && unit < 0x400);
 	pack_short_le(c000x, t);
-	pack_short_le(c2aaa, t + 2);
-	pack_short_le(c5555, t + 4);
-	pack_short_le(unit, t + 6);
-	device_write(handle, r, index, 0, size, t);
+	t += 2;
+	pack_short_le(c2aaa, t);
+	t += 2;
+	pack_short_le(c5555, t);
+	t += 2;
+	pack_short_le(unit, t);
+	t += 2;
+	*t = retry == true ? 1 : 0;
+	device_write(handle, r, index, 0, size, buf);
 }
-static void kazzo_cpu_flash_config(long c000x, long c2aaa, long c5555, long unit)
+static void kazzo_cpu_flash_config(long c000x, long c2aaa, long c5555, long unit, bool retry)
 {
-	flash_config(REQUEST_FLASH_CONFIG_SET, INDEX_CPU, c000x, c2aaa, c5555, unit);
+	flash_config(REQUEST_FLASH_CONFIG_SET, INDEX_CPU, c000x, c2aaa, c5555, unit, retry);
 }
-static void kazzo_ppu_flash_config(long c000x, long c2aaa, long c5555, long unit)
+static void kazzo_ppu_flash_config(long c000x, long c2aaa, long c5555, long unit, bool retry)
 {
-	flash_config(REQUEST_FLASH_CONFIG_SET, INDEX_PPU, c000x, c2aaa, c5555, unit);
+	flash_config(REQUEST_FLASH_CONFIG_SET, INDEX_PPU, c000x, c2aaa, c5555, unit, retry);
 }
 
-static inline void flash_execute(enum request p, enum request s, enum index index, long address, const uint8_t *data, int size, bool dowait)
+static inline void flash_execute(enum request p, enum request s, enum index index, long address, const uint8_t *data, int size, bool dowait, bool skip)
 {
 	uint8_t status;
-	device_write(handle, p, index, address, size, data);
+	int filled = 1;
+	if(skip == true){
+		uint8_t *filldata = Malloc(size);
+		memset(filldata, 0xff, size);
+		filled = memcmp(filldata, data, size);
+		if(0){ //nesasm fill 0 to unused area. When this routine is enabled, programming will speed up and compare mode will not work.
+			memset(filldata, 0, size);
+			filled &= memcmp(filldata, data, size);
+		}
+		Free(filldata);
+	}
+	if(filled != 0){
+		device_write(handle, p, index, address, size, data);
+	}
 	if(dowait == true){
 		do{
 			wait(10);
@@ -175,11 +195,11 @@ static inline void flash_execute(enum request p, enum request s, enum index inde
 }
 static void kazzo_cpu_flash_erase(long address, bool dowait)
 {
-	flash_execute(REQUEST_FLASH_ERASE, REQUEST_FLASH_STATUS, INDEX_CPU, address, NULL, 0, dowait);
+	flash_execute(REQUEST_FLASH_ERASE, REQUEST_FLASH_STATUS, INDEX_CPU, address, NULL, 0, dowait, false);
 }
 static void kazzo_ppu_flash_erase(long address, bool dowait)
 {
-	flash_execute(REQUEST_FLASH_ERASE, REQUEST_FLASH_STATUS, INDEX_PPU, address, NULL, 0, dowait);
+	flash_execute(REQUEST_FLASH_ERASE, REQUEST_FLASH_STATUS, INDEX_PPU, address, NULL, 0, dowait, false);
 }
 
 static void dump(const uint8_t *w, const uint8_t *r, long length)
@@ -203,18 +223,18 @@ static void dump(const uint8_t *w, const uint8_t *r, long length)
 		length -= 0x10;
 	}
 }
-static long flash_program(enum index index, long address, long length, const uint8_t *data, bool dowait)
+static long flash_program(enum index index, long address, long length, const uint8_t *data, bool dowait, bool skip)
 {
 	enum request p = REQUEST_FLASH_PROGRAM;
 	enum request s = REQUEST_FLASH_STATUS;
 	if(dowait == false){
-		flash_execute(p, s, index, address, data, FLASH_PACKET_SIZE, dowait);
+		flash_execute(p, s, index, address, data, FLASH_PACKET_SIZE, dowait, skip);
 		return FLASH_PACKET_SIZE;
 	}
 	long count = 0;
 	uint8_t *d = Malloc(FLASH_PACKET_SIZE);
 	while(length >= FLASH_PACKET_SIZE){
-		flash_execute(p, s, index, address, data, FLASH_PACKET_SIZE, dowait);
+		flash_execute(p, s, index, address, data, FLASH_PACKET_SIZE, dowait, skip);
 		if(0){
 			//device_read(handle, REQUEST_FLASH_BUFFER_GET, index, 0, FLASH_PACKET_SIZE, d);
 			if(memcmp(d, data, FLASH_PACKET_SIZE) != 0){
@@ -230,13 +250,13 @@ static long flash_program(enum index index, long address, long length, const uin
 	Free(d);
 	return count;
 }
-static long kazzo_cpu_flash_program(long address, long length, const uint8_t *data, bool dowait)
+static long kazzo_cpu_flash_program(long address, long length, const uint8_t *data, bool dowait, bool skip)
 {
-	return flash_program(INDEX_CPU, address, length, data, dowait);
+	return flash_program(INDEX_CPU, address, length, data, dowait, skip);
 }
-static long kazzo_ppu_flash_program(long address, long length, const uint8_t *data, bool dowait)
+static long kazzo_ppu_flash_program(long address, long length, const uint8_t *data, bool dowait, bool skip)
 {
-	return flash_program(INDEX_PPU, address, length, data, dowait);
+	return flash_program(INDEX_PPU, address, length, data, dowait, skip);
 }
 
 static void kazzo_flash_status(uint8_t s[2])

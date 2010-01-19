@@ -21,11 +21,11 @@ static void dummy_cpu_write_6502(long address, long length, const uint8_t *data)
 {
 	printf("%s %04x %04x %02x\n", __FUNCTION__, (int) address, (int) length, (int) *data);
 }
-static void dummy_cpu_flash_config(long c000x, long c2aaa, long c5555, long unit)
+static void dummy_cpu_flash_config(long c000x, long c2aaa, long c5555, long unit, bool retry)
 {
 	printf("%s %04x %04x %04x %04x\n", __FUNCTION__, (int) c000x, (int) c2aaa, (int) c5555, (int) unit);
 }
-static long dummy_cpu_flash_program(long address, long length, const u8 *data, bool dowait)
+static long dummy_cpu_flash_program(long address, long length, const u8 *data, bool dowait, bool skip)
 {
 	int i = 0x10;
 	printf("%s %06x\n", __FUNCTION__, (int) address);
@@ -55,11 +55,11 @@ static void dummy_ppu_write(long address, long length, const uint8_t *data)
 {
 	printf("%s %04x %04x %02x\n", __FUNCTION__, (int) address, (int) length, (int) *data);
 }
-static void dummy_ppu_flash_config(long c000x, long c2aaa, long c5555, long unit)
+static void dummy_ppu_flash_config(long c000x, long c2aaa, long c5555, long unit, bool retry)
 {
 	printf("%s %04x %04x %04x %04x\n", __FUNCTION__, (int) c000x, (int) c2aaa, (int) c5555, (int) unit);
 }
-static long dummy_ppu_flash_program(long address, long length, const u8 *data, bool dowait)
+static long dummy_ppu_flash_program(long address, long length, const u8 *data, bool dowait, bool skip)
 {
 	int i = 0x10;
 	printf("%s %06x\n", __FUNCTION__, (int) address);

@@ -68,11 +68,9 @@ function program(
 	}
 	erase_wait(d);
 	if(cpu_trans != trans_empty){
-		//cpu_transfer(d, cpu_loop.start, cpu_loop.end, board.cpu.banksize);
 		co_cpu.call(d, cpu_loop.start, cpu_loop.end, board.cpu.banksize);
 	}
 	if(ppu_trans != trans_empty){
-		//ppu_transfer(d, ppu_loop.start, ppu_loop.end, board.ppu.banksize);
 		co_ppu.call(d, ppu_loop.start, ppu_loop.end, board.ppu.banksize);
 	}
 	program_main(d, co_cpu, co_ppu)

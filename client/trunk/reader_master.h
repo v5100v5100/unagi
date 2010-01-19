@@ -15,13 +15,13 @@ struct reader_driver{
 	void (*ppu_read)(long address, long length, uint8_t *data);
 	void (*ppu_write)(long address, long length, const uint8_t *data);
 	bool flash_support;
-	void (*cpu_flash_config)(long c000x, long c2aaa, long c5555, long unit);
+	void (*cpu_flash_config)(long c000x, long c2aaa, long c5555, long unit, bool retry);
 	void (*cpu_flash_erase)(long address, bool wait);
-	long (*cpu_flash_program)(long address, long length, const uint8_t *data, bool wait);
+	long (*cpu_flash_program)(long address, long length, const uint8_t *data, bool wait, bool skip);
 	void (*cpu_flash_device_get)(uint8_t s[2]);
-	void (*ppu_flash_config)(long c000x, long c2aaa, long c5555, long unit);
+	void (*ppu_flash_config)(long c000x, long c2aaa, long c5555, long unit, bool retry);
 	void (*ppu_flash_erase)(long address, bool wait);
-	long (*ppu_flash_program)(long address, long length, const uint8_t *data, bool wait);
+	long (*ppu_flash_program)(long address, long length, const uint8_t *data, bool wait, bool skip);
 	void (*ppu_flash_device_get)(uint8_t s[2]);
 	void (*flash_status)(uint8_t s[2]);
 	uint8_t (*vram_connection)(void);

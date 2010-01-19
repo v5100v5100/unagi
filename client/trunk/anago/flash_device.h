@@ -4,7 +4,7 @@ struct flash_device{
 	const char *name;
 	long capacity, pagesize;
 	long erase_wait; //unit is msec
-	bool erase_require;
+	bool erase_require, retry;
 	uint8_t id_manufacurer, id_device;
 	long command_mask;
 };
