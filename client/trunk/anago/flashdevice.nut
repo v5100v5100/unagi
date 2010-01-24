@@ -8,6 +8,7 @@ function flash_device_get(name)
 {
 	local mega = 0x20000;
 	local MASK_A14 = mask_get(14);
+	local MASK_A10 = mask_get(10);
 	local device = {
 		["dummy"] = {
 			capacity = 16 * mega, pagesize = 1,
@@ -56,7 +57,7 @@ function flash_device_get(name)
 			erase_wait = 8000, erase_require = true,
 			retry = false,
 			id_manufacurer = 0x01, id_device = 0xa4,
-			command_mask = mask_get(10)
+			command_mask = MASK_A10
 		},
 		//command mask is not written in datasheet!
 		["PM29F002T"] = {
@@ -64,7 +65,7 @@ function flash_device_get(name)
 			erase_wait = 500, erase_require = true,
 			retry = false,
 			id_manufacurer = 0x9d, id_device = 0x1d,
-			command_mask = mask_get(10) //maybe A10-A0
+			command_mask = MASK_A10 //maybe A10-A0
 		},
 		//chip erase time is not written in datasheet!!
 		["MBM29F080A"] = {
@@ -72,7 +73,14 @@ function flash_device_get(name)
 			erase_wait = 8000, erase_require = true,
 			retry = false,
 			id_manufacurer = 0x04, id_device = 0xd5,
-			command_mask = mask_get(10)
+			command_mask = MASK_A10
+		},
+		["SST39SF040"] = {
+			capacity = 4 * mega, pagesize = 1,
+			erase_wait = 100, erase_require = true,
+			retry = false,
+			id_manufacurer = 0xbf, id_device = 0xb7,
+			command_mask = MASK_A14
 		}
 	};
 	return device[name];
