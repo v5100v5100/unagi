@@ -16,15 +16,16 @@ static void draw(const char *name, long offset, long count)
 		printf("%s skip\n", name);
 		return;
 	}
-	const int barnum = 100 / 5;
-	int persent = (offset * 100) / count;
+	const int barnum = 16;
+	const int unit = count / barnum;
+	int igeta = offset / unit;
 	char bar[barnum + 3 + 1];
 	char *t = bar;
 	int i;
-	assert(persent <= 100);
+	assert(igeta <= barnum);
 	printf("%s 0x%06x/0x%06x ", name, (int)offset, (int)count);
 	*t++ = '|';
-	for(i = 0; i < persent / 5; i++){
+	for(i = 0; i < igeta; i++){
 		if(i == barnum / 2){
 			*t++ = '|';
 		}
