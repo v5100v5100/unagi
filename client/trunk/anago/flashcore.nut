@@ -30,9 +30,9 @@ function testrun(
 )
 {
 	local trans_empty = 0;
-	if(board.mappernum != mapper){
-		print("mapper number not connected\n");
-		return;
+	if((board.mappernum != mapper) && (mapper != 0)){
+		print("mapper number are not connected\n");
+		print("af:" + board.mappernum + " image:" + mapper + "\n");
 	}
 	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_image_size, cpu_device_size);
 	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_image_size, ppu_device_size);
@@ -55,6 +55,9 @@ function program(
 )
 {
 	local trans_empty = 0;
+	if((board.mappernum != mapper) && (mapper != 0)){
+		return;
+	}
 	local cpu_loop = loopsize_get(board.cpu, cpu_trans, cpu_image_size, cpu_device_size);
 	local ppu_loop = loopsize_get(board.ppu, ppu_trans, ppu_image_size, ppu_device_size);
 	local co_cpu = newthread(cpu_transfer);

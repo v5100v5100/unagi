@@ -61,7 +61,7 @@ static void program_sram(const struct flash_order *d, long address, long length,
 }
 static void program_flash(const struct flash_order *d, long address, long length, const struct memory *m)
 {
-	d->program(address, length, m->data, true);
+	d->program(address, length, m->data, true, false);
 }
 /*
 デバイスリスト

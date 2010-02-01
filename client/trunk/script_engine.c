@@ -1121,7 +1121,8 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 					r->cpu_flash.command_0000,
 					r->cpu_flash.command_2aaa,
 					r->cpu_flash.command_5555,
-					r->cpu_flash.pagesize
+					r->cpu_flash.pagesize,
+					false
 				);
 				flashcommand_change_cpu = 0;
 			}
@@ -1214,7 +1215,8 @@ static int execute(const struct script *s, const struct st_config *c, struct rom
 					r->ppu_flash.command_0000,
 					r->ppu_flash.command_2aaa,
 					r->ppu_flash.command_5555,
-					r->ppu_flash.pagesize
+					r->ppu_flash.pagesize,
+					false
 				);
 				flashcommand_change_ppu = 0;
 			}

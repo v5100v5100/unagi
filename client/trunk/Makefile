@@ -10,8 +10,8 @@ SOURCE_ANAGO = \
 	flash_device.h progress.h reader_dummy.h script_common.h  script_dump.h script_flash.h squirrel_wrap.h \
 	flashcore.nut flashdevice.nut \
 	anago_en.txt anago_ja.txt porting.txt
-ARCHIVE_GZ = unagi_client_source.0.6.0.tar.gz
-ARCHIVE_ZIP = unagi_client_windows_060.zip
+ARCHIVE_GZ = unagi_client_source.0.6.x.tar.gz
+ARCHIVE_ZIP = unagi_client_windows_06x.zip
 TARGET_DIR = debug
 TARGET_MAK = debug.mak
 ifeq ($(PROFILE),1)

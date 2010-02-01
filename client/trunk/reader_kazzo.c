@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <stdlib.h>
-//#include <stdbool.h>
 #include <usb.h>
 #include <kazzo_request.h>
 #include <kazzo_task.h>
@@ -146,17 +145,17 @@ static inline void pack_short_le(long l, uint8_t *t)
 static void flash_config(enum request r, enum index index, long c000x, long c2aaa, long c5555, long unit, bool retry)
 {
 	const int size = 2 * 4 + 1;
-	uint8_t buf[10]; //[size];
+	uint8_t buf[size];
 	uint8_t *t = buf;
 	assert(unit >= 1 && unit < 0x400);
 	pack_short_le(c000x, t);
-	t += 2;
+	t += sizeof(uint16_t);
 	pack_short_le(c2aaa, t);
-	t += 2;
+	t += sizeof(uint16_t);
 	pack_short_le(c5555, t);
-	t += 2;
+	t += sizeof(uint16_t);
 	pack_short_le(unit, t);
-	t += 2;
+	t += sizeof(uint16_t);
 	*t = retry == true ? 1 : 0;
 	device_write(handle, r, index, 0, size, buf);
 }
