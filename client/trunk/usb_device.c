@@ -117,6 +117,7 @@ int usbOpenDevice(
 	usb_dev_handle *handle = NULL;
 	int errorCode = USBOPEN_ERR_NOTFOUND;
 
+    usb_init();
     usb_find_busses();
     usb_find_devices();
     for(bus = usb_get_busses(); bus; bus = bus->next){

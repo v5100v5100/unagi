@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <squirrel.h>
 #include <sqstdio.h>
 #include <sqstdaux.h>
@@ -91,7 +92,7 @@ static SQInteger ppu_command(HSQUIRRELVM v)
 	}
 	return command_set(v, &d->order_ppu);
 }
-static SQInteger write(HSQUIRRELVM v, struct anago_flash_order *t)
+static SQInteger write_memory(HSQUIRRELVM v, struct anago_flash_order *t)
 {
 	long address, data;
 	SQRESULT r = qr_argument_get(v, 2, &address, &data);
@@ -109,7 +110,7 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return write(v, &d->order_cpu);
+	return write_memory(v, &d->order_cpu);
 }
 static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const char *region)
 {
@@ -234,11 +235,11 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 		if(timer_wait < timer_ppu){
 			timer_wait = timer_ppu;
 		}
-		Sleep(timer_wait);
+		wait(timer_wait);
 	}else{
 		uint8_t s[2];
 		do{
-			Sleep(2);
+			wait(2);
 			d->flash_status(s);
 		//本来の意図からではここの条件式は && ではなく || だが、先に erase が終わったデバイスが動かせるので残しておく
 		}while((s[0] != KAZZO_TASK_FLASH_IDLE) && (s[1] != KAZZO_TASK_FLASH_IDLE));
@@ -290,7 +291,7 @@ static SQInteger program_main(HSQUIRRELVM v)
 	while((state_cpu != SQ_VMSTATE_IDLE) || (state_ppu != SQ_VMSTATE_IDLE)){
 		uint8_t s[2];
 		bool console_update = false;
-		Sleep(sleepms);
+		wait(sleepms);
 		d->flash_status(s);
 		if(state_cpu != SQ_VMSTATE_IDLE && s[0] == KAZZO_TASK_FLASH_IDLE){
 			if(program_memoryarea(co_cpu, &d->order_cpu, d->compare, "program", &state_cpu, &console_update) == false){

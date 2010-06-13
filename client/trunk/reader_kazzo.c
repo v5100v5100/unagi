@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 #include <stdlib.h>
 #include <usb.h>
 #include <kazzo_request.h>
@@ -51,7 +52,7 @@ static void device_read(usb_dev_handle *handle, enum request r, enum index index
 		handle, 
 		USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_IN, 
 		r, address, 
-		index, data, length, TIMEOUT
+		index, (char *) data, length, TIMEOUT
 	);
 	if(cnt != length){
 		puts(__FUNCTION__);
@@ -98,7 +99,7 @@ static void device_write(usb_dev_handle *handle, enum request w, enum index inde
 		handle, 
 		USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_OUT,
 		w, address, 
-		index, d, length, TIMEOUT
+		index, (char *) d, length, TIMEOUT
 	);
 	if(cnt != length){
 		puts(__FUNCTION__);

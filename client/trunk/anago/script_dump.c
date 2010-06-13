@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <squirrel.h>
 #include <sqstdio.h>
 #include <sqstdaux.h>
@@ -23,7 +24,7 @@ struct dump_driver{
 	uint8_t (*const vram_connection)(void);
 	bool progress;
 };
-static SQInteger write(HSQUIRRELVM v, struct memory_driver *t)
+static SQInteger write_memory(HSQUIRRELVM v, struct memory_driver *t)
 {
 	long address, data;
 	SQRESULT r = qr_argument_get(v, 2, &address, &data);
@@ -41,7 +42,7 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return write(v, &d->cpu);
+	return write_memory(v, &d->cpu);
 }
 
 static void buffer_show(struct memory *t, long length)
@@ -82,7 +83,7 @@ static void progress_show(struct dump_driver *d)
 		progress_draw(d->cpu.memory.offset, d->cpu.memory.size, d->ppu.memory.offset, d->ppu.memory.size);
 	}
 }
-static SQInteger read(HSQUIRRELVM v, struct memory_driver *t, bool progress)
+static SQInteger read_memory(HSQUIRRELVM v, struct memory_driver *t, bool progress)
 {
 	long address, length;
 	SQRESULT r = qr_argument_get(v, 2, &address, &length);
@@ -103,7 +104,7 @@ static SQInteger cpu_read(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = read(v, &d->cpu, d->progress);
+	r = read_memory(v, &d->cpu, d->progress);
 	progress_show(d);
 	return r;
 }
@@ -115,7 +116,7 @@ static SQInteger ppu_read(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = read(v, &d->ppu, d->progress);
+	r = read_memory(v, &d->ppu, d->progress);
 	progress_show(d);
 	return r;
 }

@@ -1,10 +1,10 @@
-all: anago.exe
+all: anago
 LIBUSB = d:/dev/LibUSB-Win32
-SQUIRREL = ../SQUIRREL2
+SQUIRREL = ../../SQUIRREL2
 KAZZO = ../../kazzo/firmware
 VPATH = ..
-#CFLAGS = -g -O0
-CFLAGS = -O2 -DNDEBUG
+CFLAGS = -g -O0
+#CFLAGS = -O2 -DNDEBUG
 CFLAGS += -Wall -Werror -I.. -I$(LIBUSB)/include -I$(SQUIRREL)/include -I$(KAZZO) -DDEBUG=1 -DANAGO=1
 LDFLAG = -L. -L$(LIBUSB)/lib/gcc -L$(SQUIRREL)/lib
 CC = gcc
@@ -14,7 +14,7 @@ OBJ = anago.o header.o crc32.o file.o \
 	reader_dummy.o reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
 clean:
 	rm -f $(OBJ)
-anago.exe: $(OBJ) 
+anago: $(OBJ) 
 	g++ -o $@ $(LDFLAG) $(OBJ) -lusb -lsqstdlib -lsquirrel
 
 script_flash.o: squirrel_wrap.h

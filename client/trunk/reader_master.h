@@ -1,7 +1,12 @@
 #ifndef _READER_MASTER_H_
 #define _READER_MASTER_H_
 #include "type.h"
-#include <windows.h>
+#ifdef WIN32
+ #include <windows.h>
+#else
+ #include <unistd.h>
+#endif
+
 //C++ の Class もどきを C で実装している感が増してきた...
 enum reader_control{
 	READER_OPEN, READER_CLOSE
@@ -56,6 +61,10 @@ static inline void wait(long msec)
 	if(msec == 0){
 		return;
 	}
+#ifdef WIN32
 	Sleep(msec);
+#else
+	usleep(msec * 1000);
+#endif
 }
 #endif
