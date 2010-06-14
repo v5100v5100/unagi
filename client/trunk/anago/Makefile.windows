@@ -1,0 +1,6 @@
+TARGET = anago.exe
+LIBUSB = d:/dev/LibUSB-Win32
+SQUIRREL = ../SQUIRREL2
+KAZZO = ../../kazzo/firmware
+
+include anago.mk
