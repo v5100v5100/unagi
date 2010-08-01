@@ -5,7 +5,8 @@ SOURCE_UNAGI = \
 	debug/debug.mak profile/profile.mak release/release.mak \
 	unagi.rc unagi.ico
 SOURCE_ANAGO = \
-	Makefile anago.c flash_device.c progress.c reader_dummy.c \
+	Makefile.windows Makefile.unix \
+	anago.c flash_device.c progress.c reader_dummy.c \
 	script_common.c script_dump.c script_flash.c squirrel_wrap.c \
 	flash_device.h progress.h reader_dummy.h script_common.h  script_dump.h script_flash.h squirrel_wrap.h \
 	flashcore.nut flashdevice.nut \
