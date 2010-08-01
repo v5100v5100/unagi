@@ -1,0 +1,6 @@
+TARGET = anago
+LIBUSB = 
+SQUIRREL = ../SQUIRREL2
+KAZZO = ../../kazzo/firmware
+
+include anago.mk
