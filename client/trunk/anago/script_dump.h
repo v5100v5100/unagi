@@ -7,6 +7,8 @@ struct config_dump{
 	//struct romimage rom;
 	struct {long cpu, ppu;} increase;
 	bool progress;
+	struct gauge gauge_cpu, gauge_ppu;
+	struct textcontrol log;
 };
 void script_dump_execute(struct config_dump *c);
 #endif

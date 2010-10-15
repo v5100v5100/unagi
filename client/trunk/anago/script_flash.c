@@ -6,6 +6,7 @@
 #include <sqstdaux.h>
 #include <kazzo_task.h>
 #include "type.h"
+#include "widget.h"
 #include "header.h"
 #include "memory_manage.h"
 #include "reader_master.h"
