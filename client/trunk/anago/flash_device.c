@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <squirrel.h>
 #include <sqstdio.h>
 #include <sqstdaux.h>
@@ -111,4 +112,72 @@ field_error:
 	puts("script field error");
 	qr_close(v);
 	return false;
+}
+
+static int flash_device_number_get(HSQUIRRELVM v)
+{
+	sq_pushroottable(v);
+	sq_pushstring(v, _SC("flash_device_number_get"), -1);
+	if(SQ_SUCCEEDED(sq_get(v,-2))){
+		sq_pushroottable(v);
+		SQRESULT r = sq_call(v, 1, SQTrue, SQTrue);
+		assert(r == SQ_OK);
+		r++;
+	}
+	if(sq_gettype(v, -1) != OT_INTEGER){
+		return 0;
+	}
+	SQInteger i;
+	if(SQ_FAILED(sq_getinteger(v, -1, &i))){
+		return 0;
+	}
+	return i;
+}
+
+static int flash_device_name_get(HSQUIRRELVM v, int index, const char **str)
+{
+	sq_pushroottable(v);
+	sq_pushstring(v, _SC("flash_device_name_get"), -1);
+	if(SQ_SUCCEEDED(sq_get(v,-2))){
+		sq_pushroottable(v);
+		sq_pushinteger(v, index);
+		SQRESULT r = sq_call(v, 2, SQTrue, SQTrue);
+		assert(r == SQ_OK);
+		r++;
+	}
+	if(sq_gettype(v, -1) != OT_STRING){
+		return 0;
+	}
+	if(SQ_FAILED(sq_getstring(v, -1, str))){
+		return 0;
+	}
+	return 1;
+}
+
+void flash_device_listup(struct flash_listup *t)
+{
+	const char *str;
+	HSQUIRRELVM v = qr_open();
+	SQInteger top = sq_gettop(v);
+
+	if(SQ_FAILED(sqstd_dofile(v, _SC("flashdevice.nut"), SQFalse, SQTrue))){
+//		puts("flash device script error");
+		qr_close(v);
+	}
+
+	int i;
+	const int device_num = flash_device_number_get(v);
+	sq_settop(v, top);
+
+	for(i = 0; i < device_num; i++){
+		flash_device_name_get(v, i, &str);
+		if(strncmp(str, "dummy", 6) != 0){
+			t->append(t->obj_cpu, str);
+			t->append(t->obj_ppu, str);
+		}
+		sq_settop(v, top);
+	}
+
+	qr_close(v);
+	v = NULL;
 }

@@ -15,4 +15,10 @@ enum{
 	FLASH_ID_DEVICE_SRAM = 0xf0, 
 	FLASH_ID_DEVICE_DUMMY
 };
+//for GUI device listup
+struct flash_listup{
+	void *obj_cpu, *obj_ppu;
+	void (*append)(void *obj, const char *str);
+};
+void flash_device_listup(struct flash_listup *t);
 #endif
