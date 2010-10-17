@@ -5,6 +5,7 @@
 #include <squirrel.h>
 #include <sqstdio.h>
 #include <sqstdaux.h>
+#include "widget.h"
 
 #ifdef SQUNICODE 
 #define scvprintf vwprintf 
@@ -19,12 +20,30 @@ static void printfunc(HSQUIRRELVM v, const SQChar *s, ...)
 	va_end(arglist);
 }
 
-HSQUIRRELVM qr_open(void)
+static void print_other(HSQUIRRELVM v, const SQChar *s, ...)
+{
+	va_list arglist;
+	va_start(arglist, s);
+	char str[80];
+
+	vsnprintf(str, 80, s, arglist);
+	struct textcontrol *p = (struct textcontrol *) sq_getforeignptr(v);
+	p->append(p->object, str);
+
+	va_end(arglist);
+}
+
+HSQUIRRELVM qr_open(struct textcontrol *p)
 {
 	HSQUIRRELVM v = sq_open(0x400);
 	sqstd_seterrorhandlers(v);
 	sqstd_register_iolib(v);
-	sq_setprintfunc(v, printfunc);
+	if(p == NULL){
+		sq_setprintfunc(v, printfunc);
+	}else{
+		sq_setforeignptr(v, (SQUserPointer) p);
+		sq_setprintfunc(v, print_other);
+	}
 	sq_pushroottable(v);
 	return v;
 }

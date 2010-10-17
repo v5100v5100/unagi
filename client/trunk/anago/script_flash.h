@@ -6,6 +6,8 @@ struct config_flash{
 	const struct reader_driver *reader;
 	struct romimage rom;
 	bool compare, testrun;
+	struct gauge gauge_cpu, gauge_ppu;
+	struct textcontrol log;
 };
 void script_flash_execute(struct config_flash *c);
 #endif

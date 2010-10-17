@@ -8,8 +8,10 @@
 //#include "reader_kazzo.h"
 extern const struct reader_driver DRIVER_KAZZO;
 extern "C"{
-#include "script_dump.h"
+#include "header.h"
 #include "flash_device.h"
+#include "script_dump.h"
+#include "script_flash.h"
 }
 
 static void value_set(void *gauge, int value)
@@ -84,9 +86,9 @@ private:
 	{
 		c->Clear();
 		c->Append(wxString("full"));
-		c->Append(wxString("empty"));
 		c->Append(wxString("top"));
 		c->Append(wxString("bottom"));
+		c->Append(wxString("empty"));
 		c->Select(0);
 	}
 	void program_form_init(void)
@@ -102,20 +104,22 @@ private:
 		m_choice_ppu_trans->Show();
 		m_choice_ppu_device->Show();
 	}
+	void gauge_init(struct gauge *t)
+	{
+		t->label_set = label_set;
+		t->range_set = range_set;
+		t->value_set = value_set;
+	}
 	void dump_execute(void)
 	{
 		struct config_dump config;
 		config.gauge_cpu.bar = m_gauge_cpu;
 		config.gauge_cpu.label = m_label_cpu;
-		config.gauge_cpu.label_set = label_set;
-		config.gauge_cpu.range_set = range_set;
-		config.gauge_cpu.value_set = value_set;
+		gauge_init(&config.gauge_cpu);
 
 		config.gauge_ppu.bar = m_gauge_ppu;
 		config.gauge_ppu.label = m_label_ppu;
-		config.gauge_ppu.label_set = label_set;
-		config.gauge_ppu.range_set = range_set;
-		config.gauge_ppu.value_set = value_set;
+		gauge_init(&config.gauge_ppu);
 		
 		config.log.object = m_log;
 		config.log.append = text_append;
@@ -172,11 +176,122 @@ private:
 			m_text_forcemapper->Enable();
 		}
 	}
+	
+	bool rom_set(const char *area, wxString device, int trans, struct memory *m, struct flash_device *f)
+	{
+		m->offset = 0;
+		if(flash_device_get(device, f) == false){
+			*m_log << "unknown flash memory device ";
+			*m_log << device << "\n";
+			return false;
+		}
+		switch(trans){
+		case 0: 
+			m->transtype = TRANSTYPE_FULL;
+			break;
+		case 1: 
+			m->transtype = TRANSTYPE_TOP;
+			break;
+		case 2: 
+			m->transtype = TRANSTYPE_BOTTOM;
+			break;
+		default: 
+			m->transtype = TRANSTYPE_EMPTY;
+			break;
+		}
+		if(m->size == 0){
+			m->transtype = TRANSTYPE_EMPTY;
+		}
+		if(f->capacity < m->size){
+			*m_log << area << "area ROM image size is larger than target device";
+			return false;
+		}
+		return true;
+	}
+	void program_execute(void)
+	{
+		struct config_flash f;
+		
+		f.gauge_cpu.bar = m_gauge_cpu;
+		f.gauge_cpu.label = m_label_cpu;
+		gauge_init(&f.gauge_cpu);
+
+		f.gauge_ppu.bar = m_gauge_ppu;
+		f.gauge_ppu.label = m_label_ppu;
+		gauge_init(&f.gauge_ppu);
+		
+		f.log.object = m_log;
+		f.log.append = text_append;
+		
+		wxString str_script = m_choice_script->GetStringSelection();
+		f.script = str_script.fn_str();
+
+		wxTextCtrl *text = m_picker_romimage->GetTextCtrl();
+		wxString str_rom = text->GetValue();
+		if(text->IsEmpty() == true){
+			*m_log << "Enter filename to ROM image\n";
+			return;
+		}
+		f.target = str_rom.fn_str();
+		f.compare = false;
+		f.testrun = false;
+		if(nesfile_load(__FUNCTION__, f.target, &f.rom) == false){
+			return;
+		}
+		if(rom_set(
+			"CPU", m_choice_cpu_device->GetStringSelection(), 
+			m_choice_cpu_trans->GetSelection(),
+			&f.rom.cpu_rom, &f.flash_cpu
+		) == false){
+			return;
+		}
+		if(rom_set(
+			"PPU", m_choice_ppu_device->GetStringSelection(), 
+			m_choice_ppu_trans->GetSelection(),
+			&f.rom.ppu_rom, &f.flash_ppu
+		) == false){
+			return;
+		}
+
+		f.reader = &DRIVER_KAZZO;
+		if(f.reader->open_or_close(READER_OPEN) == NG){
+			*m_log << "reader open error\n";
+			return;
+		}
+
+		m_choice_script->Disable();
+		m_picker_romimage->Disable();
+		m_button_execute->Disable();
+		m_choice_cpu_trans->Disable();
+		m_choice_cpu_device->Disable();
+		m_choice_ppu_trans->Disable();
+		m_choice_ppu_device->Disable();
+		f.reader->init();
+		script_flash_execute(&f);
+
+		nesbuffer_free(&f.rom, 0);
+		f.reader->open_or_close(READER_CLOSE);
+
+		m_choice_script->Enable();
+		m_picker_romimage->Enable();
+		m_button_execute->Enable();
+		m_choice_cpu_trans->Enable();
+		m_choice_cpu_device->Enable();
+		m_choice_ppu_trans->Enable();
+		m_choice_ppu_device->Enable();
+	}
 protected:
 	// Handlers for frame_main events.
 	void OnButtonClick( wxCommandEvent& event )
 	{
-		this->dump_execute();
+		switch(m_mode){
+		case MODE_DUMP:
+			this->dump_execute();
+			break;
+		case MODE_PROGRAM:
+			this->program_execute();
+			break;
+		}
 	}
 
 	void mapper_change_check(wxCommandEvent& event)

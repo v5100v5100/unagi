@@ -65,7 +65,7 @@ static bool bool_get(HSQUIRRELVM v, const char *field, bool *ret)
 }
 bool flash_device_get(const char *name, struct flash_device *t)
 {
-	HSQUIRRELVM v = qr_open(); 
+	HSQUIRRELVM v = qr_open(NULL); 
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashdevice.nut"), SQFalse, SQTrue))){
 		puts("flash device script error");
 		qr_close(v);
@@ -157,7 +157,7 @@ static int flash_device_name_get(HSQUIRRELVM v, int index, const char **str)
 void flash_device_listup(struct flash_listup *t)
 {
 	const char *str;
-	HSQUIRRELVM v = qr_open();
+	HSQUIRRELVM v = qr_open(NULL);
 	SQInteger top = sq_gettop(v);
 
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashdevice.nut"), SQFalse, SQTrue))){

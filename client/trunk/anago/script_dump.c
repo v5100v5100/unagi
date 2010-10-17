@@ -364,7 +364,7 @@ void script_dump_execute(struct config_dump *c)
 		.log = &c->log
 	};
 	{
-		HSQUIRRELVM v = qr_open(); 
+		HSQUIRRELVM v = qr_open(&c->log); 
 		qr_function_register_global(v, "ppu_ramfind", script_nop);
 		qr_function_register_global(v, "cpu_write", cpu_write_check);
 		qr_function_register_global(v, "memory_new", memory_new);
@@ -382,7 +382,7 @@ void script_dump_execute(struct config_dump *c)
 		progress_init();
 	}
 	{
-		HSQUIRRELVM v = qr_open(); 
+		HSQUIRRELVM v = qr_open(&c->log); 
 		qr_function_register_global(v, "memory_new", script_nop);
 		qr_function_register_global(v, "nesfile_save", nesfile_save);
 		qr_function_register_global(v, "cpu_write", cpu_write);

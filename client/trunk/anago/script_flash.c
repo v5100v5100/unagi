@@ -31,11 +31,13 @@ struct anago_driver{
 		void (*const read)(long address, long length, u8 *data);
 		void (*const erase)(long address, bool dowait);
 		long (*const program)(long address, long length, const u8 *data, bool dowait, bool skip);
+		struct gauge *const gauge;
 	}order_cpu, order_ppu;
 	void (*const flash_status)(uint8_t s[2]);
 	uint8_t (*const vram_connection)(void);
 	const enum vram_mirroring vram_mirroring;
 	bool compare, testrun;
+	struct textcontrol *const log;
 };
 
 static SQInteger vram_mirrorfind(HSQUIRRELVM v)
@@ -46,7 +48,7 @@ static SQInteger vram_mirrorfind(HSQUIRRELVM v)
 		return r;
 	}
 	if((d->vram_connection() == 0x05) != (d->vram_mirroring == MIRROR_VERTICAL)){
-		puts("warning: vram mirroring is inconnect");
+		d->log->append(d->log->object, "warning: vram mirroring is inconnect");
 	}
 	return 0;
 }
@@ -113,13 +115,15 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 	}
 	return write_memory(v, &d->order_cpu);
 }
-static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const char *region)
+static SQInteger erase_set(HSQUIRRELVM v, struct anago_flash_order *t, const char *region, struct textcontrol *log)
 {
 	t->config(t->c000x, t->c2aaa, t->c5555, t->device->pagesize, t->device->retry);
 	t->command_change = false;
 	if(t->device->erase_require == true){
+		char str[80];
 		t->erase(t->c2aaa, false);
-		printf("erasing %s memory...\n", region);
+		snprintf(str, 80, "erasing %s memory...\n", region);
+		log->append(log->object, str);
 		fflush(stdout);
 	}
 	return 0;
@@ -131,7 +135,7 @@ static SQInteger cpu_erase(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return erase_set(v, &d->order_cpu, "program");
+	return erase_set(v, &d->order_cpu, "program", d->log);
 }
 static SQInteger ppu_erase(HSQUIRRELVM v)
 {
@@ -140,7 +144,7 @@ static SQInteger ppu_erase(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return erase_set(v, &d->order_ppu, "charcter");
+	return erase_set(v, &d->order_ppu, "charcter", d->log);
 }
 static SQInteger program_regist(HSQUIRRELVM v, const char *name, struct anago_flash_order *t)
 {
@@ -248,12 +252,35 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 	return 0;
 }
 
-static bool program_memoryarea(HSQUIRRELVM co, struct anago_flash_order *t, bool compare, const char *region, SQInteger *state, bool *console_update)
+static void gauge_init(const char *area, struct anago_flash_order *t)
+{
+	t->gauge->range_set(t->gauge->bar, t->programming.count);
+	t->gauge->value_set(t->gauge->bar, t->programming.offset);
+	if(t->programming.count == 0){
+		char str[20];
+		snprintf(str, 20, "%s skip", area);
+		t->gauge->label_set(t->gauge->label, str);
+	}
+}
+
+static void gauge_update(const char *area, struct anago_flash_order *t)
+{
+	if(t->programming.count != 0){
+		char str[40];
+		snprintf(str, 40, "%s 0x%06x/0x%06x", area, (int) t->programming.offset, (int) t->programming.count);
+		t->gauge->label_set(t->gauge->label, str);
+		t->gauge->value_set(t->gauge->bar, t->programming.offset);
+	}
+}
+
+static bool program_memoryarea(HSQUIRRELVM co, struct anago_flash_order *t, bool compare, const char *region, SQInteger *state, bool *console_update, struct textcontrol *log)
 {
 	if(t->programming.length == 0){
 		if(t->programming.offset != 0 && compare == true){
 			if(program_compare(t) == false){
-				printf("%s memory compare error\n", region);
+				char str[80];
+				snprintf(str, 80, "%s memory compare error\n", region);
+				log->append(log->object, str);
 				return false;
 			}
 		}
@@ -288,30 +315,34 @@ static SQInteger program_main(HSQUIRRELVM v)
 	SQInteger state_ppu = sq_getvmstate(co_ppu);
 	const long sleepms = d->compare == true ? 6 : 2; //W29C040 で compare をすると、error が出るので出ない値に調整 (やっつけ対応)
 	
-	progress_init();
+	//progress_init();
+	gauge_init("CPU", &d->order_cpu);
+	gauge_init("PPU", &d->order_ppu);
 	while((state_cpu != SQ_VMSTATE_IDLE) || (state_ppu != SQ_VMSTATE_IDLE)){
 		uint8_t s[2];
 		bool console_update = false;
 		wait(sleepms);
 		d->flash_status(s);
 		if(state_cpu != SQ_VMSTATE_IDLE && s[0] == KAZZO_TASK_FLASH_IDLE){
-			if(program_memoryarea(co_cpu, &d->order_cpu, d->compare, "program", &state_cpu, &console_update) == false){
+			if(program_memoryarea(co_cpu, &d->order_cpu, d->compare, "program", &state_cpu, &console_update, d->log) == false){
 				return 0;
 			}
 		}
 		if(state_ppu != SQ_VMSTATE_IDLE && s[1] == KAZZO_TASK_FLASH_IDLE){
-			if(program_memoryarea(co_ppu, &d->order_ppu, d->compare, "charcter", &state_ppu, &console_update) == false){
+			if(program_memoryarea(co_ppu, &d->order_ppu, d->compare, "charcter", &state_ppu, &console_update, d->log) == false){
 				return 0;
 			}
 		}
 		if((console_update == true) && (d->testrun == false)){
-			progress_draw(d->order_cpu.programming.offset, d->order_cpu.programming.count, d->order_ppu.programming.offset, d->order_ppu.programming.count);
+			//progress_draw(d->order_cpu.programming.offset, d->order_cpu.programming.count, d->order_ppu.programming.offset, d->order_ppu.programming.count);
+			gauge_update("CPU", &d->order_cpu);
+			gauge_update("PPU", &d->order_ppu);
 		}
 	}
 	return 0;
 }
 
-static SQInteger program_count(HSQUIRRELVM v, struct anago_flash_order *t, const struct range *range_address, const struct range *range_length)
+static SQInteger program_count(HSQUIRRELVM v, struct anago_flash_order *t, const struct range *range_address, const struct range *range_length, struct textcontrol *log)
 {
 	SQRESULT r = qr_argument_get(v, 2, &t->programming.address, &t->programming.length);
 	if(SQ_FAILED(r)){
@@ -322,7 +353,9 @@ static SQInteger program_count(HSQUIRRELVM v, struct anago_flash_order *t, const
 		return r;
 	}
 	if((t->programming.address < range_address->start) || ((t->programming.address + t->programming.length) > range_address->end)){
-		printf("address range must be 0x%06x to 0x%06x", (int) range_address->start, (int) range_address->end - 1);
+		char str[80];
+		snprintf(str, 80, "address range must be 0x%06x to 0x%06x", (int) range_address->start, (int) range_address->end - 1);
+		log->append(log->object, str);
 		return sq_throwerror(v, "script logical error");;
 	}
 	t->programming.count += t->programming.length;
@@ -337,7 +370,7 @@ static SQInteger cpu_program_count(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return program_count(v, &d->order_cpu, &range_address, &range_length);
+	return program_count(v, &d->order_cpu, &range_address, &range_length, d->log);
 }
 
 static SQInteger ppu_program_count(HSQUIRRELVM v)
@@ -349,17 +382,20 @@ static SQInteger ppu_program_count(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return program_count(v, &d->order_ppu, &range_address, &range_length);
+	return program_count(v, &d->order_ppu, &range_address, &range_length, d->log);
 }
 
 static bool script_execute(HSQUIRRELVM v, const char *function, struct config_flash *c, struct anago_driver *d)
 {
 	bool ret = true;
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
-		printf("flash core script error\n");
+		d->log->append(d->log->object, "flash core script error\n");
 		ret = false;
 	}else if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue))){
-		printf("%s open error\n", c->script);
+		char str[80];
+		
+		snprintf(str, 80, "%s open error\n", c->script);
+		d->log->append(d->log->object, str);
 		ret = false;
 	}else{
 		SQRESULT r = qr_call(
@@ -390,7 +426,8 @@ void script_flash_execute(struct config_flash *c)
 			.write = c->reader->cpu_write_6502,
 			.read = c->reader->cpu_read,
 			.erase = c->reader->cpu_flash_erase,
-			.program = c->reader->cpu_flash_program
+			.program = c->reader->cpu_flash_program,
+			.gauge = &c->gauge_cpu
 		},
 		.order_ppu = {
 			.command_change = true,
@@ -405,19 +442,21 @@ void script_flash_execute(struct config_flash *c)
 			.read = c->reader->ppu_read,
 			.erase = c->reader->ppu_flash_erase,
 			.program = c->reader->ppu_flash_program,
+			.gauge = &c->gauge_ppu
 		},
 		.flash_status = c->reader->flash_status,
 		.vram_connection = c->reader->vram_connection,
 		.vram_mirroring = c->rom.mirror,
 		.compare = c->compare,
-		.testrun = c->testrun
+		.testrun = c->testrun,
+		.log = &c->log
 	};
 	{
 		static const char *functionname[] = {
 			"cpu_erase", "ppu_erase",
 			"erase_wait", "program_main"
 		};
-		HSQUIRRELVM v = qr_open();
+		HSQUIRRELVM v = qr_open(&c->log);
 		int i;
 		for(i = 0; i < sizeof(functionname)/sizeof(char *); i++){
 			qr_function_register_global(v, functionname[i], script_nop);
@@ -436,13 +475,16 @@ void script_flash_execute(struct config_flash *c)
 		}
 		qr_close(v);
 		assert(d.order_cpu.memory->size != 0);
+		char str[80];
 		if(d.order_cpu.programming.count % d.order_cpu.memory->size  != 0){
-			printf("logical error: cpu_programsize is not connected 0x%06x/0x%06x\n", (int) d.order_cpu.programming.count, (int) d.order_cpu.memory->size);
+			snprintf(str, 80, "logical error: cpu_programsize is not connected 0x%06x/0x%06x\n", (int) d.order_cpu.programming.count, (int) d.order_cpu.memory->size);
+			d.log->append(d.log->object, str);
 			return;
 		}
 		if(d.order_ppu.memory->size != 0){
 			if(d.order_ppu.programming.count % d.order_ppu.memory->size != 0){
-				printf("logical error: ppu_programsize is not connected 0x%06x/0x%06x\n", (int) d.order_ppu.programming.count, (int) d.order_ppu.memory->size);
+				snprintf(str, 80, "logical error: ppu_programsize is not connected 0x%06x/0x%06x\n", (int) d.order_ppu.programming.count, (int) d.order_ppu.memory->size);
+				d.log->append(d.log->object, str);
 				return;
 			}
 		}
@@ -450,7 +492,7 @@ void script_flash_execute(struct config_flash *c)
 	d.order_cpu.command_change = true;
 	d.order_ppu.command_change = true;
 	{
-		HSQUIRRELVM v = qr_open(); 
+		HSQUIRRELVM v = qr_open(&c->log); 
 		qr_function_register_global(v, "cpu_write", cpu_write);
 		qr_function_register_global(v, "cpu_erase", cpu_erase);
 		qr_function_register_global(v, "cpu_program", cpu_program_memory);
