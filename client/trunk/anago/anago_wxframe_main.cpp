@@ -1,9 +1,10 @@
 #include <wx/wx.h>
 #include <wx/log.h>
 #include <wx/dir.h>
+#include <wx/thread.h>
+#include <wx/app.h>
 #include "wx.h"
 #include "widget.h"
-#include "anago_wxframe_main.h"
 #include "reader_master.h"
 //#include "reader_kazzo.h"
 extern const struct reader_driver DRIVER_KAZZO;
@@ -17,7 +18,9 @@ extern "C"{
 static void value_set(void *gauge, int value)
 {
 	wxGauge *g = static_cast<wxGauge *>(gauge);
+	wxMutexGuiEnter();
 	g->SetValue(value);
+	wxMutexGuiLeave();
 }
 
 static void range_set(void *gauge, int value)
@@ -32,13 +35,17 @@ static void range_set(void *gauge, int value)
 static void text_append(void *log, const char *str)
 {
 	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
+	wxMutexGuiEnter();
 	*l << str;
+	wxMutexGuiLeave();
 }
 
 static void label_set(void *label, const char *str)
 {
 	wxStaticText *l = static_cast<wxStaticText *>(label);
+	wxMutexGuiEnter();
 	l->SetLabel(str);
+	wxMutexGuiLeave();
 }
 
 static void choice_append(void *choice, const char *str)
@@ -47,12 +54,34 @@ static void choice_append(void *choice, const char *str)
 	c->Append(wxString(str));
 }
 
+class anago_wxframe_main;
+class anago_execute : public wxThread
+{
+private:
+	anago_wxframe_main *m_frame;
+	struct config_dump m_config;
+protected:
+	virtual void *Entry(void);
+	virtual void OnExit(void)
+	{
+	}
+public:
+	anago_execute(anago_wxframe_main *f, struct config_dump *d) : wxThread()
+	{
+		m_frame = f;
+		memcpy(&m_config, d, sizeof(config_dump));
+	}
+};
+
+
 class anago_wxframe_main : public frame_main
 {
 private:
 	enum {
 		MODE_DUMP, MODE_PROGRAM
 	} m_mode;
+	anago_execute *m_thread_dump;
+	
 	void choise_script_init(wxString filespec)
 	{
 		wxDir dir(wxGetCwd());
@@ -73,9 +102,11 @@ private:
 	{
 		m_mode = MODE_DUMP;
 		this->choise_script_init(wxString("*.ad"));
+//		m_picker_romimage->GetTextCtrl()->Clear();
 		m_check_battery->Show();
 		m_check_forcemapper->Show();
 		m_text_forcemapper->Show();
+		m_check_compare->Hide();
 		m_button_execute->SetLabel(wxString("&Dump"));
 		m_choice_cpu_trans->Hide();
 		m_choice_cpu_device->Hide();
@@ -95,9 +126,11 @@ private:
 	{
 		m_mode = MODE_PROGRAM;
 		this->choise_script_init(wxString("*.af"));
+//		m_picker_romimage->GetTextCtrl()->Clear();
 		m_check_battery->Hide();
 		m_check_forcemapper->Hide();
 		m_text_forcemapper->Hide();
+		m_check_compare->Show();
 		m_button_execute->SetLabel(wxString("&Program"));
 		m_choice_cpu_trans->Show();
 		m_choice_cpu_device->Show();
@@ -127,7 +160,7 @@ private:
 		config.increase.ppu = 1;
 		config.progress = true;
 		wxString str_script = m_choice_script->GetStringSelection();
-		config.script = str_script.fn_str();
+		strncpy(config.script, str_script.fn_str(), SCRIPT_STR_LENGTH);
 
 		{
 			wxString str;
@@ -147,7 +180,7 @@ private:
 			*m_log << "Enter filename to ROM image\n";
 			return;
 		}
-		config.target = str_rom.fn_str();
+		strncpy(config.target, str_rom.fn_str(), TARGET_STR_LENGTH);
 
 		config.reader = &DRIVER_KAZZO;
 		if(config.reader->open_or_close(READER_OPEN) == NG){
@@ -164,16 +197,13 @@ private:
 		}
 
 		config.reader->init();
-		script_dump_execute(&config);
-		config.reader->open_or_close(READER_CLOSE);
-
-		m_choice_script->Enable();
-		m_picker_romimage->Enable();
-		m_check_battery->Enable();
-		m_check_forcemapper->Enable();
-		m_button_execute->Enable();
-		if(m_check_forcemapper->GetValue() == true){
-			m_text_forcemapper->Enable();
+/*		script_dump_execute(&config);
+		config.reader->open_or_close(READER_CLOSE);*/
+		m_thread_dump = new anago_execute(this, &config);
+		if(m_thread_dump->Create() != wxTHREAD_NO_ERROR){
+			*m_log << "thread creating error";
+		}else if(m_thread_dump->Run() != wxTHREAD_NO_ERROR){
+			*m_log << "thread running error";
 		}
 	}
 	
@@ -261,6 +291,7 @@ private:
 
 		m_choice_script->Disable();
 		m_picker_romimage->Disable();
+		m_check_compare->Disable();
 		m_button_execute->Disable();
 		m_choice_cpu_trans->Disable();
 		m_choice_cpu_device->Disable();
@@ -274,6 +305,7 @@ private:
 
 		m_choice_script->Enable();
 		m_picker_romimage->Enable();
+		m_check_compare->Enable();
 		m_button_execute->Enable();
 		m_choice_cpu_trans->Enable();
 		m_choice_cpu_device->Enable();
@@ -302,12 +334,37 @@ protected:
 			m_text_forcemapper->Disable();
 		}
 	}
+	void menu_log_clean(wxCommandEvent& event)
+	{
+		m_log->Clear();
+	}
+	void menu_exit(wxCommandEvent& event)
+	{
+		event.Skip();
+	}
+	void menu_mode_dump_set(wxCommandEvent& event)
+	{
+		if(m_mode != MODE_DUMP){
+			this->dump_form_init();
+		}
+	}
+	void menu_mode_program_set(wxCommandEvent& event)
+	{
+		if(m_mode != MODE_PROGRAM){
+			this->program_form_init();
+		}
+	}
+	void menu_help_contents(wxCommandEvent& event)
+	{
+		*m_log << wxString("たすケて\n");
+	}
+	
 public:
 	/** Constructor */
 	anago_wxframe_main( wxWindow* parent ) : frame_main (parent)
 	{
-		//this->dump_form_init();
-		this->program_form_init();
+		this->dump_form_init();
+		//this->program_form_init();
 		this->choise_trans_init(m_choice_cpu_trans);
 		this->choise_trans_init(m_choice_ppu_trans);
 
@@ -320,9 +377,26 @@ public:
 		m_choice_ppu_device->Select(0);
 	}
 	
+	void DumpThreadFinish(void)
+	{
+		m_choice_script->Enable();
+		m_picker_romimage->Enable();
+		m_check_battery->Enable();
+		m_check_forcemapper->Enable();
+		m_button_execute->Enable();
+		if(m_check_forcemapper->GetValue() == true){
+			m_text_forcemapper->Enable();
+		}
+	}
 };
 
-
+void *anago_execute::Entry(void)
+{
+	script_dump_execute(&m_config);
+	m_config.reader->open_or_close(READER_CLOSE);
+	m_frame->DumpThreadFinish();
+	return NULL;
+}
 
 class MyApp : public wxApp
 {

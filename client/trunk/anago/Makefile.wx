@@ -21,10 +21,10 @@ ifneq ($(strip $(LIBUSB)),)
   LDFLAG += -L$(LIBUSB)/lib/gcc 
 endif
 all: $(TARGET)
-WX_CONFIG = /d/dev/wxWidgets/build_release/wx-config
+WX_CONFIG = /d/dev/wxWidgets/build_thread/wx-config
 CXXFLAGS = -I.. `$(WX_CONFIG) --cppflags`
 
-OBJ = wx.o anago_wxframe_main.o
+OBJ = anago_gui.o anago_frame.o
 OBJ += header.o crc32.o file.o \
 	script_flash.o script_dump.o script_common.o \
 	progress.o flash_device.o \
@@ -34,3 +34,6 @@ clean:
 	rm -f $(OBJ)
 $(TARGET): $(OBJ) 
 	g++ -o $@ $(OBJ) $(LDFLAG) `$(WX_CONFIG) --libs core`  -lusb -lsqstdlib -lsquirrel
+
+anago_gui.o: anago_gui.cpp anago_gui.h
+anago_frame.o: anago_frame.cpp anago_gui.h

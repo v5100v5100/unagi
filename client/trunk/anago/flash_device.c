@@ -163,6 +163,7 @@ void flash_device_listup(struct flash_listup *t)
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashdevice.nut"), SQFalse, SQTrue))){
 //		puts("flash device script error");
 		qr_close(v);
+		return;
 	}
 
 	int i;

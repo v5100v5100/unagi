@@ -12,7 +12,7 @@
 #else 
 #define scvprintf vprintf 
 #endif 
-static void printfunc(HSQUIRRELVM v, const SQChar *s, ...) 
+static void print_stdout(HSQUIRRELVM v, const SQChar *s, ...) 
 {
 	va_list arglist;
 	va_start(arglist, s);
@@ -39,7 +39,7 @@ HSQUIRRELVM qr_open(struct textcontrol *p)
 	sqstd_seterrorhandlers(v);
 	sqstd_register_iolib(v);
 	if(p == NULL){
-		sq_setprintfunc(v, printfunc);
+		sq_setprintfunc(v, print_stdout);
 	}else{
 		sq_setforeignptr(v, (SQUserPointer) p);
 		sq_setprintfunc(v, print_other);
