@@ -16,12 +16,26 @@ extern "C"{
 #include "script_flash.h"
 }
 
-static void value_set(void *gauge, int value)
+//---- C++ -> C -> C++ wrapping functions ----
+static void value_set(void *gauge, void *label, int value)
 {
 	wxGauge *g = static_cast<wxGauge *>(gauge);
+	wxStaticText *l = static_cast<wxStaticText *>(label);
+	wxString str;
+	str.Printf(wxT("0x%06x/0x%06x"), value, g->GetRange());
+	
 	wxMutexGuiEnter();
 	g->SetValue(value);
+	l->SetLabel(str);
 	wxMutexGuiLeave();
+}
+
+static void value_add(void *gauge, void *label, int value)
+{
+	wxGauge *g = static_cast<wxGauge *>(gauge);
+	value += g->GetValue();
+	
+	value_set(gauge, label, value);
 }
 
 static void range_set(void *gauge, int value)
@@ -55,19 +69,20 @@ void choice_append(void *choice, const char *str)
 	c->Append(wxString(str));
 }
 
+//---- script execute thread ----
 class anago_frame;
 class anago_dumper : public wxThread
 {
 private:
 	anago_frame *m_frame;
-	struct config_dump m_config;
+	struct dump_config m_config;
 protected:
 	virtual void *Entry(void);
 public:
-	anago_dumper(anago_frame *f, struct config_dump *d) : wxThread()
+	anago_dumper(anago_frame *f, struct dump_config *d) : wxThread()
 	{
 		m_frame = f;
-		memcpy(&m_config, d, sizeof(config_dump));
+		memcpy(&m_config, d, sizeof(struct dump_config));
 	}
 };
 
@@ -75,17 +90,18 @@ class anago_programmer : public wxThread
 {
 private:
 	anago_frame *m_frame;
-	struct config_flash m_config;
+	struct program_config m_config;
 protected:
 	virtual void *Entry(void);
 public:
-	anago_programmer(anago_frame *f, struct config_flash *d) : wxThread()
+	anago_programmer(anago_frame *f, struct program_config *d) : wxThread()
 	{
 		m_frame = f;
-		memcpy(&m_config, d, sizeof(config_flash));
+		memcpy(&m_config, d, sizeof(struct program_config));
 	}
 };
 
+//---- main frame class ----
 class anago_frame : public frame_main
 {
 private:
@@ -98,6 +114,7 @@ private:
 		t->label_set = label_set;
 		t->range_set = range_set;
 		t->value_set = value_set;
+		t->value_add = value_add;
 	}
 	void script_choice_init(wxChoice *c, wxString filespec)
 	{
@@ -128,21 +145,30 @@ private:
 		c->Append(wxString("x4"));
 		c->Select(0);
 	}
+	int dump_increase_get(wxChoice *c)
+	{
+		switch(c->GetSelection()){
+		case 0: return 1;
+		case 1: return 2;
+		case 2: return 4;
+		}
+		return 1;
+	}
 	void dump_execute(void)
 	{
-		struct config_dump config;
-		config.gauge_cpu.bar = m_dump_cpu_gauge;
-		config.gauge_cpu.label = m_dump_cpu_label;
-		gauge_init(&config.gauge_cpu);
+		struct dump_config config;
+		config.cpu.gauge.bar = m_dump_cpu_gauge;
+		config.cpu.gauge.label = m_dump_cpu_value;
+		gauge_init(&config.cpu.gauge);
 
-		config.gauge_ppu.bar = m_dump_ppu_gauge;
-		config.gauge_ppu.label = m_dump_ppu_label;
-		gauge_init(&config.gauge_ppu);
+		config.ppu.gauge.bar = m_dump_ppu_gauge;
+		config.ppu.gauge.label = m_dump_ppu_value;
+		gauge_init(&config.ppu.gauge);
 		
 		config.log.object = m_log;
 		config.log.append = text_append;
-		config.increase.cpu = 1;
-		config.increase.ppu = 1;
+		config.cpu.increase = dump_increase_get(m_dump_cpu_increase);
+		config.ppu.increase = dump_increase_get(m_dump_ppu_increase);
 		config.progress = true;
 		wxString str_script = m_dump_script_choice->GetStringSelection();
 		strncpy(config.script, str_script.fn_str(), DUMP_SCRIPT_STR_LENGTH);
@@ -167,8 +193,11 @@ private:
 		}
 		strncpy(config.target, str_rom.fn_str(), DUMP_TARGET_STR_LENGTH);
 
-		config.reader = &DRIVER_KAZZO;
-		if(config.reader->open_or_close(READER_OPEN) == NG){
+		config.control = &DRIVER_KAZZO.control;
+		config.cpu.access = &DRIVER_KAZZO.cpu;
+		config.ppu.access = &DRIVER_KAZZO.ppu;
+		config.control->open(&config.handle);
+		if(config.handle.handle == NULL){
 			*m_log << "reader open error\n";
 			return;
 		}
@@ -181,7 +210,7 @@ private:
 		m_dump_cpu_increase->Disable();
 		m_dump_ppu_increase->Disable();
 
-		config.reader->init();
+		config.control->init(&config.handle);
 /*		if(m_anago_thread != NULL){ //???
 			delete m_anago_thread;
 		}*/
@@ -205,7 +234,7 @@ private:
 		c->Append(wxString("empty"));
 		c->Select(0);
 	}
-	bool program_rom_set(const char *area, wxString device, int trans, struct memory *m, struct flash_device *f)
+	bool program_rom_set(wxString device, int trans, struct memory *m, struct flash_device *f)
 	{
 		m->offset = 0;
 		if(flash_device_get(device, f) == false){
@@ -227,26 +256,20 @@ private:
 			m->transtype = TRANSTYPE_EMPTY;
 			break;
 		}
-		if(m->size == 0){
-			m->transtype = TRANSTYPE_EMPTY;
-		}
-		if(f->capacity < m->size){
-			*m_log << area << "area ROM image size is larger than target device";
-			return false;
-		}
 		return true;
 	}
+#if 1
 	void program_execute(void)
 	{
-		struct config_flash f;
+		struct program_config f;
 		
-		f.gauge_cpu.bar = m_program_cpu_gauge;
-		f.gauge_cpu.label = m_program_cpu_label;
-		gauge_init(&f.gauge_cpu);
+		f.cpu.gauge.bar = m_program_cpu_gauge;
+		f.cpu.gauge.label = m_program_cpu_value;
+		gauge_init(&f.cpu.gauge);
 
-		f.gauge_ppu.bar = m_program_ppu_gauge;
-		f.gauge_ppu.label = m_program_ppu_label;
-		gauge_init(&f.gauge_ppu);
+		f.ppu.gauge.bar = m_program_ppu_gauge;
+		f.ppu.gauge.label = m_program_ppu_value;
+		gauge_init(&f.ppu.gauge);
 		
 		f.log.object = m_log;
 		f.log.append = text_append;
@@ -261,34 +284,34 @@ private:
 			return;
 		}
 		strncpy(f.target, str_rom.fn_str(), PROGRAM_TARGET_STR_LENGTH);
-		f.compare = false;
+		f.compare = m_program_compare->GetValue();
 		f.testrun = false;
-//あとで struct config_flash の構造を見直す
+#if 0
 //		if(nesfile_load(__FUNCTION__, f.target, &f.rom) == false){
 		if(nesfile_load(__FUNCTION__, str_rom.fn_str(), &f.rom) == false){
 			*m_log << str_rom << " open error\n";
 			return;
 		}
+#endif
 		if(program_rom_set(
-			"CPU", m_program_cpu_device->GetStringSelection(), 
+			m_program_cpu_device->GetStringSelection(), 
 			m_program_cpu_padding->GetSelection(),
-			&f.rom.cpu_rom, &f.flash_cpu
+			&f.cpu.memory, &f.cpu.flash
 		) == false){
 			return;
 		}
 		if(program_rom_set(
-			"PPU", m_program_ppu_device->GetStringSelection(), 
+			m_program_ppu_device->GetStringSelection(), 
 			m_program_ppu_padding->GetSelection(),
-			&f.rom.ppu_rom, &f.flash_ppu
+			&f.ppu.memory, &f.ppu.flash
 		) == false){
 			return;
 		}
 
-		f.reader = &DRIVER_KAZZO;
-		if(f.reader->open_or_close(READER_OPEN) == NG){
-			*m_log << "reader open error\n";
-			return;
-		}
+		f.control = &DRIVER_KAZZO.control;
+		f.cpu.access = &DRIVER_KAZZO.cpu;
+		f.ppu.access = &DRIVER_KAZZO.ppu;
+		f.control->open(&f.handle);
 
 		m_program_script_choice->Disable();
 		m_program_romimage_picker->Disable();
@@ -299,10 +322,7 @@ private:
 		m_program_ppu_padding->Disable();
 		m_program_ppu_device->Disable();
 		m_program_compare->Disable();
-		f.reader->init();
-/*		if(m_anago_thread != NULL){
-			delete m_anago_thread;
-		}*/
+
 		m_anago_thread = new anago_programmer(this, &f);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
 			*m_log << "thread creating error";
@@ -312,6 +332,7 @@ private:
 			m_status = STATUS_PROGRAMMING;
 		}
 	}
+
 protected:
 	void dump_button_click(wxCommandEvent& event)
 	{
@@ -388,6 +409,8 @@ public:
 		m_dump_romimage_picker->Enable();
 		m_dump_check_battery->Enable();
 		m_dump_check_forcemapper->Enable();
+		m_dump_cpu_increase->Enable();
+		m_dump_ppu_increase->Enable();
 		m_dump_button->SetLabel(wxString("&dump"));
 		if(m_dump_check_forcemapper->GetValue() == true){
 			m_dump_text_forcemapper->Enable();
@@ -413,20 +436,18 @@ public:
 void *anago_dumper::Entry(void)
 {
 	script_dump_execute(&m_config);
-	m_config.reader->open_or_close(READER_CLOSE);
+	m_config.control->close(&m_config.handle);
+	m_config.handle.handle = NULL;
 	m_frame->DumpThreadFinish();
 	return NULL;
 }
 
 void *anago_programmer::Entry(void)
 {
-	script_flash_execute(&m_config);
-	m_config.reader->open_or_close(READER_CLOSE);
-	nesbuffer_free(&m_config.rom, 0);
+	script_program_execute(&m_config);
 	m_frame->ProgramThreadFinish();
 	return NULL;
 }
-
 
 class MyApp : public wxApp
 {

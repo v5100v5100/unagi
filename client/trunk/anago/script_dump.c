@@ -14,20 +14,7 @@
 #include "script_common.h"
 #include "script_dump.h"
 
-struct dump_driver{
-	const char *target;
-	struct memory_driver{
-		struct memory memory;
-		long read_count;
-		void (*const write)(long address, long length, const uint8_t *data);
-		void (*const read)(long address, long length, u8 *data);
-		struct gauge *const gauge;
-	}cpu, ppu;
-	uint8_t (*const vram_connection)(void);
-	bool progress;
-	struct textcontrol *const log;
-};
-static SQInteger write_memory(HSQUIRRELVM v, struct memory_driver *t)
+static SQInteger write_memory(HSQUIRRELVM v, const struct reader_handle *h, struct dump_memory_driver *t)
 {
 	long address, data;
 	SQRESULT r = qr_argument_get(v, 2, &address, &data);
@@ -35,17 +22,17 @@ static SQInteger write_memory(HSQUIRRELVM v, struct memory_driver *t)
 		return r;
 	}
 	uint8_t d8 = (uint8_t) data;
-	t->write(address, 1, &d8);
+	t->access->memory_write(h, address, 1, &d8);
 	return 0;
 }
 static SQInteger cpu_write(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return write_memory(v, &d->cpu);
+	return write_memory(v, &d->handle, &d->cpu);
 }
 
 //ここの printf は debug 用に残しておく
@@ -81,54 +68,48 @@ static void buffer_show(struct memory *t, long length)
 	fflush(stdout);
 }
 
-static void progress_show(struct memory_driver *d, const char *area)
-{
-	char str[80];
-	d->gauge->value_set(d->gauge->bar, d->memory.offset);
-	snprintf(str, 80, "%s 0x%06x/0x%06x", area, d->memory.offset, d->memory.size);
-	d->gauge->label_set(d->gauge->label, str);
-}
-static SQInteger read_memory(HSQUIRRELVM v, struct memory_driver *t, bool progress)
+static SQInteger read_memory(HSQUIRRELVM v, const struct reader_handle *h, struct dump_memory_driver *t, bool progress)
 {
 	long address, length;
 	SQRESULT r = qr_argument_get(v, 2, &address, &length);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	t->read(address, length == 0 ? 1: length, t->memory.data + t->memory.offset);
+	t->access->memory_read(h, &t->gauge, address, length == 0 ? 1: length, t->memory.data + t->memory.offset);
 	if((length != 0) && (progress == false)){
 		buffer_show(&t->memory, length);
 	}
 	t->memory.offset += length;
+	//progress_show(t);
+
 	return 0;
 }
+
 static SQInteger cpu_read(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = read_memory(v, &d->cpu, d->progress);
-	progress_show(&d->cpu, "CPU");
+	r = read_memory(v, &d->handle, &d->cpu, d->progress);
 	return r;
 }
 
 static SQInteger ppu_read(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = read_memory(v, &d->ppu, d->progress);
-	progress_show(&d->ppu, "PPU");
+	r = read_memory(v, &d->handle, &d->ppu, d->progress);
 	return r;
 }
 
 static SQInteger ppu_ramfind(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	enum{
 		testsize = 8,
 		testaddress = 1234
@@ -136,42 +117,43 @@ static SQInteger ppu_ramfind(HSQUIRRELVM v)
 	static const uint8_t test_val[testsize] = {0xaa, 0x55, 0, 0xff, 0x46, 0x49, 0x07, 0x21};
 	static const uint8_t test_str[testsize] = "pputest";
 	uint8_t test_result[testsize];
-
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
+	struct dump_memory_driver *p = &d->ppu;
+
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	d->ppu.write(testaddress, testsize, test_val);
-	d->ppu.read(testaddress, testsize, test_result);
+	p->access->memory_write(&d->handle, testaddress, testsize, test_val);
+	p->access->memory_read(&d->handle, &GAUGE_DUMMY, testaddress, testsize, test_result);
 	if(memcmp(test_val, test_result, testsize) != 0){
 		sq_pushbool(v, SQFalse);
 		return 1;
 	}
-	d->ppu.write(testaddress, testsize, test_str);
-	d->ppu.read(testaddress, testsize, test_result);
+	p->access->memory_write(&d->handle, testaddress, testsize, test_str);
+	p->access->memory_read(&d->handle, &GAUGE_DUMMY, testaddress, testsize, test_result);
 	if(memcmp(test_str, test_result, testsize) != 0){
 		sq_pushbool(v, SQFalse);
 		return 1;
 	}
-	d->ppu.memory.offset = 0;
-	d->ppu.memory.size = 0;
+	p->memory.offset = 0;
+	p->memory.size = 0;
 	sq_pushbool(v, SQTrue);
 	return 1;
 }
 
-static void memory_new_init(struct memory_driver *d, const char *area)
+static void memory_new_init(struct dump_memory_driver *d)
 {
 	d->memory.offset = 0;
 	d->memory.data = Malloc(d->memory.size);
-	d->gauge->value_set(d->gauge->bar, 0);
-	d->gauge->range_set(d->gauge->bar, d->memory.size);
-	d->gauge->label_set(d->gauge->label, area);
+	d->gauge.value_set(d->gauge.bar, d->gauge.label, 0);
+	d->gauge.range_set(d->gauge.bar, d->memory.size);
+//	d->gauge.label_set(d->gauge.label, d->memory.name);
 }
 
 //test 時/1度目の call で使用
 static SQInteger memory_new(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
@@ -188,15 +170,15 @@ static SQInteger memory_new(HSQUIRRELVM v)
 	d->ppu.memory.data = Malloc(d->ppu.memory.size);
 	d->cpu.gauge->value_set(0);
 	d->ppu.gauge->range_set(d->ppu.gauge->object, d->ppu.memory.size);*/
-	memory_new_init(&d->cpu, "CPU");
-	memory_new_init(&d->ppu, "PPU");
+	memory_new_init(&d->cpu);
+	memory_new_init(&d->ppu);
 	return 0;
 }
 
 //dump 時/2度目の call で nesfile_save として使用
 static SQInteger nesfile_save(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
@@ -212,14 +194,14 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 	image.ppu_rom = d->ppu.memory;
 	image.mirror = MIRROR_PROGRAMABLE;
 	if(mirrorfind == 1){
-		if(d->vram_connection() == 0x05){
+		if(d->control->vram_connection(&d->handle) == 0x05){
 			image.mirror = MIRROR_VERTICAL;
 		}else{
 			image.mirror = MIRROR_HORIZONAL;
 		}
 	}
 	image.backupram = 0;
-	nesfile_create(d->log, &image, d->target);
+	nesfile_create(&d->log, &image, d->target);
 	nesbuffer_free(&image, 0); //0 is MODE_xxx_xxxx
 	
 	d->cpu.memory.data = NULL;
@@ -230,7 +212,7 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 //dump 時/1度目の call で nesfile_save として使用
 static SQInteger length_check(HSQUIRRELVM v)
 {
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
@@ -243,14 +225,14 @@ static SQInteger length_check(HSQUIRRELVM v)
 	char str[80];
 	if(cpu == false){
 		snprintf(str, 80, "cpu_romsize is not connected 0x%06x/0x%06x\n", (int) d->cpu.read_count, (int) d->cpu.memory.size);
-		d->log->append(d->log->object, str);
+		d->log.append(d->log.object, str);
 	}
 	if(d->ppu.memory.size != d->ppu.read_count){
 		ppu = false;
 	}
 	if(ppu == false){
 		snprintf(str, 80, "ppu_romsize is not connected 0x%06x/0x%06x\n", (int) d->ppu.read_count, (int) d->ppu.memory.size);
-		d->log->append(d->log->object, str);
+		d->log.append(d->log.object, str);
 	}
 	if(cpu == false || ppu == false){
 		r = sq_throwerror(v, "script logical error");
@@ -258,7 +240,7 @@ static SQInteger length_check(HSQUIRRELVM v)
 	return r;
 }
 
-static SQInteger read_count(HSQUIRRELVM v, struct textcontrol *l, struct memory_driver *t, const struct range *range_address, const struct range *range_length)
+static SQInteger read_count(HSQUIRRELVM v, struct textcontrol *l, struct dump_memory_driver *t, const struct range *range_address, const struct range *range_length)
 {
 	long address, length;
 	SQRESULT r = qr_argument_get(v, 2, &address, &length);
@@ -283,41 +265,41 @@ static SQInteger cpu_read_count(HSQUIRRELVM v)
 	static const struct range range_address = {0x8000, 0x10000};
 	//length == 0 は 対象アドレスを呼んで、バッファにいれない。mmc2, mmc4 で使用する。
 	static const struct range range_length = {0x0000, 0x4000};
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return read_count(v, d->log, &d->cpu, &range_address, &range_length);
+	return read_count(v, &d->log, &d->cpu, &range_address, &range_length);
 }
 
 static SQInteger ppu_read_count(HSQUIRRELVM v)
 {
 	static const struct range range_address = {0x0000, 0x2000};
 	static const struct range range_length = {0x0001, 0x2000};
-	struct dump_driver *d;
+	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return read_count(v, d->log, &d->ppu, &range_address, &range_length);
+	return read_count(v, &d->log, &d->ppu, &range_address, &range_length);
 }
 
-static bool script_execute(HSQUIRRELVM v, struct config_dump *c, struct dump_driver *d)
+static bool script_execute(HSQUIRRELVM v, struct dump_config *d)
 {
 	bool ret = true;
 	if(SQ_FAILED(sqstd_dofile(v, _SC("dumpcore.nut"), SQFalse, SQTrue))){
-		d->log->append(d->log->object, "dump core script error\n");
+		d->log.append(d->log.object, "dump core script error\n");
 		ret = false;
-	}else if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue))){
+	}else if(SQ_FAILED(sqstd_dofile(v, _SC(d->script), SQFalse, SQTrue))){
 		char str[80];
-		snprintf(str, 80, "%s open error\n", c->script);
-		d->log->append(d->log->object, str);
+		snprintf(str, 80, "%s open error\n", d->script);
+		d->log.append(d->log.object, str);
 		ret = false;
 	}else{
 		SQRESULT r = qr_call(
 			v, "dump", (SQUserPointer) d, true, 
-			3, c->mappernum, c->increase.cpu, c->increase.ppu
+			3, d->mappernum, d->cpu.increase, d->ppu.increase
 		);
 		if(SQ_FAILED(r)){
 			ret = false;
@@ -329,42 +311,28 @@ static bool script_execute(HSQUIRRELVM v, struct config_dump *c, struct dump_dri
 	}
 	return ret;
 }
-void script_dump_execute(struct config_dump *c)
+void script_dump_execute(struct dump_config *d)
 {
-	struct dump_driver d = {
-		.cpu = {
-			.memory = {
-				.name = "program",
-				.size = 0, .offset = 0,
-				.attribute = MEMORY_ATTR_WRITE,
-				.transtype = TRANSTYPE_FULL,
-				.data = NULL
-			},
-			.read_count = 0,
-			.write = c->reader->cpu_write_6502,
-			.read = c->reader->cpu_read,
-			.gauge = &c->gauge_cpu
-		},
-		.ppu = {
-			.memory = {
-				.name = "charcter",
-				.size = 0, .offset = 0,
-				.attribute = MEMORY_ATTR_WRITE,
-				.transtype = TRANSTYPE_FULL,
-				.data = NULL
-			},
-			.read_count = 0,
-			.write = c->reader->ppu_write,
-			.read = c->reader->ppu_read,
-			.gauge = &c->gauge_ppu
-		},
-		.vram_connection = c->reader->vram_connection,
-		.target = c->target,
-		.progress = c->progress,
-		.log = &c->log
-	};
+	struct dump_memory_driver *dd = &d->cpu;
+	dd->memory.name = "Program";
+	dd->memory.size = 0;
+	dd->memory.offset = 0;
+	dd->memory.attribute = MEMORY_ATTR_WRITE;
+	dd->memory.transtype = TRANSTYPE_FULL;
+	dd->memory.data = NULL;
+	dd->read_count = 0;
+	
+	dd = &d->ppu;
+	dd->memory.name = "Charcter";
+	dd->memory.size = 0;
+	dd->memory.offset = 0;
+	dd->memory.attribute = MEMORY_ATTR_WRITE;
+	dd->memory.transtype = TRANSTYPE_FULL;
+	dd->memory.data = NULL;
+	dd->read_count = 0;
+	
 	{
-		HSQUIRRELVM v = qr_open(&c->log); 
+		HSQUIRRELVM v = qr_open(&d->log); 
 		qr_function_register_global(v, "ppu_ramfind", script_nop);
 		qr_function_register_global(v, "cpu_write", cpu_write_check);
 		qr_function_register_global(v, "memory_new", memory_new);
@@ -372,17 +340,17 @@ void script_dump_execute(struct config_dump *c)
 		qr_function_register_global(v, "cpu_read", cpu_read_count);
 		qr_function_register_global(v, "ppu_read", ppu_read_count);
 		qr_function_register_global(v, "require", script_require);
-		if(script_execute(v, c, &d) == false){
+		if(script_execute(v, d) == false){
 			qr_close(v);
 			return;
 		}
 		qr_close(v);
 	}
-	if(c->progress == true){
+	if(d->progress == true){
 		progress_init();
 	}
 	{
-		HSQUIRRELVM v = qr_open(&c->log); 
+		HSQUIRRELVM v = qr_open(&d->log); 
 		qr_function_register_global(v, "memory_new", script_nop);
 		qr_function_register_global(v, "nesfile_save", nesfile_save);
 		qr_function_register_global(v, "cpu_write", cpu_write);
@@ -390,7 +358,7 @@ void script_dump_execute(struct config_dump *c)
 		qr_function_register_global(v, "ppu_read", ppu_read);
 		qr_function_register_global(v, "ppu_ramfind", ppu_ramfind);
 		qr_function_register_global(v, "require", script_require);
-		script_execute(v, c, &d);
+		script_execute(v, d);
 		qr_close(v);
 	}
 }

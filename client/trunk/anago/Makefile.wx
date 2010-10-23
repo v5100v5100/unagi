@@ -24,11 +24,12 @@ all: $(TARGET)
 WX_CONFIG = /d/dev/wxWidgets/build_thread/wx-config
 CXXFLAGS = -I.. `$(WX_CONFIG) --cppflags`
 
+#script_flash.o
 OBJ = anago_gui.o anago_frame.o
-OBJ += header.o crc32.o file.o \
+OBJ += header.o crc32.o file.o widget.o \
 	script_flash.o script_dump.o script_common.o \
 	progress.o flash_device.o \
-	reader_dummy.o reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
+	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
 
 clean:
 	rm -f $(OBJ)

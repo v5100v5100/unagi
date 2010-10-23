@@ -17,6 +17,7 @@
 #include <wx/choice.h>
 #include <wx/filepicker.h>
 #include <wx/sizer.h>
+#include <wx/statline.h>
 #include <wx/gauge.h>
 #include <wx/checkbox.h>
 #include <wx/textctrl.h>
@@ -25,6 +26,7 @@
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
+#include <wx/statbmp.h>
 #include <wx/notebook.h>
 #include <wx/frame.h>
 
@@ -45,12 +47,17 @@ class frame_main : public wxFrame
 		wxChoice* m_dump_script_choice;
 		wxStaticText* m_dump_romimage_label;
 		wxFilePickerCtrl* m_dump_romimage_picker;
+		wxStaticLine* m_staticline1;
 		wxStaticText* m_dump_cpu_label;
-		wxChoice* m_dump_cpu_increase;
 		wxGauge* m_dump_cpu_gauge;
+		wxChoice* m_dump_cpu_increase;
+		wxStaticText* m_dump_cpu_value;
+		wxStaticLine* m_staticline2;
 		wxStaticText* m_dump_ppu_label;
-		wxChoice* m_dump_ppu_increase;
 		wxGauge* m_dump_ppu_gauge;
+		wxChoice* m_dump_ppu_increase;
+		wxStaticText* m_dump_ppu_value;
+		wxStaticLine* m_staticline3;
 		wxCheckBox* m_dump_check_battery;
 		wxCheckBox* m_dump_check_forcemapper;
 		wxTextCtrl* m_dump_text_forcemapper;
@@ -58,18 +65,25 @@ class frame_main : public wxFrame
 		wxPanel* m_panel_program;
 		wxStaticText* m_program_script_label;
 		wxChoice* m_program_script_choice;
-		wxStaticText* m_program_romimage_label;
+		wxStaticText* m_program_label;
 		wxFilePickerCtrl* m_program_romimage_picker;
+		wxStaticLine* m_staticline11;
 		wxStaticText* m_program_cpu_label;
+		wxGauge* m_program_cpu_gauge;
 		wxChoice* m_program_cpu_device;
 		wxChoice* m_program_cpu_padding;
-		wxGauge* m_program_cpu_gauge;
+		wxStaticText* m_program_cpu_value;
+		wxStaticLine* m_staticline21;
 		wxStaticText* m_program_ppu_label;
+		wxGauge* m_program_ppu_gauge;
 		wxChoice* m_program_ppu_device;
 		wxChoice* m_program_ppu_padding;
-		wxGauge* m_program_ppu_gauge;
+		wxStaticText* m_program_ppu_value;
+		wxStaticLine* m_staticline31;
 		wxCheckBox* m_program_compare;
 		wxButton* m_program_button;
+		wxPanel* m_panel4;
+		wxStaticBitmap* m_bitmap1;
 		wxPanel* m_panel_log;
 		wxTextCtrl* m_log;
 		

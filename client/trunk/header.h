@@ -3,6 +3,7 @@
 #if ANAGO==0
 #include "flashmemory.h"
 #endif
+
 enum trastype{
 	TRANSTYPE_EMPTY,
 	TRANSTYPE_TOP,
@@ -60,7 +61,7 @@ enum{
 void nesheader_set(const struct romimage *r, uint8_t *header);
 #endif
 bool nesbuffer_malloc(struct romimage *r, int mode);
-void nesfile_create(struct romimage *r, const char *romfilename);
+void nesfile_create(struct textcontrol *l, struct romimage *r, const char *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);
 void backupram_create(const struct memory *r, const char *ramfilename);
 int memorysize_check(const long size, int region);

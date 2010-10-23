@@ -7,32 +7,36 @@
  #include <unistd.h>
 #endif
 
-//C++ §Œ Class §‚§…§≠§Ú C §«º¬¡ı§∑§∆§§§Î¥∂§¨¡˝§∑§∆§≠§ø...
-enum reader_control{
-	READER_OPEN, READER_CLOSE
+struct textcontrol;
+struct gauge;
+struct reader_handle{
+	void *handle;
+	struct textcontrol *text;
+};
+
+struct reader_memory_access{
+	void (*memory_read)(const struct reader_handle *d, const struct gauge *g, long address, long length, uint8_t *data);
+	void (*memory_write)(const struct reader_handle *d, long address, long length, const uint8_t *data);
+	void (*flash_config)(const struct reader_handle *d, long c000x, long c2aaa, long c5555, long unit, bool retry);
+	void (*flash_erase)(const struct reader_handle *d, long address, bool wait);
+	long (*flash_program)(const struct reader_handle *d, const struct gauge *g, long address, long length, const uint8_t *data, bool wait, bool skip);
+	void (*flash_device_get)(const struct reader_handle *d, uint8_t s[2]);
+};
+struct reader_control{
+	const char *name;
+	void (*open)(struct reader_handle *h);
+	void (*close)(struct reader_handle *h);
+	void (*init)(const struct reader_handle *d);
+	void (*flash_status)(const struct reader_handle *d, uint8_t s[2]);
+	uint8_t (*vram_connection)(const struct reader_handle *d);
 };
 struct reader_driver{
-	const char *name;
-	int (*open_or_close)(enum reader_control oc);
-	void (*init)(void);
-	void (*cpu_read)(long address, long length, uint8_t *data);
-	void (*cpu_write_6502)(long address, long length, const uint8_t *data);
-	void (*ppu_read)(long address, long length, uint8_t *data);
-	void (*ppu_write)(long address, long length, const uint8_t *data);
-	bool flash_support;
-	void (*cpu_flash_config)(long c000x, long c2aaa, long c5555, long unit, bool retry);
-	void (*cpu_flash_erase)(long address, bool wait);
-	long (*cpu_flash_program)(long address, long length, const uint8_t *data, bool wait, bool skip);
-	void (*cpu_flash_device_get)(uint8_t s[2]);
-	void (*ppu_flash_config)(long c000x, long c2aaa, long c5555, long unit, bool retry);
-	void (*ppu_flash_erase)(long address, bool wait);
-	long (*ppu_flash_program)(long address, long length, const uint8_t *data, bool wait, bool skip);
-	void (*ppu_flash_device_get)(uint8_t s[2]);
-	void (*flash_status)(uint8_t s[2]);
-	uint8_t (*vram_connection)(void);
+	const struct reader_control control;
+	const struct reader_memory_access cpu, ppu;
 };
-int paralellport_open_or_close(enum reader_control oc);
-const struct reader_driver *reader_driver_get(const char *name);
+
+#if 0
+bool reader_driver_get(const char *name, struct reader_driver);
 enum{
 	ADDRESS_MASK_A0toA12 = 0x1fff,
 	ADDRESS_MASK_A0toA14 = 0x7fff,
@@ -42,7 +46,7 @@ enum{
 	M2_CONTROL_TRUE, M2_CONTROL_FALSE
 };
 /*
-static inline §œ∂¶Õ≠•ﬁ•Ø•Ì∞∑§§
+static inline „ÅØÂÖ±Êúâ„Éû„ÇØ„É≠Êâ±„ÅÑ
 */
 static inline int bit_set(int data, const int bit)
 {
@@ -55,7 +59,7 @@ static inline int bit_clear(int data, const int bit)
 	data &= ~(1 << bit);
 	return data;
 }
-
+#endif
 static inline void wait(long msec)
 {
 	if(msec == 0){

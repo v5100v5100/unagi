@@ -11,6 +11,7 @@ iNES header/buffer control
 #include "file.h"
 #include "crc32.h"
 #include "config.h"
+#include "widget.h"
 #include "header.h"
 
 enum{
@@ -46,8 +47,9 @@ void nesheader_set(const struct romimage *r, u8 *header)
 /*
 return値: error count
 */
-static int mirroring_fix(struct memory *m, long min)
+static int mirroring_fix(struct textcontrol *l, struct memory *m, long min)
 {
+	char str[80];
 	long mirror_size = m->size / 2;
 	while(mirror_size >= min){
 		const u8 *halfbuf;
@@ -56,7 +58,8 @@ static int mirroring_fix(struct memory *m, long min)
 		if(memcmp(m->data, halfbuf, mirror_size) != 0){
 			const long ret = mirror_size * 2;
 			if(m->size != ret){
-				printf("mirroring %s rom fixed\n", m->name);
+				snprintf(str, 80, "mirroring %s rom fixed\n", m->name);
+				l->append(l->object, str);
 				m->size = ret;
 			}
 			return 0;
@@ -69,10 +72,11 @@ static int mirroring_fix(struct memory *m, long min)
 	ffdata = Malloc(min);
 	memset(ffdata, 0xff, min);
 	if(memcmp(ffdata, m->data, min) == 0){
-		printf("error: data is all 0xff\n");
+		l->append(l->object, "error: data is all 0xff\n");
 		ret = 1;
 	}else if(m->size != min){
-		printf("mirroring %s rom fixed\n", m->name);
+		snprintf(str, 80, "mirroring %s rom fixed\n", m->name);
+		l->append(l->object, str);
 		m->size = min;
 	}
 	Free(ffdata);
@@ -81,33 +85,39 @@ static int mirroring_fix(struct memory *m, long min)
 }
 
 //hash は sha1 にしたいが他のデータベースにあわせて crc32 にしとく
-static void rominfo_print(const struct memory *m)
+static void rominfo_print(struct textcontrol *l, const struct memory *m)
 {
+	char str[80];
 	if(m->size != 0){
 		const uint32_t crc = crc32_get(m->data, m->size);
-		printf("%s ROM: size 0x%06x, crc32 0x%08x\n", m->name, m->size, (const int) crc);
+		snprintf(str, 80, "%s ROM: size 0x%06x, crc32 0x%08x\n", m->name, m->size, (const int) crc);
 	}else{
-		printf("%s RAM\n", m->name);
+		snprintf(str, 80, "%s RAM\n", m->name);
 	}
+	l->append(l->object, str);
 }
 
-void nesfile_create(struct romimage *r, const char *romfilename)
+void nesfile_create(struct textcontrol *l, struct romimage *r, const char *romfilename)
 {
 	int error = 0;
 	//RAM adapter bios size 0x2000 は変更しない
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){
-		error += mirroring_fix(&(r->cpu_rom), PROGRAM_ROM_MIN);
+		error += mirroring_fix(l, &(r->cpu_rom), PROGRAM_ROM_MIN);
 	}
 	if(r->ppu_rom.size != 0){
-		error += mirroring_fix(&(r->ppu_rom), CHARCTER_ROM_MIN);
+		error += mirroring_fix(l, &(r->ppu_rom), CHARCTER_ROM_MIN);
 	}
 	if((DEBUG == 0) && (error != 0)){
 		return;
 	}
 	//修正済み ROM 情報表示
-	printf("mapper %d\n", (int) r->mappernum);
-	rominfo_print(&(r->cpu_rom));
-	rominfo_print(&(r->ppu_rom));
+	{
+		char str[80];
+		snprintf(str, 80, "%s, mapper %d\n", romfilename, (int) r->mappernum);
+		l->append(l->object, str);
+	}
+	rominfo_print(l, &(r->cpu_rom));
+	rominfo_print(l, &(r->ppu_rom));
 
 	FILE *f;
 	u8 header[NES_HEADER_SIZE];
