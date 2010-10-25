@@ -8,7 +8,7 @@
 #include "reader_master.h"
 #include "reader_kazzo.h"
 #include "reader_dummy.h"
-#include "script_flash.h"
+#include "script_program.h"
 #include "script_dump.h"
 
 static bool transtype_flash_set(char mode, struct memory *t)

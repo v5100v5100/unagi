@@ -23,17 +23,14 @@ static void print_stdout(HSQUIRRELVM v, const SQChar *s, ...)
 static void print_other(HSQUIRRELVM v, const SQChar *s, ...)
 {
 	va_list arglist;
+	const struct textcontrol *p = (const struct textcontrol *) sq_getforeignptr(v);
 	va_start(arglist, s);
-	char str[80];
 
-	vsnprintf(str, 80, s, arglist);
-	struct textcontrol *p = (struct textcontrol *) sq_getforeignptr(v);
-	p->append(p->object, str);
-
+	p->append_va(p->object, s, arglist);
 	va_end(arglist);
 }
 
-HSQUIRRELVM qr_open(struct textcontrol *p)
+HSQUIRRELVM qr_open(const struct textcontrol *p)
 {
 	HSQUIRRELVM v = sq_open(0x400);
 	sqstd_seterrorhandlers(v);

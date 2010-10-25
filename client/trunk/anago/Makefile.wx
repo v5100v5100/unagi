@@ -27,7 +27,7 @@ CXXFLAGS = -I.. `$(WX_CONFIG) --cppflags`
 #script_flash.o
 OBJ = anago_gui.o anago_frame.o
 OBJ += header.o crc32.o file.o widget.o \
-	script_flash.o script_dump.o script_common.o \
+	script_program.o script_dump.o script_common.o \
 	progress.o flash_device.o \
 	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
 
@@ -36,5 +36,8 @@ clean:
 $(TARGET): $(OBJ) 
 	g++ -o $@ $(OBJ) $(LDFLAG) `$(WX_CONFIG) --libs core`  -lusb -lsqstdlib -lsquirrel
 
-anago_gui.o: anago_gui.cpp anago_gui.h
-anago_frame.o: anago_frame.cpp anago_gui.h
+anago.d:
+	gcc -MM $(CFLAGS) $(CPPFLAGS) *.c > $@
+	g++ -MM $(CFLAGS) $(CXXFLAGS) *.cpp >> $@
+
+-include anago.d

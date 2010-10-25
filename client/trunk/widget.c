@@ -7,7 +7,7 @@ static void gauge_range_nothing(void *a, int b)
 static void gauge_value_nothing(void *a, void *b, int c)
 {
 }
-static void label_nothing(void *a, const char *str)
+static void label_nothing(void *a, const char *str, ...)
 {
 }
 const struct gauge GAUGE_DUMMY = {

@@ -61,9 +61,9 @@ enum{
 void nesheader_set(const struct romimage *r, uint8_t *header);
 #endif
 bool nesbuffer_malloc(struct romimage *r, int mode);
-void nesfile_create(struct textcontrol *l, struct romimage *r, const char *romfilename);
+void nesfile_create(const struct textcontrol *l, struct romimage *r, const char *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);
 void backupram_create(const struct memory *r, const char *ramfilename);
 int memorysize_check(const long size, int region);
-bool nesfile_load(const char *errorprefix, const char *file, struct romimage *r);
+bool nesfile_load(const struct textcontrol *l, const char *file, struct romimage *r);
 #endif

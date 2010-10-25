@@ -1,13 +1,9 @@
 #ifndef _SCRIPT_PROGRAM_H_
 #define _SCRIPT_PROGRAM_H_
-enum{
-	PROGRAM_SCRIPT_STR_LENGTH = 20,
-	PROGRAM_TARGET_STR_LENGTH = 80
-};
 struct program_config{
-	char script[PROGRAM_SCRIPT_STR_LENGTH];
-	char target[PROGRAM_TARGET_STR_LENGTH];
-	struct reader_handle handle;
+	const char *script;
+	const char *target;
+	const int *handle;
 	const struct reader_control *control;
 	struct flash_memory_driver{
 		const struct reader_memory_access *access;

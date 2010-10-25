@@ -4,6 +4,7 @@
 #include <wx/thread.h>
 #include <wx/app.h>
 #include <cstring>
+#include <cstdarg>
 #include "anago_gui.h"
 #include "widget.h"
 #include "reader_master.h"
@@ -13,7 +14,7 @@ extern "C"{
 #include "header.h"
 #include "flash_device.h"
 #include "script_dump.h"
-#include "script_flash.h"
+#include "script_program.h"
 }
 
 //---- C++ -> C -> C++ wrapping functions ----
@@ -47,17 +48,35 @@ static void range_set(void *gauge, int value)
 	g->SetRange(value);
 }
 
-static void text_append(void *log, const char *str)
+static void text_append_va(void *log, const char *format, va_list list)
 {
 	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
+	wxString str;
+	str.PrintfV(format, list);
+
 	wxMutexGuiEnter();
 	*l << str;
 	wxMutexGuiLeave();
 }
 
-static void label_set(void *label, const char *str)
+static void text_append(void *log, const char *format, ...)
+{
+	va_list list;
+	va_start(list, format);
+	text_append_va(log, format, list);
+	va_end(list);
+}
+
+static void label_set(void *label, const char *format, ...)
 {
 	wxStaticText *l = static_cast<wxStaticText *>(label);
+	wxString str;
+	va_list list;
+	
+	va_start(list, format);
+	str.PrintfV(format, list);
+	va_end(list);
+
 	wxMutexGuiEnter();
 	l->SetLabel(str);
 	wxMutexGuiLeave();
@@ -77,9 +96,14 @@ private:
 	anago_frame *m_frame;
 	struct dump_config m_config;
 protected:
-	virtual void *Entry(void);
+	void *Entry(void);
+	void OnExit()
+	{
+		delete [] m_config.script;
+		delete [] m_config.target;
+	}
 public:
-	anago_dumper(anago_frame *f, struct dump_config *d) : wxThread()
+	anago_dumper(anago_frame *f, const struct dump_config *d) : wxThread()
 	{
 		m_frame = f;
 		memcpy(&m_config, d, sizeof(struct dump_config));
@@ -92,9 +116,14 @@ private:
 	anago_frame *m_frame;
 	struct program_config m_config;
 protected:
-	virtual void *Entry(void);
+	void *Entry(void);
+	void OnExit()
+	{
+		delete [] m_config.script;
+		delete [] m_config.target;
+	}
 public:
-	anago_programmer(anago_frame *f, struct program_config *d) : wxThread()
+	anago_programmer(anago_frame *f, const struct program_config *d) : wxThread()
 	{
 		m_frame = f;
 		memcpy(&m_config, d, sizeof(struct program_config));
@@ -167,11 +196,17 @@ private:
 		
 		config.log.object = m_log;
 		config.log.append = text_append;
+		config.log.append_va = text_append_va;
 		config.cpu.increase = dump_increase_get(m_dump_cpu_increase);
 		config.ppu.increase = dump_increase_get(m_dump_ppu_increase);
 		config.progress = true;
-		wxString str_script = m_dump_script_choice->GetStringSelection();
-		strncpy(config.script, str_script.fn_str(), DUMP_SCRIPT_STR_LENGTH);
+		config.battery = m_dump_check_battery->GetValue();
+		{
+			wxString str_script = m_dump_script_choice->GetStringSelection();
+			char *t = new char[str_script.Length() + 1];
+			config.script = t;
+			strncpy(t, str_script.fn_str(), str_script.Length() + 1);
+		}
 
 		{
 			wxString str;
@@ -185,22 +220,22 @@ private:
 			}
 		}
 
-		wxTextCtrl *text = m_dump_romimage_picker->GetTextCtrl();
-		wxString str_rom = text->GetValue();
-		if(text->IsEmpty() == true){
-			*m_log << "Enter filename to ROM image\n";
-			return;
+		{
+			wxTextCtrl *text = m_dump_romimage_picker->GetTextCtrl();
+			wxString str_rom = text->GetValue();
+			char *t = new char[str_rom.Length() + 1];
+			if(text->IsEmpty() == true){
+				*m_log << "Enter filename to ROM image\n";
+				return;
+			}
+			config.target = t;
+			strncpy(t, str_rom.fn_str(), str_rom.Length() + 1);
 		}
-		strncpy(config.target, str_rom.fn_str(), DUMP_TARGET_STR_LENGTH);
 
 		config.control = &DRIVER_KAZZO.control;
 		config.cpu.access = &DRIVER_KAZZO.cpu;
 		config.ppu.access = &DRIVER_KAZZO.ppu;
-		config.control->open(&config.handle);
-		if(config.handle.handle == NULL){
-			*m_log << "reader open error\n";
-			return;
-		}
+
 		m_dump_script_choice->Disable();
 		m_dump_romimage_picker->Disable();
 		m_dump_check_battery->Disable();
@@ -210,7 +245,6 @@ private:
 		m_dump_cpu_increase->Disable();
 		m_dump_ppu_increase->Disable();
 
-		config.control->init(&config.handle);
 /*		if(m_anago_thread != NULL){ //???
 			delete m_anago_thread;
 		}*/
@@ -258,7 +292,7 @@ private:
 		}
 		return true;
 	}
-#if 1
+
 	void program_execute(void)
 	{
 		struct program_config f;
@@ -273,26 +307,29 @@ private:
 		
 		f.log.object = m_log;
 		f.log.append = text_append;
+		f.log.append_va = text_append_va;
 		
-		wxString str_script = m_program_script_choice->GetStringSelection();
-		strncpy(f.script, str_script.fn_str(), PROGRAM_SCRIPT_STR_LENGTH);
-
-		wxTextCtrl *text = m_program_romimage_picker->GetTextCtrl();
-		wxString str_rom = text->GetValue();
-		if(text->IsEmpty() == true){
-			*m_log << "Enter filename to ROM image\n";
-			return;
+		{
+			wxString str_script = m_program_script_choice->GetStringSelection();
+			char *t = new char[str_script.Length() + 1];
+			strncpy(t, str_script.fn_str(), str_script.Length() + 1);
+			f.script = t;
 		}
-		strncpy(f.target, str_rom.fn_str(), PROGRAM_TARGET_STR_LENGTH);
+
+		{
+			wxTextCtrl *text = m_program_romimage_picker->GetTextCtrl();
+			wxString str_rom = text->GetValue();
+			if(text->IsEmpty() == true){
+				*m_log << "Enter filename to ROM image\n";
+				return;
+			}
+			char *t = new char[str_rom.Length() + 1];
+			strncpy(t, str_rom.fn_str(), str_rom.Length() + 1);
+			f.target = t;
+		}
 		f.compare = m_program_compare->GetValue();
 		f.testrun = false;
-#if 0
-//		if(nesfile_load(__FUNCTION__, f.target, &f.rom) == false){
-		if(nesfile_load(__FUNCTION__, str_rom.fn_str(), &f.rom) == false){
-			*m_log << str_rom << " open error\n";
-			return;
-		}
-#endif
+
 		if(program_rom_set(
 			m_program_cpu_device->GetStringSelection(), 
 			m_program_cpu_padding->GetSelection(),
@@ -311,7 +348,6 @@ private:
 		f.control = &DRIVER_KAZZO.control;
 		f.cpu.access = &DRIVER_KAZZO.cpu;
 		f.ppu.access = &DRIVER_KAZZO.ppu;
-		f.control->open(&f.handle);
 
 		m_program_script_choice->Disable();
 		m_program_romimage_picker->Disable();
@@ -436,8 +472,6 @@ public:
 void *anago_dumper::Entry(void)
 {
 	script_dump_execute(&m_config);
-	m_config.control->close(&m_config.handle);
-	m_config.handle.handle = NULL;
 	m_frame->DumpThreadFinish();
 	return NULL;
 }
