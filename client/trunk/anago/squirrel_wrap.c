@@ -123,3 +123,9 @@ SQRESULT qr_userpointer_get(HSQUIRRELVM v, SQUserPointer *up)
 	}
 	return r;
 }
+
+void qr_version_print(const struct textcontrol *l)
+{
+	l->append(l->object, SQUIRREL_VERSION " ");
+	l->append(l->object, SQUIRREL_COPYRIGHT "\n");
+}

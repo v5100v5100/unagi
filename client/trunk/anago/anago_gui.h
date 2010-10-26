@@ -82,8 +82,12 @@ class frame_main : public wxFrame
 		wxStaticLine* m_staticline31;
 		wxCheckBox* m_program_compare;
 		wxButton* m_program_button;
-		wxPanel* m_panel4;
-		wxStaticBitmap* m_bitmap1;
+		wxPanel* m_panel_version;
+		wxStaticText* m_version_title;
+		wxStaticText* m_version_copyright;
+		wxStaticBitmap* m_version_photo;
+		wxStaticText* m_version_developer;
+		wxTextCtrl* m_version_detail;
 		wxPanel* m_panel_log;
 		wxTextCtrl* m_log;
 		

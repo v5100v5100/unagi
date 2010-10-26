@@ -15,6 +15,7 @@ extern "C"{
 #include "flash_device.h"
 #include "script_dump.h"
 #include "script_program.h"
+void qr_version_print(const struct textcontrol *l);
 }
 
 //---- C++ -> C -> C++ wrapping functions ----
@@ -64,6 +65,23 @@ static void text_append(void *log, const char *format, ...)
 	va_list list;
 	va_start(list, format);
 	text_append_va(log, format, list);
+	va_end(list);
+}
+
+static void version_append_va(void *log, const char *format, va_list list)
+{
+	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
+	wxString str;
+	str.PrintfV(format, list);
+
+	*l << str;
+}
+
+static void version_append(void *log, const char *format, ...)
+{
+	va_list list;
+	va_start(list, format);
+	version_append_va(log, format, list);
 	va_end(list);
 }
 
@@ -160,7 +178,7 @@ private:
 			cont = dir.GetNext(&filename);
 		}
 		if(c->GetCount() == 0){
-			*m_log << "warning: " << filespec << " script not found.\n";
+			*m_log << wxT("warning: ") << filespec << wxT(" script not found.\n");
 		}else{
 			c->Select(0);
 		}
@@ -169,9 +187,9 @@ private:
 	void dump_increase_init(wxChoice *c)
 	{
 		c->Clear();
-		c->Append(wxString("x1"));
-		c->Append(wxString("x2"));
-		c->Append(wxString("x4"));
+		c->Append(wxT("x1"));
+		c->Append(wxT("x2"));
+		c->Append(wxT("x4"));
 		c->Select(0);
 	}
 	int dump_increase_get(wxChoice *c)
@@ -214,7 +232,7 @@ private:
 			if(m_dump_check_forcemapper->GetValue() == true){
 				str = m_dump_text_forcemapper->GetValue();
 				if(str.ToLong(&config.mappernum) == false){
-					*m_log << "bad mapper number\n";
+					*m_log << wxT("bad mapper number\n");
 					return;
 				}
 			}
@@ -225,7 +243,7 @@ private:
 			wxString str_rom = text->GetValue();
 			char *t = new char[str_rom.Length() + 1];
 			if(text->IsEmpty() == true){
-				*m_log << "Enter filename to ROM image\n";
+				*m_log << wxT("Enter filename to ROM image\n");
 				return;
 			}
 			config.target = t;
@@ -240,7 +258,7 @@ private:
 		m_dump_romimage_picker->Disable();
 		m_dump_check_battery->Disable();
 		m_dump_check_forcemapper->Disable();
-		m_dump_button->SetLabel(wxString("cancel"));
+		m_dump_button->SetLabel(wxT("cancel"));
 		m_dump_text_forcemapper->Disable();
 		m_dump_cpu_increase->Disable();
 		m_dump_ppu_increase->Disable();
@@ -250,9 +268,9 @@ private:
 		}*/
 		m_anago_thread = new anago_dumper(this, &config);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
-			*m_log << "thread creating error";
+			*m_log << wxT("thread creating error");
 		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
-			*m_log << "thread running error";
+			*m_log << wxT("thread running error");
 		}else{
 			m_status = STATUS_DUMPPING;
 		}
@@ -262,18 +280,18 @@ private:
 	void program_padding_init(wxChoice *c)
 	{
 		c->Clear();
-		c->Append(wxString("full"));
-		c->Append(wxString("top"));
-		c->Append(wxString("bottom"));
-		c->Append(wxString("empty"));
+		c->Append(wxT("full"));
+		c->Append(wxT("top"));
+		c->Append(wxT("bottom"));
+		c->Append(wxT("empty"));
 		c->Select(0);
 	}
 	bool program_rom_set(wxString device, int trans, struct memory *m, struct flash_device *f)
 	{
 		m->offset = 0;
 		if(flash_device_get(device, f) == false){
-			*m_log << "unknown flash memory device ";
-			*m_log << device << "\n";
+			*m_log << wxT("unknown flash memory device ");
+			*m_log << device << wxT("\n");
 			return false;
 		}
 		switch(trans){
@@ -320,7 +338,7 @@ private:
 			wxTextCtrl *text = m_program_romimage_picker->GetTextCtrl();
 			wxString str_rom = text->GetValue();
 			if(text->IsEmpty() == true){
-				*m_log << "Enter filename to ROM image\n";
+				*m_log << wxT("Enter filename to ROM image\n");
 				return;
 			}
 			char *t = new char[str_rom.Length() + 1];
@@ -352,7 +370,7 @@ private:
 		m_program_script_choice->Disable();
 		m_program_romimage_picker->Disable();
 		m_program_compare->Disable();
-		m_program_button->SetLabel(wxString("cancel"));
+		m_program_button->SetLabel(wxT("cancel"));
 		m_program_cpu_padding->Disable();
 		m_program_cpu_device->Disable();
 		m_program_ppu_padding->Disable();
@@ -361,9 +379,9 @@ private:
 
 		m_anago_thread = new anago_programmer(this, &f);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
-			*m_log << "thread creating error";
+			*m_log << wxT("thread creating error");
 		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
-			*m_log << "thread running error";
+			*m_log << wxT("thread running error");
 		}else{
 			m_status = STATUS_PROGRAMMING;
 		}
@@ -416,8 +434,8 @@ public:
 	/** Constructor */
 	anago_frame( wxWindow* parent ) : frame_main(parent)
 	{
-		this->script_choice_init(m_dump_script_choice, wxString("*.ad"));
-		this->script_choice_init(m_program_script_choice, wxString("*.af"));
+		this->script_choice_init(m_dump_script_choice, wxT("*.ad"));
+		this->script_choice_init(m_program_script_choice, wxT("*.af"));
 		this->dump_increase_init(m_dump_cpu_increase);
 		this->dump_increase_init(m_dump_ppu_increase);
 
@@ -427,7 +445,7 @@ public:
 		list.append = choice_append;
 		flash_device_listup(&list);
 		if(m_program_cpu_device->GetCount() == 0){
-			*m_log << "warning: flash device parameter not found\n";
+			*m_log << wxT("warning: flash device parameter not found\n");
 		}else{
 			m_program_cpu_device->Select(0);
 			m_program_ppu_device->Select(0);
@@ -437,6 +455,32 @@ public:
 		
 		m_anago_thread = NULL;
 		m_status = STATUS_IDLE;
+
+//version infomation
+		struct textcontrol detail;
+		*m_version_detail << wxT("anago build at ") << __DATE__ << wxT("\n\n");
+		detail.object = m_version_detail;
+		detail.append = version_append;
+		detail.append_va = version_append_va;
+		qr_version_print(&detail);
+		*m_version_detail << wxVERSION_STRING << wxT(" (c) Julian Smar");
+		
+		#include "okada.xpm"
+		wxBitmap bitmap_okada(okada);
+		wxString tooltip(wxT(
+			"緑区 na6ko 町さん (28歳, 童貞)"
+
+			"28年間バカにされっぱなし、ミジメ過ぎた俺の人生が anago,\n"
+			"kazzo を持つようになった途端、突然ツキがめぐってきた。\n"
+			"競馬をやれば連戦連勝、夢にまでみた万馬券を当て、気がつくと\n"
+			"しんじられない事にギャンブルで稼いだお金が460万円!!\n"
+			"元手はたった9500円。しかもたった2ヶ月で人生大逆転!!\n"
+			"女は3P4Pヤリ放題!!勤めていた新聞屋も辞めギャンブルで\n"
+			"身を立てていこうと思っています。実は来月の11日にラスベガスに行き\n"
+			"勝負をかけます。結果はまた報告します。宜しく。")
+		);
+		m_version_photo->SetBitmap(bitmap_okada);
+		m_version_photo->SetToolTip(tooltip);
 	}
 
 	void DumpThreadFinish(void)
@@ -447,7 +491,7 @@ public:
 		m_dump_check_forcemapper->Enable();
 		m_dump_cpu_increase->Enable();
 		m_dump_ppu_increase->Enable();
-		m_dump_button->SetLabel(wxString("&dump"));
+		m_dump_button->SetLabel(wxT("&dump"));
 		if(m_dump_check_forcemapper->GetValue() == true){
 			m_dump_text_forcemapper->Enable();
 		}
@@ -459,7 +503,7 @@ public:
 		m_program_script_choice->Enable();
 		m_program_romimage_picker->Enable();
 		m_program_compare->Enable();
-		m_program_button->SetLabel(wxString("&program"));
+		m_program_button->SetLabel(wxT("&program"));
 		m_program_cpu_padding->Enable();
 		m_program_cpu_device->Enable();
 		m_program_ppu_padding->Enable();

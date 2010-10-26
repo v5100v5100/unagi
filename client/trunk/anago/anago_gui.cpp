@@ -41,7 +41,7 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_dump_romimage_label->Wrap( -1 );
 	fgSizer1->Add( m_dump_romimage_label, 0, wxALL, 5 );
 	
-	m_dump_romimage_picker = new wxFilePickerCtrl( m_panel_dump, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.*"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_OVERWRITE_PROMPT|wxFLP_SAVE );
+	m_dump_romimage_picker = new wxFilePickerCtrl( m_panel_dump, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.*"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_OVERWRITE_PROMPT|wxFLP_SAVE|wxFLP_USE_TEXTCTRL );
 	fgSizer1->Add( m_dump_romimage_picker, 0, wxALL|wxEXPAND, 5 );
 	
 	bSizer9->Add( fgSizer1, 0, wxEXPAND, 5 );
@@ -76,7 +76,6 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_dump_cpu_value = new wxStaticText( m_panel_dump, wxID_ANY, wxT("0x000000/0x000000"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_dump_cpu_value->Wrap( -1 );
 	m_dump_cpu_value->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 76, 90, 90, false, wxEmptyString ) );
-	m_dump_cpu_value->SetMinSize( wxSize( 120,-1 ) );
 	
 	bSizer14->Add( m_dump_cpu_value, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
@@ -112,7 +111,6 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_dump_ppu_value = new wxStaticText( m_panel_dump, wxID_ANY, wxT("0x000000/0x000000"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_dump_ppu_value->Wrap( -1 );
 	m_dump_ppu_value->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 76, 90, 90, false, wxEmptyString ) );
-	m_dump_ppu_value->SetMinSize( wxSize( 120,-1 ) );
 	
 	bSizer132->Add( m_dump_ppu_value, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
@@ -168,7 +166,7 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_program_label->Wrap( -1 );
 	fgSizer11->Add( m_program_label, 0, wxALL, 5 );
 	
-	m_program_romimage_picker = new wxFilePickerCtrl( m_panel_program, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.nes"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_FILE_MUST_EXIST );
+	m_program_romimage_picker = new wxFilePickerCtrl( m_panel_program, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.nes"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_FILE_MUST_EXIST|wxFLP_USE_TEXTCTRL );
 	fgSizer11->Add( m_program_romimage_picker, 0, wxALL|wxEXPAND, 5 );
 	
 	bSizer91->Add( fgSizer11, 0, wxEXPAND, 5 );
@@ -210,7 +208,6 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_program_cpu_value = new wxStaticText( m_panel_program, wxID_ANY, wxT("0x000000/0x000000"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_program_cpu_value->Wrap( -1 );
 	m_program_cpu_value->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 76, 90, 90, false, wxEmptyString ) );
-	m_program_cpu_value->SetMinSize( wxSize( 120,-1 ) );
 	
 	bSizer141->Add( m_program_cpu_value, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
@@ -253,7 +250,6 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_program_ppu_value = new wxStaticText( m_panel_program, wxID_ANY, wxT("0x000000/0x000000"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_program_ppu_value->Wrap( -1 );
 	m_program_ppu_value->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 76, 90, 90, false, wxEmptyString ) );
-	m_program_ppu_value->SetMinSize( wxSize( 120,-1 ) );
 	
 	bSizer1321->Add( m_program_ppu_value, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
@@ -277,17 +273,44 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_panel_program->Layout();
 	bSizer91->Fit( m_panel_program );
 	m_notebook3->AddPage( m_panel_program, wxT("program"), false );
-	m_panel4 = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	m_panel_version = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer30;
 	bSizer30 = new wxBoxSizer( wxVERTICAL );
 	
-	m_bitmap1 = new wxStaticBitmap( m_panel4, wxID_ANY, wxBitmap( wxT("tubami.bmp"), wxBITMAP_TYPE_ANY ), wxDefaultPosition, wxDefaultSize, 0 );
-	bSizer30->Add( m_bitmap1, 0, wxALL, 5 );
+	m_version_title = new wxStaticText( m_panel_version, wxID_ANY, wxT("famicom cartridge utility - anago"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_version_title->Wrap( -1 );
+	m_version_title->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 70, 90, 92, false, wxEmptyString ) );
 	
-	m_panel4->SetSizer( bSizer30 );
-	m_panel4->Layout();
-	bSizer30->Fit( m_panel4 );
-	m_notebook3->AddPage( m_panel4, wxT("a page"), false );
+	bSizer30->Add( m_version_title, 0, wxALL, 2 );
+	
+	m_version_copyright = new wxStaticText( m_panel_version, wxID_ANY, wxT("(C) unagi development team 2010"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_version_copyright->Wrap( -1 );
+	bSizer30->Add( m_version_copyright, 0, wxALL, 2 );
+	
+	wxBoxSizer* bSizer16;
+	bSizer16 = new wxBoxSizer( wxHORIZONTAL );
+	
+	m_version_photo = new wxStaticBitmap( m_panel_version, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 178,122 ), 0 );
+	m_version_photo->SetToolTip( wxT("okada") );
+	
+	bSizer16->Add( m_version_photo, 0, wxALL, 2 );
+	
+	m_version_developer = new wxStaticText( m_panel_version, wxID_ANY, wxT("programmer - naruko's latest photo\n\nicon designed by hirohiroki"), wxDefaultPosition, wxSize( -1,-1 ), 0 );
+	m_version_developer->Wrap( 130 );
+	bSizer16->Add( m_version_developer, 0, wxALL, 5 );
+	
+	bSizer30->Add( bSizer16, 1, wxEXPAND, 5 );
+	
+	m_version_detail = new wxTextCtrl( m_panel_version, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY );
+	m_version_detail->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_ACTIVEBORDER ) );
+	m_version_detail->SetMinSize( wxSize( -1,80 ) );
+	
+	bSizer30->Add( m_version_detail, 0, wxALL|wxEXPAND, 2 );
+	
+	m_panel_version->SetSizer( bSizer30 );
+	m_panel_version->Layout();
+	bSizer30->Fit( m_panel_version );
+	m_notebook3->AddPage( m_panel_version, wxT("version"), false );
 	
 	bSizer4->Add( m_notebook3, 0, wxALL|wxEXPAND, 0 );
 	
@@ -296,7 +319,7 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	bSizer6 = new wxBoxSizer( wxVERTICAL );
 	
 	m_log = new wxTextCtrl( m_panel_log, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY );
-	m_log->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 76, 90, 90, false, wxEmptyString ) );
+	m_log->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 70, 90, 90, false, wxEmptyString ) );
 	
 	bSizer6->Add( m_log, 1, wxALL|wxEXPAND, 5 );
 	

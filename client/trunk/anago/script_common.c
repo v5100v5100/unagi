@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 #include <squirrel.h>
 #include <sqstdio.h>
 #include <sqstdaux.h>

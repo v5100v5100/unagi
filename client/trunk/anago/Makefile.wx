@@ -11,7 +11,7 @@ ifeq ($(RELEASE),1)
 else
   CPPFLAGS = -g -O0
 endif
-CPPFLAGS += -Wall -Werror -DDEBUG=1 -DANAGO=1
+CPPFLAGS += -Wall -Werror -DDEBUG=1 -DANAGO=1 -finput-charset=utf-8 -fexec-charset=cp932
 CFLAGS = -I.. -I$(SQUIRREL)/include -I$(KAZZO)
 ifneq ($(strip $(LIBUSB)),)
   CFLAGS += -I$(LIBUSB)/include
@@ -21,7 +21,7 @@ ifneq ($(strip $(LIBUSB)),)
   LDFLAG += -L$(LIBUSB)/lib/gcc 
 endif
 all: $(TARGET)
-WX_CONFIG = /d/dev/wxWidgets/build_thread/wx-config
+WX_CONFIG = /d/dev/wxWidgets/build_release/wx-config
 CXXFLAGS = -I.. `$(WX_CONFIG) --cppflags`
 
 #script_flash.o
