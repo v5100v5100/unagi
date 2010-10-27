@@ -1,5 +1,5 @@
 /* XPM */
-static char *taiyo[] = {
+static const char *taiyo[] = {
 /* columns rows colors chars-per-pixel */
 "122 122 256 2",
 "   c #2DBE34B25818",
