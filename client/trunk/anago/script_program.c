@@ -93,7 +93,7 @@ static SQInteger erase_set(HSQUIRRELVM v, const int *h, struct flash_memory_driv
 	t->command_change = false;
 	if(t->flash.erase_require == true){
 		t->access->flash_erase(h, t->c2aaa, false);
-		t->gauge.label_set(t->gauge.label, "erasing...");
+		t->gauge.label_set(t->gauge.label, "erasing ");
 	}
 	return 0;
 }
@@ -277,8 +277,6 @@ static SQInteger program_main(HSQUIRRELVM v)
 	SQInteger state_ppu = sq_getvmstate(co_ppu);
 	const long sleepms = d->compare == true ? 6 : 2; //W29C040 で compare をすると、error が出るので出ない値に調整 (やっつけ対応)
 	
-	gauge_init(&d->cpu);
-	gauge_init(&d->ppu);
 	while((state_cpu != SQ_VMSTATE_IDLE) || (state_ppu != SQ_VMSTATE_IDLE)){
 		uint8_t s[2];
 //		bool console_update = false;
@@ -403,7 +401,9 @@ static void zendan(struct program_config *c)
 	}
 //script execute 
 	c->cpu.command_change = true;
+	gauge_init(&c->cpu);
 	c->ppu.command_change = true;
+	gauge_init(&c->ppu);
 	{
 		HSQUIRRELVM v = qr_open(&c->log); 
 		qr_function_register_global(v, "cpu_write", cpu_write);

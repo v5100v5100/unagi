@@ -15,10 +15,10 @@ ifneq ($(strip $(LIBUSB)),)
   LDFLAG += -L$(LIBUSB)/lib/gcc 
 endif
 CC = gcc
-OBJ = anago.o header.o crc32.o file.o \
-	script_flash.o script_dump.o script_common.o \
+OBJ = anago_cui.o header.o crc32.o file.o widget.o cui_gauge.o \
+	script_program.o script_dump.o script_common.o \
 	progress.o flash_device.o \
-	reader_dummy.o reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
+	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
 
 clean:
 	rm -f $(OBJ)

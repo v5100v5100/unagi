@@ -465,20 +465,29 @@ public:
 		qr_version_print(&detail);
 		*m_version_detail << wxVERSION_STRING << wxT(" (c) Julian Smar");
 		
+#ifdef WIN32
 		#include "okada.xpm"
 		wxBitmap bitmap_okada(okada);
 		wxString tooltip(wxT(
-			"緑区 na6ko 町さん (28歳, 童貞)"
+			"緑区 na6ko 町さん (28歳, 童貞)\n\n"
 
 			"28年間バカにされっぱなし、ミジメ過ぎた俺の人生が anago,\n"
 			"kazzo を持つようになった途端、突然ツキがめぐってきた。\n"
-			"競馬をやれば連戦連勝、夢にまでみた万馬券を当て、気がつくと\n"
-			"しんじられない事にギャンブルで稼いだお金が460万円!!\n"
-			"元手はたった9500円。しかもたった2ヶ月で人生大逆転!!\n"
-			"女は3P4Pヤリ放題!!勤めていた新聞屋も辞めギャンブルで\n"
-			"身を立てていこうと思っています。実は来月の11日にラスベガスに行き\n"
-			"勝負をかけます。結果はまた報告します。宜しく。")
-		);
+//			"競馬をやれば連戦連勝、夢にまでみた万馬券を当て、気がつくと\n"
+//			"しんじられない事にギャンブルで稼いだお金が460万円!!\n"
+			"元手はたった4000円。しかもたった2ヶ月で人生大逆転!!\n"
+			"女は3P4Pヤリ放題!!"
+//			"勤めていた新聞屋も辞めギャンブルで\n"
+//			"身を立てていこうと思っています。実は来月の11日にラスベガスに\n"
+//			"行き勝負をかけます。結果はまた報告します。宜しく。"
+		));
+#else
+		#include "taiyo.xpm"
+		wxBitmap bitmap_okada(taiyo);
+		wxString tooltip(wxT("たいよ～ほえ～るず♪"));
+#endif
+//		#include "araki.xpm"
+//		wxBitmap bitmap_okada(araki);
 		m_version_photo->SetBitmap(bitmap_okada);
 		m_version_photo->SetToolTip(tooltip);
 	}

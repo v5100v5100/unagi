@@ -7,10 +7,11 @@
 #include "header.h"
 #include "reader_master.h"
 #include "reader_kazzo.h"
-#include "reader_dummy.h"
-#include "script_program.h"
+//#include "reader_dummy.h"
+//#include "script_program.h"
 #include "script_dump.h"
 
+#if 0
 static bool transtype_flash_set(char mode, struct memory *t)
 {
 	switch(mode){
@@ -136,9 +137,11 @@ static void program(int c, char **v)
 	nesbuffer_free(&config.rom, 0);
 	config.reader->open_or_close(READER_CLOSE);
 }
+#endif
+
 static void dump(int c, char **v)
 {
-	struct config_dump config;
+	struct dump_config config;
 	if(c < 4){
 		puts("argument error");
 		return;
