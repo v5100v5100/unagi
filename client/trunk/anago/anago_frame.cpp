@@ -536,6 +536,19 @@ void *anago_programmer::Entry(void)
 	return NULL;
 }
 
+#ifndef WIN32
+extern "C"{
+	int anago_cui(int c, char **v);
+}
+int main(int c, char **v)
+{
+	if(c < 2){
+		return wxEntry(c, v);
+	}
+	return anago_cui(c, v);
+}
+#endif
+
 class MyApp : public wxApp
 {
 private:
@@ -550,3 +563,4 @@ public:
 	}
 };
 IMPLEMENT_APP(MyApp)
+

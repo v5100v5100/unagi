@@ -1,6 +1,8 @@
-TARGET = anago.exe
+APP_CUI = anago.exe
+APP_GUI = anago_wx.exe
 LIBUSB = d:/dev/LibUSB-Win32
 SQUIRREL = ../SQUIRREL2
 KAZZO = ../../kazzo/firmware
+WX_CONFIG = /d/dev/wxWidgets/build_release/wx-config
 
 include anago.mk

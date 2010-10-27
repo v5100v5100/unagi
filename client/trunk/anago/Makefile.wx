@@ -26,6 +26,7 @@ CXXFLAGS = -I.. `$(WX_CONFIG) --cppflags`
 
 #script_flash.o
 OBJ = anago_gui.o anago_frame.o
+#OBJ += anago_cui.o cui_gauge.o
 OBJ += header.o crc32.o file.o widget.o \
 	script_program.o script_dump.o script_common.o \
 	progress.o flash_device.o \

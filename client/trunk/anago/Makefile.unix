@@ -1,6 +1,8 @@
-TARGET = anago
+APP_CUI = 
+APP_GUI = anago
 LIBUSB = 
 SQUIRREL = ../SQUIRREL2
 KAZZO = ../../kazzo/firmware
+WX_CONFIG = wx-config
 
 include anago.mk
