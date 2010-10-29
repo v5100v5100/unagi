@@ -14,7 +14,7 @@
 #include "script_common.h"
 #include "script_dump.h"
 
-static SQInteger write_memory(HSQUIRRELVM v, const int *h, struct dump_memory_driver *t)
+static SQInteger write_memory(HSQUIRRELVM v, const struct reader_handle *h, struct dump_memory_driver *t)
 {
 	long address, data;
 	SQRESULT r = qr_argument_get(v, 2, &address, &data);
@@ -68,7 +68,7 @@ static void buffer_show(struct memory *t, long length)
 	fflush(stdout);
 }
 
-static SQInteger read_memory(HSQUIRRELVM v, const int *h, struct dump_memory_driver *t, bool progress)
+static SQInteger read_memory(HSQUIRRELVM v, const struct reader_handle *h, struct dump_memory_driver *t, bool progress)
 {
 	long address, length;
 	SQRESULT r = qr_argument_get(v, 2, &address, &length);
@@ -346,7 +346,7 @@ void script_dump_execute(struct dump_config *d)
 /*	if(d->progress == true){
 		progress_init();
 	}*/
-	d->handle = d->control->open();
+	d->handle = d->control->open(d->except);
 	if(d->handle == NULL){
 		d->log.append(d->log.object, "reader open error\n");
 		return;

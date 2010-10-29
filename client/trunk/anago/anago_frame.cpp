@@ -1,24 +1,27 @@
 #include <wx/wx.h>
-#include <wx/log.h>
-#include <wx/dir.h>
-#include <wx/thread.h>
 #include <wx/app.h>
-#include <cstring>
+#include <wx/thread.h>
+#include <wx/dir.h>
+#include <wx/sound.h>
 #include <cstdarg>
 #include "anago_gui.h"
 #include "widget.h"
 #include "reader_master.h"
-//#include "reader_kazzo.h"
-extern const struct reader_driver DRIVER_KAZZO;
+#include "reader_kazzo.h"
 extern "C"{
-#include "header.h"
-#include "flash_device.h"
-#include "script_dump.h"
-#include "script_program.h"
-void qr_version_print(const struct textcontrol *l);
+  #include "header.h"
+  #include "flash_device.h"
+  #include "script_dump.h"
+  #include "script_program.h"
+  void qr_version_print(const struct textcontrol *l);
 }
 
 //---- C++ -> C -> C++ wrapping functions ----
+static void throw_error(const char *t)
+{
+	throw t;
+}
+
 static void value_set(void *gauge, void *label, int value)
 {
 	wxGauge *g = static_cast<wxGauge *>(gauge);
@@ -124,7 +127,7 @@ public:
 	anago_dumper(anago_frame *f, const struct dump_config *d) : wxThread()
 	{
 		m_frame = f;
-		memcpy(&m_config, d, sizeof(struct dump_config));
+		m_config = *d; //struct data copy
 	}
 };
 
@@ -144,7 +147,7 @@ public:
 	anago_programmer(anago_frame *f, const struct program_config *d) : wxThread()
 	{
 		m_frame = f;
-		memcpy(&m_config, d, sizeof(struct program_config));
+		m_config = *d;
 	}
 };
 
@@ -215,6 +218,7 @@ private:
 		config.log.object = m_log;
 		config.log.append = text_append;
 		config.log.append_va = text_append_va;
+		config.except = throw_error;
 		config.cpu.increase = dump_increase_get(m_dump_cpu_increase);
 		config.ppu.increase = dump_increase_get(m_dump_ppu_increase);
 		config.progress = true;
@@ -326,6 +330,7 @@ private:
 		f.log.object = m_log;
 		f.log.append = text_append;
 		f.log.append_va = text_append_va;
+		f.except = throw_error;
 		
 		{
 			wxString str_script = m_program_script_choice->GetStringSelection();
@@ -494,6 +499,11 @@ public:
 
 	void DumpThreadFinish(void)
 	{
+/*		wxSound sound(wxT("tinkalink2.wav"), false);
+		if(sound.IsOk() == true){
+			sound.Play();
+		}*/
+		
 		m_dump_script_choice->Enable();
 		m_dump_romimage_picker->Enable();
 		m_dump_check_battery->Enable();
@@ -519,26 +529,38 @@ public:
 		m_program_ppu_device->Enable();
 		m_status = STATUS_IDLE;
 	}
+	void LogAppend(const char *t)
+	{
+		*m_log << t;
+	}
 };
 
 
 void *anago_dumper::Entry(void)
 {
-	script_dump_execute(&m_config);
+	try{
+		script_dump_execute(&m_config);
+	}catch(const char *t){
+		m_frame->LogAppend(t);
+	}
 	m_frame->DumpThreadFinish();
 	return NULL;
 }
 
 void *anago_programmer::Entry(void)
 {
-	script_program_execute(&m_config);
+	try{
+		script_program_execute(&m_config);
+	}catch(const char *t){
+		m_frame->LogAppend(t);
+	}
 	m_frame->ProgramThreadFinish();
 	return NULL;
 }
 
 #ifndef WIN32
 extern "C"{
-	int anago_cui(int c, char **v);
+  int anago_cui(int c, char **v);
 }
 int main(int c, char **v)
 {
@@ -562,5 +584,8 @@ public:
 		return true;
 	}
 };
+#ifdef WIN32
 IMPLEMENT_APP(MyApp)
-
+#else
+IMPLEMENT_APP_NO_MAIN(MyApp)
+#endif

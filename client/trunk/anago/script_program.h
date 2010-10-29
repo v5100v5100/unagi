@@ -3,7 +3,7 @@
 struct program_config{
 	const char *script;
 	const char *target;
-	const int *handle;
+	const struct reader_handle *handle;
 	const struct reader_control *control;
 	struct flash_memory_driver{
 		const struct reader_memory_access *access;
@@ -19,6 +19,7 @@ struct program_config{
 	long mappernum;
 	bool compare, testrun;
 	struct textcontrol log;
+	void (*except)(const char *str);
 };
 void script_program_execute(struct program_config *c);
 #endif

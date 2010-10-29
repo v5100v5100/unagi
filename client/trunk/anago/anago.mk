@@ -10,7 +10,7 @@ CFLAGS = -I.. -I$(SQUIRREL)/include -I$(KAZZO)
 ifneq ($(strip $(LIBUSB)),)
   CFLAGS += -I$(LIBUSB)/include
 endif
-CXXFLAGS = -I.. `$(WX_CONFIG) --cppflags`
+CXXFLAGS += -I.. `$(WX_CONFIG) --cppflags`
 
 LDFLAG = -L$(SQUIRREL)/lib
 ifneq ($(strip $(LIBUSB)),)
@@ -40,5 +40,8 @@ $(APP_CUI): $(OBJ_CUI)
 clean:
 	rm -f $(OBJ_CUI) $(OBJ_GUI) $(OBJ_CORE)
 
-script_flash.o: squirrel_wrap.h
-script_dump.o: squirrel_wrap.h
+anago.d:
+	gcc -MM $(CFLAGS) $(CPPFLAGS) *.c > $@
+	g++ -MM $(CFLAGS) $(CXXFLAGS) *.cpp >> $@
+
+-include anago.d

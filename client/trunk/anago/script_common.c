@@ -58,7 +58,7 @@ SQInteger script_require(HSQUIRRELVM v)
 	return 0;
 }
 
-static bool connection_check_main(const int *h, const struct textcontrol *text, const struct reader_memory_access *m, long address)
+static bool connection_check_main(const struct reader_handle *h, const struct textcontrol *text, const struct reader_memory_access *m, long address)
 {
 	const int size = 0x10;
 	uint8_t test1[size], test_m[size];
@@ -74,7 +74,7 @@ static bool connection_check_main(const int *h, const struct textcontrol *text, 
 	}
 	return true;
 }
-bool connection_check(const int *h, const struct textcontrol *text, const struct reader_memory_access *cpu, const struct reader_memory_access *ppu)
+bool connection_check(const struct reader_handle *h, const struct textcontrol *text, const struct reader_memory_access *cpu, const struct reader_memory_access *ppu)
 {
 	if(connection_check_main(h, text, cpu, 0xf000) == false){
 		return false;

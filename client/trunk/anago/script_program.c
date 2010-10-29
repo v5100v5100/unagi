@@ -67,7 +67,7 @@ static SQInteger ppu_command(HSQUIRRELVM v)
 	}
 	return command_set(v, &d->ppu);
 }
-static SQInteger write_memory(HSQUIRRELVM v, const int *h, struct flash_memory_driver *t)
+static SQInteger write_memory(HSQUIRRELVM v, const struct reader_handle *h, struct flash_memory_driver *t)
 {
 	long address, data;
 	SQRESULT r = qr_argument_get(v, 2, &address, &data);
@@ -87,7 +87,7 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 	}
 	return write_memory(v, d->handle, &d->cpu);
 }
-static SQInteger erase_set(HSQUIRRELVM v, const int *h, struct flash_memory_driver *t, struct textcontrol *log)
+static SQInteger erase_set(HSQUIRRELVM v, const struct reader_handle *h, struct flash_memory_driver *t, struct textcontrol *log)
 {
 	t->access->flash_config(h, t->c000x, t->c2aaa, t->c5555, t->flash.pagesize, t->flash.retry);
 	t->command_change = false;
@@ -115,7 +115,7 @@ static SQInteger ppu_erase(HSQUIRRELVM v)
 	}
 	return erase_set(v, d->handle, &d->ppu, &d->log);
 }
-static SQInteger program_regist(HSQUIRRELVM v, const int *h, struct flash_memory_driver *t)
+static SQInteger program_regist(HSQUIRRELVM v, const struct reader_handle *h, struct flash_memory_driver *t)
 {
 	SQRESULT r = qr_argument_get(v, 2, &t->programming.address, &t->programming.length);
 	if(SQ_FAILED(r)){
@@ -135,7 +135,7 @@ static SQInteger program_regist(HSQUIRRELVM v, const int *h, struct flash_memory
 	fflush(stdout);*/
 	return sq_suspendvm(v);
 }
-static void program_execute(const int *h, struct flash_memory_driver *t)
+static void program_execute(const struct reader_handle *h, struct flash_memory_driver *t)
 {
 	const long w = t->access->flash_program(
 		h, &t->gauge, 
@@ -150,7 +150,7 @@ static void program_execute(const int *h, struct flash_memory_driver *t)
 	t->programming.offset += w;
 }
 
-static bool program_compare(const int *h, struct flash_memory_driver *t)
+static bool program_compare(const struct reader_handle *h, struct flash_memory_driver *t)
 {
 	uint8_t *comparea = Malloc(t->compare.length);
 	bool ret = false;
@@ -193,7 +193,7 @@ static SQInteger ppu_program_memory(HSQUIRRELVM v)
 	return program_regist(v, d->handle, &d->ppu);
 }
 
-static long erase_timer_get(const int *h, struct flash_memory_driver *t)
+static long erase_timer_get(const struct reader_handle *h, struct flash_memory_driver *t)
 {
 	if(
 		(t->memory.transtype != TRANSTYPE_EMPTY) && 
@@ -238,7 +238,7 @@ static void gauge_init(struct flash_memory_driver *t)
 	}
 }
 
-static bool program_memoryarea(HSQUIRRELVM co, const int *h, struct flash_memory_driver *t, bool compare, SQInteger *state, struct textcontrol *log)
+static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, struct flash_memory_driver *t, bool compare, SQInteger *state, struct textcontrol *log)
 {
 	if(t->programming.length == 0){
 		if(t->programming.offset != 0 && compare == true){
@@ -462,7 +462,7 @@ void script_program_execute(struct program_config *c)
 		return;
 	}
 //reader initalize
-	c->handle = c->control->open();
+	c->handle = c->control->open(c->except);
 	if(c->handle == NULL){
 		c->log.append(c->log.object, "reader open error\n");
 		nesbuffer_free(&rom, 0);

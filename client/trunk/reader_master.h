@@ -9,22 +9,23 @@
 
 struct textcontrol;
 struct gauge;
+struct reader_handle;
 
 struct reader_memory_access{
-	void (*memory_read)(const int *d, const struct gauge *g, long address, long length, uint8_t *data);
-	void (*memory_write)(const int *d, long address, long length, const uint8_t *data);
-	void (*flash_config)(const int *d, long c000x, long c2aaa, long c5555, long unit, bool retry);
-	void (*flash_erase)(const int *d, long address, bool wait);
-	long (*flash_program)(const int *d, const struct gauge *g, long address, long length, const uint8_t *data, bool wait, bool skip);
-	void (*flash_device_get)(const int *d, uint8_t s[2]);
+	void (*memory_read)(const struct reader_handle *h, const struct gauge *g, long address, long length, uint8_t *data);
+	void (*memory_write)(const struct reader_handle *h, long address, long length, const uint8_t *data);
+	void (*flash_config)(const struct reader_handle *h, long c000x, long c2aaa, long c5555, long unit, bool retry);
+	void (*flash_erase)(const struct reader_handle *h, long address, bool wait);
+	long (*flash_program)(const struct reader_handle *h, const struct gauge *g, long address, long length, const uint8_t *data, bool wait, bool skip);
+	void (*flash_device_get)(const struct reader_handle *h, uint8_t s[2]);
 };
 struct reader_control{
 	const char *name;
-	const int *(*open)(void);
-	void (*close)(const int *h);
-	void (*init)(const int *d);
-	void (*flash_status)(const int *d, uint8_t s[2]);
-	uint8_t (*vram_connection)(const int *d);
+	const struct reader_handle *(*open)(void (*except)(const char *str));
+	void (*close)(const struct reader_handle *h);
+	void (*init)(const struct reader_handle *h);
+	void (*flash_status)(const struct reader_handle *h, uint8_t s[2]);
+	uint8_t (*vram_connection)(const struct reader_handle *h);
 };
 struct reader_driver{
 	const struct reader_control control;

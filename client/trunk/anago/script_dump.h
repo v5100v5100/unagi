@@ -3,7 +3,7 @@
 struct dump_config{
 	const char *script;
 	const char *target;
-	const int *handle;
+	const struct reader_handle *handle;
 	const struct reader_control *control;
 	struct dump_memory_driver{
 		const struct reader_memory_access *access;
@@ -15,6 +15,7 @@ struct dump_config{
 	bool progress;
 	bool battery;
 	struct textcontrol log;
+	void (*except)(const char *str);
 };
 void script_dump_execute(struct dump_config *c);
 #endif

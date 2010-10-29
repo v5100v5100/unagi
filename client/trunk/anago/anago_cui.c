@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include "memory_manage.h"
 #include "type.h"
 #include "widget.h"
@@ -30,6 +31,12 @@ static void log_set(struct textcontrol *log)
 	log->object = NULL;
 	log->append = text_append;
 	log->append_va = text_append_va;
+}
+
+static void except(const char *str)
+{
+	puts(str);
+	exit(0);
 }
 
 static bool program_rom_set(const char *device, char trans, struct memory *m, struct flash_device *f)
@@ -116,6 +123,7 @@ static void program(int c, char **v)
 	log_set(&config.log);
 	cui_gauge_new(&config.cpu.gauge, "Program  Flash", 2, -2);
 	cui_gauge_new(&config.ppu.gauge, "Charcter Flash", 1, -1);
+	config.except = except;
 	script_program_execute(&config);
 	cui_gauge_destory(&config.cpu.gauge);
 	cui_gauge_destory(&config.ppu.gauge);
@@ -161,6 +169,7 @@ static void dump(int c, char **v)
 	config.ppu.access = &DRIVER_KAZZO.ppu;
 	cui_gauge_new(&config.cpu.gauge, "Program  ROM", 2, -2);
 	cui_gauge_new(&config.ppu.gauge, "Charcter ROM", 1, -1);
+	config.except = except;
 	config.mappernum = -1;
 	if(c == 5){
 		config.mappernum = atoi(v[4]);
