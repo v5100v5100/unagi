@@ -4,6 +4,7 @@
 #include <usb.h>
 #include <kazzo_request.h>
 #include <kazzo_task.h>
+#include "type.h"
 #include "memory_manage.h"
 #include "reader_master.h"
 #include "usb_device.h"
@@ -31,10 +32,10 @@ static inline usb_dev_handle *device_open(void)
 
 struct reader_handle{
 	usb_dev_handle *handle;
-	void (*except)(const char *str);
+	void (*except)(const wgChar *str);
 };
 
-static const struct reader_handle *kazzo_open(void (*except)(const char *str))
+static const struct reader_handle *kazzo_open(void (*except)(const wgChar *str))
 {
 	struct reader_handle *h;
 	usb_dev_handle *usb = device_open();
@@ -52,6 +53,20 @@ static void kazzo_close(const struct reader_handle *h)
 	usb_close(h->handle);
 	Free((void *) h);
 }
+
+static void throw(const struct reader_handle *h)
+{
+#ifdef _UNICODE
+		size_t length = strlen(usb_strerror());
+		wchar_t *mm = Malloc(sizeof(wchar_t) * (length + 1));
+		mbstowcs(mm, usb_strerror(), length + 1);
+		h->except(mm);
+		Free(mm);
+#else
+		h->except(usb_strerror());
+#endif
+}
+
 enum{
 	TIMEOUT = 4000
 };
@@ -65,7 +80,7 @@ static void device_read(const struct reader_handle *h, enum request r, enum inde
 		index, (char *) data, length, TIMEOUT
 	);
 	if(cnt != length){
-		h->except(usb_strerror());
+		throw(h);
 //		puts(__FUNCTION__);
 //		puts(usb_strerror());
 //		exit(1);
@@ -119,10 +134,10 @@ static void device_write(const struct reader_handle *h, enum request w, enum ind
 		index, (char *) d, length, TIMEOUT
 	);
 	if(cnt != length){
+		throw(h);
 //		puts(__FUNCTION__);
 //		puts(usb_strerror());
 //		exit(1);
-		h->except(usb_strerror());
 	}
 	Free(d);
 }
@@ -309,7 +324,7 @@ const struct reader_driver DRIVER_KAZZO = {
 		.flash_program = kazzo_ppu_flash_program,
 		.flash_device_get = kazzo_ppu_flash_device_get
 	}, .control  = {
-		.name = "kazzo",
+		.name = wgT("kazzo"),
 		.open = kazzo_open, .close = kazzo_close,
 		.init = kazzo_init,
 		.flash_status = kazzo_flash_status,

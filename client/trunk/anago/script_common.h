@@ -4,7 +4,7 @@ struct range{
 	long start, end;
 };
 SQInteger script_nop(HSQUIRRELVM v);
-SQInteger range_check(HSQUIRRELVM v, const char *name, long target, const struct range *range);
+SQInteger range_check(HSQUIRRELVM v, const wgChar *name, long target, const struct range *range);
 SQInteger cpu_write_check(HSQUIRRELVM v);
 SQInteger script_require(HSQUIRRELVM v);
 

@@ -19,7 +19,7 @@ enum{
 	PROGRAM_ROM_MIN = 0x4000,
 	CHARCTER_ROM_MIN = 0x2000
 };
-static const u8 NES_HEADER_INIT[NES_HEADER_SIZE] = {
+static const uint8_t NES_HEADER_INIT[NES_HEADER_SIZE] = {
 	'N', 'E', 'S', 0x1a, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0
 };
@@ -27,7 +27,7 @@ static const u8 NES_HEADER_INIT[NES_HEADER_SIZE] = {
 #ifndef HEADEROUT
 static 
 #endif
-void nesheader_set(const struct romimage *r, u8 *header)
+void nesheader_set(const struct romimage *r, uint8_t *header)
 {
 	memcpy(header, NES_HEADER_INIT, NES_HEADER_SIZE);
 	header[4] = r->cpu_rom.size / PROGRAM_ROM_MIN;
@@ -51,13 +51,13 @@ static int mirroring_fix(const struct textcontrol *l, struct memory *m, long min
 {
 	long mirror_size = m->size / 2;
 	while(mirror_size >= min){
-		const u8 *halfbuf;
+		const uint8_t *halfbuf;
 		halfbuf = m->data;
 		halfbuf += mirror_size;
 		if(memcmp(m->data, halfbuf, mirror_size) != 0){
 			const long ret = mirror_size * 2;
 			if(m->size != ret){
-				l->append(l->object, "mirroring %s ROM fixed\n", m->name);
+				l->append(l->object, wgT("mirroring %s ROM fixed\n"), m->name);
 				m->size = ret;
 			}
 			return 0;
@@ -65,15 +65,15 @@ static int mirroring_fix(const struct textcontrol *l, struct memory *m, long min
 		mirror_size /= 2;
 	}
 	
-	u8 *ffdata;
+	uint8_t *ffdata;
 	int ret = 0;
 	ffdata = Malloc(min);
 	memset(ffdata, 0xff, min);
 	if(memcmp(ffdata, m->data, min) == 0){
-		l->append(l->object, "error: data is all 0xff\n");
+		l->append(l->object, wgT("error: data is all 0xff\n"));
 		ret = 1;
 	}else if(m->size != min){
-		l->append(l->object, "mirroring %s ROM fixed\n", m->name);
+		l->append(l->object, wgT("mirroring %s ROM fixed\n"), m->name);
 		m->size = min;
 	}
 	Free(ffdata);
@@ -86,13 +86,13 @@ static void rominfo_print(const struct textcontrol *l, const struct memory *m)
 {
 	if(m->size != 0){
 		const uint32_t crc = crc32_get(m->data, m->size);
-		l->append(l->object, "%s ROM: size 0x%06x, crc32 0x%08x\n", m->name, m->size, (const int) crc);
+		l->append(l->object, wgT("%s ROM: size 0x%06x, crc32 0x%08x\n"), m->name, m->size, (const int) crc);
 	}else{
-		l->append(l->object, "%s RAM\n", m->name);
+		l->append(l->object, wgT("%s RAM\n"), m->name);
 	}
 }
 
-void nesfile_create(const struct textcontrol *l, struct romimage *r, const char *romfilename)
+void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename)
 {
 	int error = 0;
 	//RAM adapter bios size 0x2000 は変更しない
@@ -106,22 +106,26 @@ void nesfile_create(const struct textcontrol *l, struct romimage *r, const char 
 		return;
 	}
 	//修正済み ROM 情報表示
-	l->append(l->object, "%s, mapper %d\n", romfilename, (int) r->mappernum);
+	l->append(l->object, wgT("%s, mapper %d\n"), romfilename, (int) r->mappernum);
 	rominfo_print(l, &(r->cpu_rom));
 	rominfo_print(l, &(r->ppu_rom));
 
 	FILE *f;
-	u8 header[NES_HEADER_SIZE];
+	uint8_t header[NES_HEADER_SIZE];
 	nesheader_set(r, header);
+#ifdef _UNICODE
+	f = _wfopen(romfilename, L"wb");
+#else
 	f = fopen(romfilename, "wb");
+#endif
 	fseek(f, 0, SEEK_SET);
 	//RAM adapter bios には NES ヘッダを作らない
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){ 
-		fwrite(header, sizeof(u8), NES_HEADER_SIZE, f);
+		fwrite(header, sizeof(uint8_t), NES_HEADER_SIZE, f);
 	}
-	fwrite(r->cpu_rom.data, sizeof(u8), r->cpu_rom.size, f);
+	fwrite(r->cpu_rom.data, sizeof(uint8_t), r->cpu_rom.size, f);
 	if(r->ppu_rom.size != 0){
-		fwrite(r->ppu_rom.data, sizeof(u8), r->ppu_rom.size, f);
+		fwrite(r->ppu_rom.data, sizeof(uint8_t), r->ppu_rom.size, f);
 	}
 	fclose(f);
 }
@@ -164,7 +168,7 @@ void nesbuffer_free(struct romimage *r, int mode)
 	}
 }
 
-void backupram_create(const struct memory *r, const char *ramfilename)
+void backupram_create(const struct memory *r, const wgChar *ramfilename)
 {
 	buf_save(r->data, ramfilename, r->size);
 }
@@ -209,9 +213,9 @@ int memorysize_check(const long size, int region)
 romimage が bank の定義値より小さい場合は romarea の末尾に張る。 
 同じデータを memcpy したほうが安全だが、とりあえずで。
 */
-static void nesfile_datapointer_set(const u8 *buf, struct memory *m, long size)
+static void nesfile_datapointer_set(const uint8_t *buf, struct memory *m, long size)
 {
-	u8 *data;
+	uint8_t *data;
 	assert((size % CHARCTER_ROM_MIN) == 0);
 	assert((m->size % CHARCTER_ROM_MIN) == 0);
 	data = Malloc(size);
@@ -227,10 +231,10 @@ static void nesfile_datapointer_set(const u8 *buf, struct memory *m, long size)
 }
 
 //flashmemory device capacity check が抜けてるけどどこでやるか未定
-bool nesfile_load(const struct textcontrol *l, const char *file, struct romimage *r)
+bool nesfile_load(const struct textcontrol *l, const wgChar *file, struct romimage *r)
 {
 	int imagesize;
-	u8 *buf;
+	uint8_t *buf;
 	
 	buf = buf_load_full(file, &imagesize);
 	if(buf == NULL || imagesize < (NES_HEADER_SIZE + PROGRAM_ROM_MIN)){
@@ -239,7 +243,7 @@ bool nesfile_load(const struct textcontrol *l, const char *file, struct romimage
 	}
 	//nes header check
 	if(memcmp(buf, NES_HEADER_INIT, 4) != 0){
-		l->append(l->object, "NES header identify error\n");
+		l->append(l->object, wgT("NES header identify error\n"));
 		Free(buf);
 		return false;
 	}
@@ -269,7 +273,7 @@ bool nesfile_load(const struct textcontrol *l, const char *file, struct romimage
 		r->ppu_rom.size = ppusize;
 		//NESfilesize
 		if(offset != imagesize){
-			l->append(l->object, "NES header filesize error\n");
+			l->append(l->object, wgT("NES header filesize error\n"));
 			Free(buf);
 			return false;
 		}
@@ -278,7 +282,7 @@ bool nesfile_load(const struct textcontrol *l, const char *file, struct romimage
 	image pointer set/ memcpy
 	*/
 	{
-		u8 *d;
+		uint8_t *d;
 		d = buf;
 		d += NES_HEADER_SIZE;
 		nesfile_datapointer_set(d, &r->cpu_rom, cpusize);

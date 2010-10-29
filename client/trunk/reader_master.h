@@ -20,8 +20,8 @@ struct reader_memory_access{
 	void (*flash_device_get)(const struct reader_handle *h, uint8_t s[2]);
 };
 struct reader_control{
-	const char *name;
-	const struct reader_handle *(*open)(void (*except)(const char *str));
+	const wgChar *name;
+	const struct reader_handle *(*open)(void (*except)(const wgChar *str));
 	void (*close)(const struct reader_handle *h);
 	void (*init)(const struct reader_handle *h);
 	void (*flash_status)(const struct reader_handle *h, uint8_t s[2]);

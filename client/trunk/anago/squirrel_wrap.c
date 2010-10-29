@@ -5,6 +5,7 @@
 #include <squirrel.h>
 #include <sqstdio.h>
 #include <sqstdaux.h>
+#include "type.h"
 #include "widget.h"
 
 #ifdef SQUNICODE 
@@ -46,7 +47,7 @@ HSQUIRRELVM qr_open(const struct textcontrol *p)
 }
 
 //SQInteger 
-void qr_function_register_global(HSQUIRRELVM v, const char *name, SQFUNCTION f)
+void qr_function_register_global(HSQUIRRELVM v, const SQChar *name, SQFUNCTION f)
 {
 	sq_pushroottable(v);
 	sq_pushstring(v, name, -1);
@@ -60,7 +61,7 @@ SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bo
 	SQRESULT r = SQ_ERROR;
 	SQInteger top = sq_gettop(v);
 	sq_pushroottable(v);
-	sq_pushstring(v, _SC(functionname), -1);
+	sq_pushstring(v, functionname, -1);
 	if(SQ_SUCCEEDED(sq_get(v,-2))){
 		int i;
 		va_list ap;
@@ -101,13 +102,13 @@ SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...)
 {
 	va_list ap;
 	if(sq_gettop(v) != (num + 2)){ //roottable, up, arguments...
-		return sq_throwerror(v, "argument number error");
+		return sq_throwerror(v, _SC("argument number error"));
 	}
 	va_start(ap, num);
 	SQInteger i;
 	for(i = 0; i < num; i++){
 		if(long_get(v, i + 3, va_arg(ap, long *)) == false){
-			return sq_throwerror(v, "argument type error");
+			return sq_throwerror(v, _SC("argument type error"));
 		}
 	}
 	return SQ_OK;
@@ -119,13 +120,13 @@ SQRESULT qr_userpointer_get(HSQUIRRELVM v, SQUserPointer *up)
 	assert(sq_gettype(v, 2) == OT_USERPOINTER);
 	r = sq_getuserpointer(v, 2, up);
 	if(SQ_FAILED(r)){
-		return sq_throwerror(v, "1st argument must be d (userpointer)");
+		return sq_throwerror(v, _SC("1st argument must be d (userpointer)"));
 	}
 	return r;
 }
 
 void qr_version_print(const struct textcontrol *l)
 {
-	l->append(l->object, SQUIRREL_VERSION " ");
-	l->append(l->object, SQUIRREL_COPYRIGHT "\n");
+	l->append(l->object, SQUIRREL_VERSION _SC(" "));
+	l->append(l->object, SQUIRREL_COPYRIGHT _SC("\n"));
 }

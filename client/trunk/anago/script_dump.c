@@ -40,23 +40,35 @@ static void buffer_show(struct memory *t, long length)
 {
 	int i;
 	const uint8_t *buf = t->data + t->offset;
+#ifdef _UNICODE
+	wprintf(L"%s 0x%06x:", t->name, t->offset);
+#else
 	printf("%s 0x%06x:", t->name, t->offset);
+#endif
 	for(i = 0; i < 0x10; i++){
-		char dump[3+1];
+		wgChar dump[3+1];
+#ifdef _UNICODE
+		//wsprintf(dump, L"%02x", buf[i]);
+#else
 		sprintf(dump, "%02x", buf[i]);
+#endif
 		switch(i){
 		case 7:
-			dump[2] = '-';
+			dump[2] = wgT('-');
 			break;
 		case 0x0f:
-			dump[2] = '\0';
+			dump[2] = wgT('\0');
 			break;
 		default:
-			dump[2] = ' ';
+			dump[2] = wgT(' ');
 			break;
 		}
-		dump[3] = '\0';
+		dump[3] = wgT('\0');
+#ifdef _UNICODE
+		wprintf(L"%s", dump);
+#else
 		printf("%s", dump);
+#endif
 	}
 	int sum = 0;
 	while(length != 0){
@@ -64,7 +76,11 @@ static void buffer_show(struct memory *t, long length)
 		buf++;
 		length--;
 	}
+#ifdef _UNICODE
+	wprintf(L":0x%06x\n", sum);
+#else
 	printf(":0x%06x\n", sum);
+#endif
 	fflush(stdout);
 }
 
@@ -217,16 +233,16 @@ static SQInteger length_check(HSQUIRRELVM v)
 		cpu = false;
 	}
 	if(cpu == false){
-		d->log.append(d->log.object, "cpu_romsize is not connected 0x%06x/0x%06x\n", (int) d->cpu.read_count, (int) d->cpu.memory.size);
+		d->log.append(d->log.object, wgT("cpu_romsize is not connected 0x%06x/0x%06x\n"), (int) d->cpu.read_count, (int) d->cpu.memory.size);
 	}
 	if(d->ppu.memory.size != d->ppu.read_count){
 		ppu = false;
 	}
 	if(ppu == false){
-		d->log.append(d->log.object, "ppu_romsize is not connected 0x%06x/0x%06x\n", (int) d->ppu.read_count, (int) d->ppu.memory.size);
+		d->log.append(d->log.object, wgT("ppu_romsize is not connected 0x%06x/0x%06x\n"), (int) d->ppu.read_count, (int) d->ppu.memory.size);
 	}
 	if(cpu == false || ppu == false){
-		r = sq_throwerror(v, "script logical error");
+		r = sq_throwerror(v, wgT("script logical error"));
 	}
 	return r;
 }
@@ -238,13 +254,13 @@ static SQInteger read_count(HSQUIRRELVM v, const struct textcontrol *l, struct d
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = range_check(v, "length", length, range_length);
+	r = range_check(v, wgT("length"), length, range_length);
 	if(SQ_FAILED(r)){
 		return r;
 	}
 	if((address < range_address->start) || ((address + length) > range_address->end)){
-		l->append(l->object, "address range must be 0x%06x to 0x%06x", (int) range_address->start, (int) range_address->end);
-		return sq_throwerror(v, "script logical error");;
+		l->append(l->object, wgT("address range must be 0x%06x to 0x%06x"), (int) range_address->start, (int) range_address->end);
+		return sq_throwerror(v, wgT("script logical error"));;
 	}
 	t->read_count += length;
 	return 0;
@@ -289,14 +305,14 @@ static bool script_execute(HSQUIRRELVM v, struct dump_config *d)
 {
 	bool ret = true;
 	if(SQ_FAILED(sqstd_dofile(v, _SC("dumpcore.nut"), SQFalse, SQTrue))){
-		d->log.append(d->log.object, "dump core script error\n");
+		d->log.append(d->log.object, wgT("dump core script error\n"));
 		ret = false;
-	}else if(SQ_FAILED(sqstd_dofile(v, _SC(d->script), SQFalse, SQTrue))){
-		d->log.append(d->log.object, "%s open error\n", d->script);
+	}else if(SQ_FAILED(sqstd_dofile(v, d->script, SQFalse, SQTrue))){
+		d->log.append(d->log.object, wgT("%s open error\n"), d->script);
 		ret = false;
 	}else{
 		SQRESULT r = qr_call(
-			v, "dump", (SQUserPointer) d, true, 
+			v, wgT("dump"), (SQUserPointer) d, true, 
 			3, d->mappernum, d->cpu.increase, d->ppu.increase
 		);
 		if(SQ_FAILED(r)){
@@ -323,20 +339,20 @@ static void dump_memory_driver_init(struct dump_memory_driver *dd)
 void script_dump_execute(struct dump_config *d)
 {
 	dump_memory_driver_init(&d->cpu);
-	d->cpu.memory.name = "Program";
+	d->cpu.memory.name = wgT("Program");
 	
 	dump_memory_driver_init(&d->ppu);
-	d->ppu.memory.name = "Charcter";
+	d->ppu.memory.name = wgT("Charcter");
 	
 	{
 		HSQUIRRELVM v = qr_open(&d->log); 
-		qr_function_register_global(v, "ppu_ramfind", script_nop);
-		qr_function_register_global(v, "cpu_write", cpu_write_check);
-		qr_function_register_global(v, "memory_new", memory_size_set);
-		qr_function_register_global(v, "nesfile_save", length_check);
-		qr_function_register_global(v, "cpu_read", cpu_read_count);
-		qr_function_register_global(v, "ppu_read", ppu_read_count);
-		qr_function_register_global(v, "require", script_require);
+		qr_function_register_global(v, wgT("ppu_ramfind"), script_nop);
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write_check);
+		qr_function_register_global(v, wgT("memory_new"), memory_size_set);
+		qr_function_register_global(v, wgT("nesfile_save"), length_check);
+		qr_function_register_global(v, wgT("cpu_read"), cpu_read_count);
+		qr_function_register_global(v, wgT("ppu_read"), ppu_read_count);
+		qr_function_register_global(v, wgT("require"), script_require);
 		if(script_execute(v, d) == false){
 			qr_close(v);
 			return;
@@ -348,7 +364,7 @@ void script_dump_execute(struct dump_config *d)
 	}*/
 	d->handle = d->control->open(d->except);
 	if(d->handle == NULL){
-		d->log.append(d->log.object, "reader open error\n");
+		d->log.append(d->log.object, wgT("reader open error\n"));
 		return;
 	}
 	d->control->init(d->handle);
@@ -357,13 +373,13 @@ void script_dump_execute(struct dump_config *d)
 	}
 	{
 		HSQUIRRELVM v = qr_open(&d->log); 
-		qr_function_register_global(v, "memory_new", memory_new);
-		qr_function_register_global(v, "nesfile_save", nesfile_save);
-		qr_function_register_global(v, "cpu_write", cpu_write);
-		qr_function_register_global(v, "cpu_read", cpu_read);
-		qr_function_register_global(v, "ppu_read", ppu_read);
-		qr_function_register_global(v, "ppu_ramfind", ppu_ramfind);
-		qr_function_register_global(v, "require", script_require);
+		qr_function_register_global(v, wgT("memory_new"), memory_new);
+		qr_function_register_global(v, wgT("nesfile_save"), nesfile_save);
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write);
+		qr_function_register_global(v, wgT("cpu_read"), cpu_read);
+		qr_function_register_global(v, wgT("ppu_read"), ppu_read);
+		qr_function_register_global(v, wgT("ppu_ramfind"), ppu_ramfind);
+		qr_function_register_global(v, wgT("require"), script_require);
 		script_execute(v, d);
 		qr_close(v);
 	}

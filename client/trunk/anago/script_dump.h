@@ -1,8 +1,8 @@
 #ifndef _SCRIPT_DUMP_H_
 #define _SCRIPT_DUMP_H_
 struct dump_config{
-	const char *script;
-	const char *target;
+	const wgChar *script;
+	const wgChar *target;
 	const struct reader_handle *handle;
 	const struct reader_control *control;
 	struct dump_memory_driver{
@@ -15,7 +15,7 @@ struct dump_config{
 	bool progress;
 	bool battery;
 	struct textcontrol log;
-	void (*except)(const char *str);
+	void (*except)(const wgChar *str);
 };
 void script_dump_execute(struct dump_config *c);
 #endif

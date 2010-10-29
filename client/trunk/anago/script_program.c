@@ -44,7 +44,7 @@ static SQInteger command_set(HSQUIRRELVM v, struct flash_memory_driver *t)
 		t->c5555 = d;
 		break;
 	default:
-		return sq_throwerror(v, "unknown command address");
+		return sq_throwerror(v, wgT("unknown command address"));
 	}
 	t->command_change = true;
 	return 0;
@@ -93,7 +93,7 @@ static SQInteger erase_set(HSQUIRRELVM v, const struct reader_handle *h, struct 
 	t->command_change = false;
 	if(t->flash.erase_require == true){
 		t->access->flash_erase(h, t->c2aaa, false);
-		t->gauge.label_set(t->gauge.label, "erasing ");
+		t->gauge.label_set(t->gauge.label, wgT("erasing "));
 	}
 	return 0;
 }
@@ -234,7 +234,7 @@ static void gauge_init(struct flash_memory_driver *t)
 	t->gauge.range_set(t->gauge.bar, t->programming.count);
 	t->gauge.value_set(t->gauge.bar, t->gauge.label, t->programming.offset);
 	if(t->programming.count == 0){
-		t->gauge.label_set(t->gauge.label, "skip");
+		t->gauge.label_set(t->gauge.label, wgT("skip"));
 	}
 }
 
@@ -243,7 +243,7 @@ static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, st
 	if(t->programming.length == 0){
 		if(t->programming.offset != 0 && compare == true){
 			if(program_compare(h, t) == false){
-				log->append(log->object, "%s memory compare error\n", t->memory.name);
+				log->append(log->object, wgT("%s memory compare error\n"), t->memory.name);
 				return false;
 			}
 		}
@@ -259,7 +259,7 @@ static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, st
 static SQInteger program_main(HSQUIRRELVM v)
 {
 	if(sq_gettop(v) != (1 + 3)){ //roottable, userpointer, co_cpu, co_ppu
-		return sq_throwerror(v, "argument number error");
+		return sq_throwerror(v, wgT("argument number error"));
 	}
 	struct program_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
@@ -268,10 +268,10 @@ static SQInteger program_main(HSQUIRRELVM v)
 	}
 	HSQUIRRELVM co_cpu, co_ppu;
 	if(SQ_FAILED(sq_getthread(v, 3, &co_cpu))){
-		return sq_throwerror(v, "thread error");
+		return sq_throwerror(v, wgT("thread error"));
 	}
 	if(SQ_FAILED(sq_getthread(v, 4, &co_ppu))){
-		return sq_throwerror(v, "thread error");
+		return sq_throwerror(v, wgT("thread error"));
 	}
 	SQInteger state_cpu = sq_getvmstate(co_cpu);
 	SQInteger state_ppu = sq_getvmstate(co_ppu);
@@ -302,13 +302,13 @@ static SQInteger program_count(HSQUIRRELVM v, struct flash_memory_driver *t, con
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = range_check(v, "length", t->programming.length, range_length);
+	r = range_check(v, wgT("length"), t->programming.length, range_length);
 	if(SQ_FAILED(r)){
 		return r;
 	}
 	if((t->programming.address < range_address->start) || ((t->programming.address + t->programming.length) > range_address->end)){
-		log->append(log->object, "address range must be 0x%06x to 0x%06x", (int) range_address->start, (int) range_address->end - 1);
-		return sq_throwerror(v, "script logical error");;
+		log->append(log->object, wgT("address range must be 0x%06x to 0x%06x"), (int) range_address->start, (int) range_address->end - 1);
+		return sq_throwerror(v, wgT("script logical error"));
 	}
 	t->programming.count += t->programming.length;
 	return 0;
@@ -337,14 +337,14 @@ static SQInteger ppu_program_count(HSQUIRRELVM v)
 	return program_count(v, &d->ppu, &range_address, &range_length, &d->log);
 }
 
-static bool script_execute(HSQUIRRELVM v, const char *function, struct program_config *c)
+static bool script_execute(HSQUIRRELVM v, const wgChar *function, struct program_config *c)
 {
 	bool ret = true;
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
-		c->log.append(c->log.object, "flash core script error\n");
+		c->log.append(c->log.object, wgT("flash core script error\n"));
 		ret = false;
-	}else if(SQ_FAILED(sqstd_dofile(v, _SC(c->script), SQFalse, SQTrue))){
-		c->log.append(c->log.object, "%s open error\n", c->script);
+	}else if(SQ_FAILED(sqstd_dofile(v, c->script, SQFalse, SQTrue))){
+		c->log.append(c->log.object, wgT("%s open error\n"), c->script);
 		ret = false;
 	}else{
 		SQRESULT r = qr_call(
@@ -364,24 +364,24 @@ static void zendan(struct program_config *c)
 {
 //script test run
 	{
-		static const char *functionname[] = {
-			"cpu_erase", "ppu_erase",
-			"erase_wait", "program_main"
+		static const wgChar *functionname[] = {
+			wgT("cpu_erase"), wgT("ppu_erase"),
+			wgT("erase_wait"), wgT("program_main")
 		};
 		HSQUIRRELVM v = qr_open(&c->log);
 		int i;
-		for(i = 0; i < sizeof(functionname)/sizeof(char *); i++){
+		for(i = 0; i < sizeof(functionname)/sizeof(wgChar *); i++){
 			qr_function_register_global(v, functionname[i], script_nop);
 		}
-		qr_function_register_global(v, "cpu_write", cpu_write_check);
-		qr_function_register_global(v, "cpu_command", cpu_command);
-		qr_function_register_global(v, "cpu_program", cpu_program_count);
+		qr_function_register_global(v, _SC("cpu_write"), cpu_write_check);
+		qr_function_register_global(v, _SC("cpu_command"), cpu_command);
+		qr_function_register_global(v, _SC("cpu_program"), cpu_program_count);
 		
-		qr_function_register_global(v, "ppu_program", ppu_program_count);
-		qr_function_register_global(v, "ppu_command", ppu_command);
-		qr_function_register_global(v, "vram_mirrorfind", vram_mirrorfind);
+		qr_function_register_global(v, _SC("ppu_program"), ppu_program_count);
+		qr_function_register_global(v, _SC("ppu_command"), ppu_command);
+		qr_function_register_global(v, _SC("vram_mirrorfind"), vram_mirrorfind);
 		
-		if(script_execute(v, "testrun", c) == false){
+		if(script_execute(v, wgT("testrun"), c) == false){
 			qr_close(v);
 			return;
 		}
@@ -389,12 +389,12 @@ static void zendan(struct program_config *c)
 		assert(c->cpu.memory.size != 0);
 
 		if(c->cpu.programming.count % c->cpu.memory.size  != 0){
-			c->log.append(c->log.object, "logical error: cpu_programsize is not connected 0x%06x/0x%06x\n", (int) c->cpu.programming.count, (int) c->cpu.memory.size);
+			c->log.append(c->log.object, wgT("logical error: cpu_programsize is not connected 0x%06x/0x%06x\n"), (int) c->cpu.programming.count, (int) c->cpu.memory.size);
 			return;
 		}
 		if(c->ppu.memory.size != 0){
 			if(c->ppu.programming.count % c->ppu.memory.size != 0){
-				c->log.append(c->log.object, "logical error: ppu_programsize is not connected 0x%06x/0x%06x\n", (int) c->ppu.programming.count, (int) c->ppu.memory.size);
+				c->log.append(c->log.object, wgT("logical error: ppu_programsize is not connected 0x%06x/0x%06x\n"), (int) c->ppu.programming.count, (int) c->ppu.memory.size);
 				return;
 			}
 		}
@@ -406,17 +406,17 @@ static void zendan(struct program_config *c)
 	gauge_init(&c->ppu);
 	{
 		HSQUIRRELVM v = qr_open(&c->log); 
-		qr_function_register_global(v, "cpu_write", cpu_write);
-		qr_function_register_global(v, "cpu_erase", cpu_erase);
-		qr_function_register_global(v, "cpu_program", cpu_program_memory);
-		qr_function_register_global(v, "cpu_command", cpu_command);
-		qr_function_register_global(v, "ppu_erase", ppu_erase);
-		qr_function_register_global(v, "ppu_program", ppu_program_memory);
-		qr_function_register_global(v, "ppu_command", ppu_command);
-		qr_function_register_global(v, "program_main", program_main);
-		qr_function_register_global(v, "erase_wait", erase_wait);
-		qr_function_register_global(v, "vram_mirrorfind", script_nop);
-		script_execute(v, "program", c);
+		qr_function_register_global(v, _SC("cpu_write"), cpu_write);
+		qr_function_register_global(v, _SC("cpu_erase"), cpu_erase);
+		qr_function_register_global(v, _SC("cpu_program"), cpu_program_memory);
+		qr_function_register_global(v, _SC("cpu_command"), cpu_command);
+		qr_function_register_global(v, _SC("ppu_erase"), ppu_erase);
+		qr_function_register_global(v, _SC("ppu_program"), ppu_program_memory);
+		qr_function_register_global(v, _SC("ppu_command"), ppu_command);
+		qr_function_register_global(v, _SC("program_main"), program_main);
+		qr_function_register_global(v, _SC("erase_wait"), erase_wait);
+		qr_function_register_global(v, _SC("vram_mirrorfind"), script_nop);
+		script_execute(v, wgT("program"), c);
 		qr_close(v);
 	}
 }
@@ -435,7 +435,7 @@ static bool memory_image_init(const struct memory *from, struct flash_memory_dri
 	if(t->flash.capacity < from->size){
 		log->append(log->object, t->memory.name);
 		
-		log->append(log->object, " image size is larger than target device");
+		log->append(log->object, wgT(" image size is larger than target device"));
 		return false;
 	}
 	return true;
@@ -446,17 +446,17 @@ void script_program_execute(struct program_config *c)
 //rom image load
 	struct romimage rom;
 	if(nesfile_load(&c->log, c->target, &rom) == false){
-		c->log.append(c->log.object, "ROM image open error");
+		c->log.append(c->log.object, wgT("ROM image open error"));
 		return;
 	}
 //variable init
 	c->mappernum = rom.mappernum;
-	c->cpu.memory.name = "Program Flash";
+	c->cpu.memory.name = wgT("Program Flash");
 	if(memory_image_init(&rom.cpu_rom, &c->cpu, &c->log) == false){
 		nesbuffer_free(&rom, 0);
 		return;
 	}
-	c->ppu.memory.name = "Charcter Flash";
+	c->ppu.memory.name = wgT("Charcter Flash");
 	if(memory_image_init(&rom.ppu_rom, &c->ppu, &c->log) == false){
 		nesbuffer_free(&rom, 0);
 		return;
@@ -464,7 +464,7 @@ void script_program_execute(struct program_config *c)
 //reader initalize
 	c->handle = c->control->open(c->except);
 	if(c->handle == NULL){
-		c->log.append(c->log.object, "reader open error\n");
+		c->log.append(c->log.object, wgT("reader open error\n"));
 		nesbuffer_free(&rom, 0);
 		return;
 	}

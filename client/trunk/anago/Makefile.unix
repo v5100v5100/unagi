@@ -4,5 +4,6 @@ LIBUSB =
 SQUIRREL = ../SQUIRREL2
 KAZZO = ../../kazzo/firmware
 WX_CONFIG = wx-config
-
+CPPFLAGS =
+CXXFLAGS = 
 include anago.mk

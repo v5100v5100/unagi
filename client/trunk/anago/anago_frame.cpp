@@ -4,6 +4,7 @@
 #include <wx/dir.h>
 #include <wx/sound.h>
 #include <cstdarg>
+#include "type.h"
 #include "anago_gui.h"
 #include "widget.h"
 #include "reader_master.h"
@@ -15,9 +16,13 @@ extern "C"{
   #include "script_program.h"
   void qr_version_print(const struct textcontrol *l);
 }
-
+#ifdef _UNICODE
+  #define STRNCPY wcsncpy
+#else
+  #define STRNCPY strncpy
+#endif
 //---- C++ -> C -> C++ wrapping functions ----
-static void throw_error(const char *t)
+static void throw_error(const wxChar *t)
 {
 	throw t;
 }
@@ -52,7 +57,7 @@ static void range_set(void *gauge, int value)
 	g->SetRange(value);
 }
 
-static void text_append_va(void *log, const char *format, va_list list)
+static void text_append_va(void *log, const wxChar *format, va_list list)
 {
 	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
 	wxString str;
@@ -63,7 +68,7 @@ static void text_append_va(void *log, const char *format, va_list list)
 	wxMutexGuiLeave();
 }
 
-static void text_append(void *log, const char *format, ...)
+static void text_append(void *log, const wxChar *format, ...)
 {
 	va_list list;
 	va_start(list, format);
@@ -71,7 +76,7 @@ static void text_append(void *log, const char *format, ...)
 	va_end(list);
 }
 
-static void version_append_va(void *log, const char *format, va_list list)
+static void version_append_va(void *log, const wxChar *format, va_list list)
 {
 	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
 	wxString str;
@@ -80,7 +85,7 @@ static void version_append_va(void *log, const char *format, va_list list)
 	*l << str;
 }
 
-static void version_append(void *log, const char *format, ...)
+static void version_append(void *log, const wxChar *format, ...)
 {
 	va_list list;
 	va_start(list, format);
@@ -88,7 +93,7 @@ static void version_append(void *log, const char *format, ...)
 	va_end(list);
 }
 
-static void label_set(void *label, const char *format, ...)
+static void label_set(void *label, const wxChar *format, ...)
 {
 	wxStaticText *l = static_cast<wxStaticText *>(label);
 	wxString str;
@@ -103,7 +108,7 @@ static void label_set(void *label, const char *format, ...)
 	wxMutexGuiLeave();
 }
 
-void choice_append(void *choice, const char *str)
+void choice_append(void *choice, const wxChar *str)
 {
 	wxChoice *c = static_cast<wxChoice *>(choice);
 	c->Append(wxString(str));
@@ -225,9 +230,9 @@ private:
 		config.battery = m_dump_check_battery->GetValue();
 		{
 			wxString str_script = m_dump_script_choice->GetStringSelection();
-			char *t = new char[str_script.Length() + 1];
+			wxChar *t = new wxChar[str_script.Length() + 1];
 			config.script = t;
-			strncpy(t, str_script.fn_str(), str_script.Length() + 1);
+			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
 		}
 
 		{
@@ -245,13 +250,13 @@ private:
 		{
 			wxTextCtrl *text = m_dump_romimage_picker->GetTextCtrl();
 			wxString str_rom = text->GetValue();
-			char *t = new char[str_rom.Length() + 1];
+			wxChar *t = new wxChar[str_rom.Length() + 1];
 			if(text->IsEmpty() == true){
 				*m_log << wxT("Enter filename to ROM image\n");
 				return;
 			}
 			config.target = t;
-			strncpy(t, str_rom.fn_str(), str_rom.Length() + 1);
+			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
 		}
 
 		config.control = &DRIVER_KAZZO.control;
@@ -334,8 +339,8 @@ private:
 		
 		{
 			wxString str_script = m_program_script_choice->GetStringSelection();
-			char *t = new char[str_script.Length() + 1];
-			strncpy(t, str_script.fn_str(), str_script.Length() + 1);
+			wxChar *t = new wxChar[str_script.Length() + 1];
+			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
 			f.script = t;
 		}
 
@@ -346,8 +351,8 @@ private:
 				*m_log << wxT("Enter filename to ROM image\n");
 				return;
 			}
-			char *t = new char[str_rom.Length() + 1];
-			strncpy(t, str_rom.fn_str(), str_rom.Length() + 1);
+			wxChar *t = new wxChar[str_rom.Length() + 1];
+			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
 			f.target = t;
 		}
 		f.compare = m_program_compare->GetValue();
@@ -463,7 +468,7 @@ public:
 
 //version infomation
 		struct textcontrol detail;
-		*m_version_detail << wxT("anago build at ") << __DATE__ << wxT("\n\n");
+		*m_version_detail << wxT("anago build at ") << wxT(__DATE__) << wxT("\n\n");
 		detail.object = m_version_detail;
 		detail.append = version_append;
 		detail.append_va = version_append_va;
@@ -499,11 +504,6 @@ public:
 
 	void DumpThreadFinish(void)
 	{
-/*		wxSound sound(wxT("tinkalink2.wav"), false);
-		if(sound.IsOk() == true){
-			sound.Play();
-		}*/
-		
 		m_dump_script_choice->Enable();
 		m_dump_romimage_picker->Enable();
 		m_dump_check_battery->Enable();
@@ -529,7 +529,7 @@ public:
 		m_program_ppu_device->Enable();
 		m_status = STATUS_IDLE;
 	}
-	void LogAppend(const char *t)
+	void LogAppend(const wxChar *t)
 	{
 		*m_log << t;
 	}
@@ -540,7 +540,16 @@ void *anago_dumper::Entry(void)
 {
 	try{
 		script_dump_execute(&m_config);
-	}catch(const char *t){
+
+		wxSound sound(wxT("tinkalink2.wav"), false);
+		if(sound.IsOk() == true){
+			sound.Play();
+		}
+	}catch(const wxChar *t){
+		wxSound sound(wxT("doggrowl.wav"), false);
+		if(sound.IsOk() == true){
+			sound.Play();
+		}
 		m_frame->LogAppend(t);
 	}
 	m_frame->DumpThreadFinish();
@@ -551,7 +560,16 @@ void *anago_programmer::Entry(void)
 {
 	try{
 		script_program_execute(&m_config);
-	}catch(const char *t){
+
+		wxSound sound(wxT("cuckoo.wav"), false);
+		if(sound.IsOk() == true){
+			sound.Play();
+		}
+	}catch(const wxChar *t){
+		wxSound sound(wxT("doggrowl.wav"), false);
+		if(sound.IsOk() == true){
+			sound.Play();
+		}
 		m_frame->LogAppend(t);
 	}
 	m_frame->ProgramThreadFinish();
@@ -560,9 +578,9 @@ void *anago_programmer::Entry(void)
 
 #ifndef WIN32
 extern "C"{
-  int anago_cui(int c, char **v);
+  int anago_cui(int c, wxChar **v);
 }
-int main(int c, char **v)
+int main(int c, wxChar **v)
 {
 	if(c < 2){
 		return wxEntry(c, v);

@@ -1,11 +1,11 @@
 all: $(APP_GUI) $(APP_CUI)
 VPATH = ..
 ifeq ($(RELEASE),1)
-  CPPFLAGS = -O2 -DNDEBUG
+  CPPFLAGS += -O2 -DNDEBUG
 else
-  CPPFLAGS = -g -O0
+  CPPFLAGS += -g -O0
 endif
-CPPFLAGS += -Wall -Werror -DDEBUG=1 -DANAGO=1
+CPPFLAGS += -Wall -Werror -DDEBUG=1
 CFLAGS = -I.. -I$(SQUIRREL)/include -I$(KAZZO)
 ifneq ($(strip $(LIBUSB)),)
   CFLAGS += -I$(LIBUSB)/include

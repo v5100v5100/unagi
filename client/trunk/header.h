@@ -1,9 +1,5 @@
 #ifndef _HEADER_H_
 #define _HEADER_H_
-#if ANAGO==0
-#include "flashmemory.h"
-#endif
-
 enum trastype{
 	TRANSTYPE_EMPTY,
 	TRANSTYPE_TOP,
@@ -14,7 +10,7 @@ enum memory_attribute{
 	MEMORY_ATTR_READ, MEMORY_ATTR_WRITE, MEMORY_ATTR_NOTUSE
 };
 struct memory{
-	const char *name;
+	const wgChar *name;
 	int size, offset;
 	enum memory_attribute attribute;
 	enum trastype transtype;
@@ -46,9 +42,6 @@ enum vram_mirroring{
 };
 struct romimage{
 	struct memory cpu_rom, ppu_rom, cpu_ram;
-#if ANAGO==0
-	struct flash_order cpu_flash, ppu_flash;
-#endif
 	long mappernum;
 	enum vram_mirroring mirror;
 	int backupram;
@@ -61,9 +54,9 @@ enum{
 void nesheader_set(const struct romimage *r, uint8_t *header);
 #endif
 bool nesbuffer_malloc(struct romimage *r, int mode);
-void nesfile_create(const struct textcontrol *l, struct romimage *r, const char *romfilename);
+void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);
-void backupram_create(const struct memory *r, const char *ramfilename);
+void backupram_create(const struct memory *r, const wgChar *ramfilename);
 int memorysize_check(const long size, int region);
-bool nesfile_load(const struct textcontrol *l, const char *file, struct romimage *r);
+bool nesfile_load(const struct textcontrol *l, const wgChar *file, struct romimage *r);
 #endif

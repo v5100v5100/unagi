@@ -2,7 +2,7 @@
 #define _SQUIRREL_WRAP_H_
 struct textcontrol;
 HSQUIRRELVM qr_open(struct textcontrol *p);
-void qr_function_register_global(HSQUIRRELVM v, const char *name, SQFUNCTION f);
+void qr_function_register_global(HSQUIRRELVM v, const wgChar *name, SQFUNCTION f);
 SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool settop, int argnum, ...);
 void qr_close(HSQUIRRELVM v);
 SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...);

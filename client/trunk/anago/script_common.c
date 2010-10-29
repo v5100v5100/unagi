@@ -14,12 +14,12 @@ SQInteger script_nop(HSQUIRRELVM v)
 	return 0;
 }
 
-SQInteger range_check(HSQUIRRELVM v, const char *name, long target, const struct range *range)
+SQInteger range_check(HSQUIRRELVM v, const wgChar *name, long target, const struct range *range)
 {
 	if((target < range->start) || (target > range->end)){
 		SQPRINTFUNCTION f = sq_getprintfunc(v);
-		f(v, "%s range must be 0x%06x to 0x%06x", name, (int) range->start, (int) range->end);
-		return sq_throwerror(v, "script logical error");
+		f(v, wgT("%s range must be 0x%06x to 0x%06x"), name, (int) range->start, (int) range->end);
+		return sq_throwerror(v, wgT("script logical error"));
 	}
 	return 0;
 }
@@ -33,27 +33,27 @@ SQInteger cpu_write_check(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = range_check(v, "address", address, &range_address);
+	r = range_check(v, wgT("address"), address, &range_address);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return range_check(v, "data", data, &range_data);
+	return range_check(v, wgT("data"), data, &range_data);
 }
 
 SQInteger script_require(HSQUIRRELVM v)
 {
 	if(sq_gettop(v) != 2){
-		return sq_throwerror(v, "argument number error");
+		return sq_throwerror(v, wgT("argument number error"));
 	}
 	if(sq_gettype(v, 2) != OT_STRING){
-		return sq_throwerror(v, "argument type error");
+		return sq_throwerror(v, wgT("argument type error"));
 	}
 	const SQChar *file;
 	if(SQ_FAILED(sq_getstring(v, 2, &file))){
-		return sq_throwerror(v, "require error");
+		return sq_throwerror(v, wgT("require error"));
 	}
-	if(SQ_FAILED(sqstd_dofile(v, _SC(file), SQFalse, SQTrue))){
-		return sq_throwerror(v, "require error");
+	if(SQ_FAILED(sqstd_dofile(v, file, SQFalse, SQTrue))){
+		return sq_throwerror(v, wgT("require error"));
 	}
 	return 0;
 }
@@ -68,7 +68,7 @@ static bool connection_check_main(const struct reader_handle *h, const struct te
 	for(i = 0; i < 3; i++){
 		m->memory_read(h, &GAUGE_DUMMY, address, size, test_m);
 		if(memcmp(test1, test_m, size) != 0){
-			text->append(text->object, "maybe cartridge connection error\n");
+			text->append(text->object, wgT("maybe cartridge connection error\n"));
 			return false;
 		}
 	}

@@ -9,19 +9,19 @@
 #include "squirrel_wrap.h"
 #include "flash_device.h"
 
-static void call(HSQUIRRELVM v, const char *devicename)
+static void call(HSQUIRRELVM v, const wgChar *devicename)
 {
 	sq_pushroottable(v);
 	sq_pushstring(v, _SC("flash_device_get"), -1);
 	if(SQ_SUCCEEDED(sq_get(v,-2))){
 		sq_pushroottable(v);
-		sq_pushstring(v, _SC(devicename), -1);
+		sq_pushstring(v, devicename, -1);
 		sq_call(v, 2, SQTrue, SQTrue);
 	}
 }
-static bool long_get(HSQUIRRELVM v, const char *field, long *ret)
+static bool long_get(HSQUIRRELVM v, const wgChar *field, long *ret)
 {
-	sq_pushstring(v, _SC(field), -1);
+	sq_pushstring(v, field, -1);
 	SQRESULT r = sq_get(v, -2);
 	if(r != SQ_OK){
 		return false;
@@ -38,9 +38,9 @@ static bool long_get(HSQUIRRELVM v, const char *field, long *ret)
 	sq_pop(v, 1);
 	return true;
 }
-static bool bool_get(HSQUIRRELVM v, const char *field, bool *ret)
+static bool bool_get(HSQUIRRELVM v, const wgChar *field, bool *ret)
 {
-	sq_pushstring(v, _SC(field), -1);
+	sq_pushstring(v, field, -1);
 	SQRESULT r = sq_get(v, -2);
 	if(r != SQ_OK){
 		return false;
@@ -61,11 +61,10 @@ static bool bool_get(HSQUIRRELVM v, const char *field, bool *ret)
 	sq_pop(v, 1);
 	return true;
 }
-bool flash_device_get(const char *name, struct flash_device *t)
+bool flash_device_get(const wgChar *name, struct flash_device *t)
 {
 	HSQUIRRELVM v = qr_open(NULL); 
 	if(SQ_FAILED(sqstd_dofile(v, _SC("flashdevice.nut"), SQFalse, SQTrue))){
-		puts("flash device script error");
 		qr_close(v);
 		return false;
 	}
@@ -75,30 +74,30 @@ bool flash_device_get(const char *name, struct flash_device *t)
 		goto field_error;
 	}
 	t->name = name;
-	if(long_get(v, "capacity", &t->capacity) == false){
+	if(long_get(v, _SC("capacity"), &t->capacity) == false){
 		goto field_error;
 	}
-	if(long_get(v, "pagesize", &t->pagesize) == false){
+	if(long_get(v, _SC("pagesize"), &t->pagesize) == false){
 		goto field_error;
 	}
-	if(long_get(v, "erase_wait", &t->erase_wait) == false){
+	if(long_get(v, _SC("erase_wait"), &t->erase_wait) == false){
 		goto field_error;
 	}
-	if(bool_get(v, "erase_require", &t->erase_require) == false){
+	if(bool_get(v, _SC("erase_require"), &t->erase_require) == false){
 		goto field_error;
 	}
-	if(bool_get(v, "retry", &t->retry) == false){
+	if(bool_get(v, _SC("retry"), &t->retry) == false){
 		goto field_error;
 	}
-	if(long_get(v, "command_mask", &t->command_mask) == false){
+	if(long_get(v, _SC("command_mask"), &t->command_mask) == false){
 		goto field_error;
 	}
 	long dd;
-	if(long_get(v, "id_manufacurer", &dd) == false){
+	if(long_get(v, _SC("id_manufacurer"), &dd) == false){
 		goto field_error;
 	}
 	t->id_manufacurer = dd;
-	if(long_get(v, "id_device", &dd) == false){
+	if(long_get(v, _SC("id_device"), &dd) == false){
 		goto field_error;
 	}
 	t->id_device = dd;
@@ -107,7 +106,7 @@ bool flash_device_get(const char *name, struct flash_device *t)
 	return true;
 
 field_error:
-	puts("script field error");
+//	puts("script field error");
 	qr_close(v);
 	return false;
 }
@@ -132,7 +131,7 @@ static int flash_device_number_get(HSQUIRRELVM v)
 	return i;
 }
 
-static int flash_device_name_get(HSQUIRRELVM v, int index, const char **str)
+static int flash_device_name_get(HSQUIRRELVM v, int index, const wgChar **str)
 {
 	sq_pushroottable(v);
 	sq_pushstring(v, _SC("flash_device_name_get"), -1);
@@ -152,9 +151,14 @@ static int flash_device_name_get(HSQUIRRELVM v, int index, const char **str)
 	return 1;
 }
 
+#ifdef _UNICODE
+  #define STRNCMP wcsncmp
+#else
+  #define STRNCMP strncmp
+#endif
 void flash_device_listup(struct flash_listup *t)
 {
-	const char *str;
+	const wgChar *str;
 	HSQUIRRELVM v = qr_open(NULL);
 	SQInteger top = sq_gettop(v);
 
@@ -170,7 +174,7 @@ void flash_device_listup(struct flash_listup *t)
 
 	for(i = 0; i < device_num; i++){
 		flash_device_name_get(v, i, &str);
-		if(strncmp(str, "dummy", 6) != 0){
+		if(STRNCMP(str, _SC("dummy"), 6) != 0){
 			t->append(t->obj_cpu, str);
 			t->append(t->obj_ppu, str);
 		}

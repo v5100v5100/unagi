@@ -1,8 +1,8 @@
 #ifndef _SCRIPT_PROGRAM_H_
 #define _SCRIPT_PROGRAM_H_
 struct program_config{
-	const char *script;
-	const char *target;
+	const wgChar *script;
+	const wgChar *target;
 	const struct reader_handle *handle;
 	const struct reader_control *control;
 	struct flash_memory_driver{
@@ -19,7 +19,7 @@ struct program_config{
 	long mappernum;
 	bool compare, testrun;
 	struct textcontrol log;
-	void (*except)(const char *str);
+	void (*except)(const wgChar *str);
 };
 void script_program_execute(struct program_config *c);
 #endif
