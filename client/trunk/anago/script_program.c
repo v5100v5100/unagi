@@ -360,7 +360,7 @@ static bool script_execute(HSQUIRRELVM v, const wgChar *function, struct program
 	return ret;
 }
 
-static void zendan(struct program_config *c)
+static bool zendan(struct program_config *c)
 {
 //script test run
 	{
@@ -383,19 +383,19 @@ static void zendan(struct program_config *c)
 		
 		if(script_execute(v, wgT("testrun"), c) == false){
 			qr_close(v);
-			return;
+			return false;
 		}
 		qr_close(v);
 		assert(c->cpu.memory.size != 0);
 
 		if(c->cpu.programming.count % c->cpu.memory.size  != 0){
 			c->log.append(c->log.object, wgT("logical error: cpu_programsize is not connected 0x%06x/0x%06x\n"), (int) c->cpu.programming.count, (int) c->cpu.memory.size);
-			return;
+			return false;
 		}
 		if(c->ppu.memory.size != 0){
 			if(c->ppu.programming.count % c->ppu.memory.size != 0){
 				c->log.append(c->log.object, wgT("logical error: ppu_programsize is not connected 0x%06x/0x%06x\n"), (int) c->ppu.programming.count, (int) c->ppu.memory.size);
-				return;
+				return false;
 			}
 		}
 	}
@@ -419,6 +419,7 @@ static void zendan(struct program_config *c)
 		script_execute(v, wgT("program"), c);
 		qr_close(v);
 	}
+	return true;
 }
 
 static bool memory_image_init(const struct memory *from, struct flash_memory_driver *t, struct textcontrol *log)
@@ -441,40 +442,41 @@ static bool memory_image_init(const struct memory *from, struct flash_memory_dri
 	return true;
 }
 
-void script_program_execute(struct program_config *c)
+bool script_program_execute(struct program_config *c)
 {
 //rom image load
 	struct romimage rom;
 	if(nesfile_load(&c->log, c->target, &rom) == false){
 		c->log.append(c->log.object, wgT("ROM image open error"));
-		return;
+		return false;
 	}
 //variable init
 	c->mappernum = rom.mappernum;
 	c->cpu.memory.name = wgT("Program Flash");
 	if(memory_image_init(&rom.cpu_rom, &c->cpu, &c->log) == false){
 		nesbuffer_free(&rom, 0);
-		return;
+		return false;
 	}
 	c->ppu.memory.name = wgT("Charcter Flash");
 	if(memory_image_init(&rom.ppu_rom, &c->ppu, &c->log) == false){
 		nesbuffer_free(&rom, 0);
-		return;
+		return false;
 	}
 //reader initalize
 	c->handle = c->control->open(c->except);
 	if(c->handle == NULL){
 		c->log.append(c->log.object, wgT("reader open error\n"));
 		nesbuffer_free(&rom, 0);
-		return;
+		return false;
 	}
 //program start, reader finalize
 	if(connection_check(c->handle, &c->log, c->cpu.access, c->ppu.access) == false){
 		nesbuffer_free(&rom, 0);
-		return;
+		return false;
 	}
-	zendan(c);
+	bool ret = zendan(c);
 	c->control->close(c->handle);
 	c->handle = NULL;
 	nesbuffer_free(&rom, 0);
+	return ret;
 }

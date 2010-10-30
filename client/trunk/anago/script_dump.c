@@ -336,7 +336,7 @@ static void dump_memory_driver_init(struct dump_memory_driver *dd)
 	dd->read_count = 0;
 }
 
-void script_dump_execute(struct dump_config *d)
+bool script_dump_execute(struct dump_config *d)
 {
 	dump_memory_driver_init(&d->cpu);
 	d->cpu.memory.name = wgT("Program");
@@ -355,7 +355,7 @@ void script_dump_execute(struct dump_config *d)
 		qr_function_register_global(v, wgT("require"), script_require);
 		if(script_execute(v, d) == false){
 			qr_close(v);
-			return;
+			return false;
 		}
 		qr_close(v);
 	}
@@ -365,11 +365,11 @@ void script_dump_execute(struct dump_config *d)
 	d->handle = d->control->open(d->except);
 	if(d->handle == NULL){
 		d->log.append(d->log.object, wgT("reader open error\n"));
-		return;
+		return false;
 	}
 	d->control->init(d->handle);
 	if(connection_check(d->handle, &d->log, d->cpu.access, d->ppu.access) == false){
-		return;
+		return false;
 	}
 	{
 		HSQUIRRELVM v = qr_open(&d->log); 
@@ -385,4 +385,5 @@ void script_dump_execute(struct dump_config *d)
 	}
 	d->control->close(d->handle);
 	d->handle = NULL;
+	return true;
 }

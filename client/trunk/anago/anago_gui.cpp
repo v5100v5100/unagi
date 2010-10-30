@@ -41,7 +41,7 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_dump_romimage_label->Wrap( -1 );
 	fgSizer1->Add( m_dump_romimage_label, 0, wxALL, 5 );
 	
-	m_dump_romimage_picker = new wxFilePickerCtrl( m_panel_dump, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.*"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_OVERWRITE_PROMPT|wxFLP_SAVE|wxFLP_USE_TEXTCTRL );
+	m_dump_romimage_picker = new wxFilePickerCtrl( m_panel_dump, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.nes"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_OVERWRITE_PROMPT|wxFLP_SAVE|wxFLP_USE_TEXTCTRL );
 	fgSizer1->Add( m_dump_romimage_picker, 0, wxALL|wxEXPAND, 5 );
 	
 	bSizer9->Add( fgSizer1, 0, wxEXPAND, 5 );

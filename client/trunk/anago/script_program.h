@@ -21,5 +21,5 @@ struct program_config{
 	struct textcontrol log;
 	void (*except)(const wgChar *str);
 };
-void script_program_execute(struct program_config *c);
+bool script_program_execute(struct program_config *c);
 #endif

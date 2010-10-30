@@ -17,5 +17,5 @@ struct dump_config{
 	struct textcontrol log;
 	void (*except)(const wgChar *str);
 };
-void script_dump_execute(struct dump_config *c);
+bool script_dump_execute(struct dump_config *c);
 #endif

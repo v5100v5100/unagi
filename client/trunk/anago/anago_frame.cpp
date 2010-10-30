@@ -3,6 +3,7 @@
 #include <wx/thread.h>
 #include <wx/dir.h>
 #include <wx/sound.h>
+#include <wx/fileconf.h>
 #include <cstdarg>
 #include "type.h"
 #include "anago_gui.h"
@@ -116,11 +117,13 @@ void choice_append(void *choice, const wxChar *str)
 
 //---- script execute thread ----
 class anago_frame;
+
 class anago_dumper : public wxThread
 {
 private:
 	anago_frame *m_frame;
 	struct dump_config m_config;
+	const wxSound m_sound_success, m_sound_fail;
 protected:
 	void *Entry(void);
 	void OnExit()
@@ -129,7 +132,8 @@ protected:
 		delete [] m_config.target;
 	}
 public:
-	anago_dumper(anago_frame *f, const struct dump_config *d) : wxThread()
+	anago_dumper(anago_frame *f, const struct dump_config *d, wxString sound_success, wxString sound_fail) 
+	  : wxThread(), m_sound_success(sound_success), m_sound_fail(sound_fail)
 	{
 		m_frame = f;
 		m_config = *d; //struct data copy
@@ -141,6 +145,7 @@ class anago_programmer : public wxThread
 private:
 	anago_frame *m_frame;
 	struct program_config m_config;
+	const wxSound m_sound_success, m_sound_fail;
 protected:
 	void *Entry(void);
 	void OnExit()
@@ -149,7 +154,8 @@ protected:
 		delete [] m_config.target;
 	}
 public:
-	anago_programmer(anago_frame *f, const struct program_config *d) : wxThread()
+	anago_programmer(anago_frame *f, const struct program_config *d, wxString sound_success, wxString sound_fail) 
+	  : wxThread(), m_sound_success(sound_success), m_sound_fail(sound_fail)
 	{
 		m_frame = f;
 		m_config = *d;
@@ -161,6 +167,9 @@ class anago_frame : public frame_main
 {
 private:
 	wxThread *m_anago_thread;
+	const wxString m_config_file;
+	wxString m_dump_sound_success, m_dump_sound_fail;
+	wxString m_program_sound_success, m_program_sound_fail;
 	enum{
 		STATUS_IDLE, STATUS_DUMPPING, STATUS_PROGRAMMING
 	}m_status;
@@ -275,7 +284,7 @@ private:
 /*		if(m_anago_thread != NULL){ //???
 			delete m_anago_thread;
 		}*/
-		m_anago_thread = new anago_dumper(this, &config);
+		m_anago_thread = new anago_dumper(this, &config, m_dump_sound_success, m_dump_sound_fail);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
 			*m_log << wxT("thread creating error");
 		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
@@ -387,7 +396,7 @@ private:
 		m_program_ppu_device->Disable();
 		m_program_compare->Disable();
 
-		m_anago_thread = new anago_programmer(this, &f);
+		m_anago_thread = new anago_programmer(this, &f, m_program_sound_success, m_program_sound_fail);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
 			*m_log << wxT("thread creating error");
 		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
@@ -442,18 +451,48 @@ protected:
 	}
 public:
 	/** Constructor */
-	anago_frame( wxWindow* parent ) : frame_main(parent)
+	anago_frame( wxWindow* parent )
+	  : frame_main(parent), 
+#ifdef WIN32
+	  m_config_file(wxGetCwd() + wxT("/anago.cfg"))
+#else
+	  m_config_file(wxT(".anago"))
+#endif
 	{
+//form config load
+		{
+			wxFileConfig config(wxEmptyString, wxEmptyString, m_config_file);
+			wxPoint position;
+			
+			config.Read(wxT("position.x"), &position.x, 32);
+			config.Read(wxT("position.y"), &position.y, 32);
+			this->SetPosition(position);
+			
+			wxSize size;
+			config.Read(wxT("size.x"), &size.x, 340);
+			config.Read(wxT("size.y"), &size.y, 460);
+			this->SetSize(size);
+			
+			config.Read(wxT("program.sound.success"), &m_program_sound_success, wxT("cuckoo.wav"));
+			config.Read(wxT("program.sound.fail"), &m_program_sound_fail, wxT("doggrowl.wav"));
+
+			config.Read(wxT("dump.sound.success"), &m_dump_sound_success, wxT("tinkalink2.wav"));
+			config.Read(wxT("dump.sound.fail"), &m_dump_sound_fail, wxT("doggrowl.wav"));
+		}
+
+//form item init
 		this->script_choice_init(m_dump_script_choice, wxT("*.ad"));
 		this->script_choice_init(m_program_script_choice, wxT("*.af"));
 		this->dump_increase_init(m_dump_cpu_increase);
 		this->dump_increase_init(m_dump_ppu_increase);
 
-		struct flash_listup list;
-		list.obj_cpu = m_program_cpu_device;
-		list.obj_ppu = m_program_ppu_device;
-		list.append = choice_append;
-		flash_device_listup(&list);
+		{
+			struct flash_listup list;
+			list.obj_cpu = m_program_cpu_device;
+			list.obj_ppu = m_program_ppu_device;
+			list.append = choice_append;
+			flash_device_listup(&list);
+		}
 		if(m_program_cpu_device->GetCount() == 0){
 			*m_log << wxT("warning: flash device parameter not found\n");
 		}else{
@@ -467,14 +506,15 @@ public:
 		m_status = STATUS_IDLE;
 
 //version infomation
-		struct textcontrol detail;
-		*m_version_detail << wxT("anago build at ") << wxT(__DATE__) << wxT("\n\n");
-		detail.object = m_version_detail;
-		detail.append = version_append;
-		detail.append_va = version_append_va;
-		qr_version_print(&detail);
-		*m_version_detail << wxVERSION_STRING << wxT(" (c) Julian Smar");
-		
+		{
+			struct textcontrol detail;
+			*m_version_detail << wxT("anago build at ") << wxT(__DATE__) << wxT("\n\n");
+			detail.object = m_version_detail;
+			detail.append = version_append;
+			detail.append_va = version_append_va;
+			qr_version_print(&detail);
+			*m_version_detail << wxVERSION_STRING << wxT(" (c) Julian Smar");
+		}
 #ifdef WIN32
 		#include "okada.xpm"
 		wxBitmap bitmap_okada(okada);
@@ -533,22 +573,32 @@ public:
 	{
 		*m_log << t;
 	}
+	virtual ~anago_frame(void)
+	{
+		wxFileConfig config(wxEmptyString, wxEmptyString, m_config_file);
+		wxPoint position = this->GetPosition();
+		
+		config.Write(wxT("position.x"), position.x);
+		config.Write(wxT("position.y"), position.y);
+
+		wxSize size = this->GetSize();
+		config.Write(wxT("size.x"), size.x);
+		config.Write(wxT("size.y"), size.y);
+	}
 };
 
 
 void *anago_dumper::Entry(void)
 {
 	try{
-		script_dump_execute(&m_config);
-
-		wxSound sound(wxT("tinkalink2.wav"), false);
-		if(sound.IsOk() == true){
-			sound.Play();
+		if(script_dump_execute(&m_config) == true){
+			if(m_sound_success.IsOk() == true){
+				m_sound_success.Play();
+			}
 		}
 	}catch(const wxChar *t){
-		wxSound sound(wxT("doggrowl.wav"), false);
-		if(sound.IsOk() == true){
-			sound.Play();
+		if(m_sound_fail.IsOk() == true){
+			m_sound_fail.Play();
 		}
 		m_frame->LogAppend(t);
 	}
@@ -559,16 +609,14 @@ void *anago_dumper::Entry(void)
 void *anago_programmer::Entry(void)
 {
 	try{
-		script_program_execute(&m_config);
-
-		wxSound sound(wxT("cuckoo.wav"), false);
-		if(sound.IsOk() == true){
-			sound.Play();
+		if(script_program_execute(&m_config) == true){
+			if(m_sound_success.IsOk() == true){
+				m_sound_success.Play();
+			}
 		}
 	}catch(const wxChar *t){
-		wxSound sound(wxT("doggrowl.wav"), false);
-		if(sound.IsOk() == true){
-			sound.Play();
+		if(m_sound_fail.IsOk() == true){
+			m_sound_fail.Play();
 		}
 		m_frame->LogAppend(t);
 	}

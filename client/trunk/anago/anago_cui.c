@@ -13,9 +13,21 @@
 #include "flash_device.h"
 #include "script_program.h"
 
+#ifdef _UNICODE
+  #define PUTS _putws
+  #define PRINTF wprintf
+#else
+  #define PUTS puts
+  #define PRINTF printf
+#endif
+
 static void text_append_va(void *obj, const wgChar *format, va_list list)
 {
+#ifdef _UNICODE
 	vwprintf(format, list);
+#else
+	vprintf(format, list);
+#endif
 }
 
 static void text_append(void *obj, const wgChar *format, ...)
@@ -33,12 +45,6 @@ static void log_set(struct textcontrol *log)
 	log->append_va = text_append_va;
 }
 
-#ifdef _UNICODE
-  #define PUTS _putws
-#else
-  #define PUTS puts
-#endif
-
 static void except(const wgChar *str)
 {
 	PUTS(str);
@@ -49,11 +55,7 @@ static bool program_rom_set(const wgChar *device, wgChar trans, struct memory *m
 {
 	m->offset = 0;
 	if(flash_device_get(device, f) == false){
-#ifdef _UNICODE
-		wprintf(L"unknown flash memory device %s\n", device);
-#else
-		printf("unknown flash memory device %s\n", device);
-#endif
+		PRINTF(wgT("unknown flash memory device %s\n"), device);
 		return false;
 	}
 	switch(trans){
@@ -198,11 +200,7 @@ static void dump(int c, wgChar **v)
 static void usage(const wgChar *v)
 {
 	PUTS(wgT("famicom bus simluator 'anago'"));
-#ifdef _UNICODE
-	wprintf(L"%s [mode] [script] [target] ....\n", v);
-#else
-	printf("%s [mode] [script] [target] ....\n", v);
-#endif
+	PRINTF(wgT("%s [mode] [script] [target] ....\n"), v);
 }
 
 #ifdef WIN32
@@ -218,9 +216,9 @@ int anago_cui(int c, wgChar **v)
 		wchar_t **v;
 		v = Malloc(sizeof(wchar_t *) * c);
 		for(i = 0; i < c; i++){
-			size_t len = strlen(vv[i]);
-			v[i] = Malloc(sizeof(wchar_t) * (len + 1));
-			mbstowcs(v[i], vv[i], len + 1);
+			size_t len = strlen(vv[i]) + 1;
+			v[i] = Malloc(sizeof(wchar_t) * len);
+			mbstowcs(v[i], vv[i], len);
 		}
 #endif
 		switch(v[1][0]){
@@ -241,8 +239,12 @@ int anago_cui(int c, wgChar **v)
 		}
 		Free(v);
 #endif
-	}else{
-		//usage(v[0]);
+	}else{ //usage
+		size_t len = strlen(vv[0]) + 1;
+		wchar_t *t = Malloc(sizeof(wchar_t) * len);
+		mbstowcs(t, vv[0], len);
+		usage(t);
+		Free(t);
 	}
 	mm_end();
 	return 0;
