@@ -3,7 +3,7 @@ VPATH = ..
 ifeq ($(RELEASE),1)
   CPPFLAGS += -O2 -DNDEBUG
 else
-  CPPFLAGS += -g -O0
+  CPPFLAGS += -ggdb -O0
 endif
 CPPFLAGS += -Wall -Werror -DDEBUG=1
 CFLAGS = -I.. -I$(SQUIRREL)/include -I$(KAZZO)
@@ -34,11 +34,11 @@ else
 endif
 
 $(APP_GUI): $(OBJ_GUI) 
-	g++ -o $@ $(LDFLAG) $(OBJ_GUI) `$(WX_CONFIG) --libs core` -lusb -lsqstdlib -lsquirrel
+	g++ -o $@ $(LDFLAG) $(OBJ_GUI) `$(WX_CONFIG) --libs core,adv` -lusb -lsqstdlib -lsquirrel
 $(APP_CUI): $(OBJ_CUI) 
 	g++ -o $@ $(LDFLAG) $(OBJ_CUI) -lusb -lsqstdlib -lsquirrel
 clean:
-	rm -f $(OBJ_CUI) $(OBJ_GUI) $(OBJ_CORE)
+	rm -f $(OBJ_CUI) $(OBJ_GUI) $(OBJ_CORE) anago.d
 
 anago.d:
 	gcc -MM $(CFLAGS) $(CPPFLAGS) *.c > $@

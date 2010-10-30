@@ -6,7 +6,7 @@
 #ifdef _UNICODE
   #define FOPEN(name, mode) _wfopen(name, L##mode)
 #else
-  #define FOPEN(name, mode) _fopen(name, mode)
+  #define FOPEN(name, mode) fopen(name, mode)
 #endif
 
 int buf_load(uint8_t *buf, const wgChar *file, int size)
