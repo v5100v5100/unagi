@@ -6,12 +6,11 @@
 #include <kazzo_task.h>
 #include "type.h"
 #include "widget.h"
-#include "header.h"
+#include "romimage.h"
 #include "memory_manage.h"
 #include "reader_master.h"
 #include "squirrel_wrap.h"
 #include "flash_device.h"
-#include "progress.h"
 #include "script_common.h"
 #include "script_program.h"
 
@@ -232,9 +231,10 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 static void gauge_init(struct flash_memory_driver *t)
 {
 	t->gauge.range_set(t->gauge.bar, t->programming.count);
-	t->gauge.value_set(t->gauge.bar, t->gauge.label, t->programming.offset);
 	if(t->programming.count == 0){
 		t->gauge.label_set(t->gauge.label, wgT("skip"));
+	}else{
+		t->gauge.value_set(t->gauge.bar, t->gauge.label, t->programming.offset);
 	}
 }
 

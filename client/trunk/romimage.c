@@ -10,9 +10,8 @@ iNES header/buffer control
 #include "type.h"
 #include "file.h"
 #include "crc32.h"
-#include "config.h"
 #include "widget.h"
-#include "header.h"
+#include "romimage.h"
 
 enum{
 	NES_HEADER_SIZE = 0x10,
@@ -24,9 +23,7 @@ static const uint8_t NES_HEADER_INIT[NES_HEADER_SIZE] = {
 	0, 0, 0, 0, 0, 0, 0, 0
 };
 
-#ifndef HEADEROUT
 static 
-#endif
 void nesheader_set(const struct romimage *r, uint8_t *header)
 {
 	memcpy(header, NES_HEADER_INIT, NES_HEADER_SIZE);
@@ -38,14 +35,13 @@ void nesheader_set(const struct romimage *r, uint8_t *header)
 	if((r->cpu_ram.size != 0) || (r->backupram == true)){
 		header[6] |= 0x02;
 	}
-	//4 screen ¤ÏÌµ»ë
+	//4 screen ã¯ç„¡è¦–
 	header[6] |= (r->mappernum & 0x0f) << 4;
 	header[7] |= r->mappernum & 0xf0;
 }
 
-#ifndef HEADEROUT
 /*
-returnÃÍ: error count
+returnå€¤: error count
 */
 static int mirroring_fix(const struct textcontrol *l, struct memory *m, long min)
 {
@@ -81,7 +77,7 @@ static int mirroring_fix(const struct textcontrol *l, struct memory *m, long min
 	return ret;
 }
 
-//hash ¤Ï sha1 ¤Ë¤·¤¿¤¤¤¬Â¾¤Î¥Ç¡¼¥¿¥Ù¡¼¥¹¤Ë¤¢¤ï¤»¤Æ crc32 ¤Ë¤·¤È¤¯
+//hash ã¯ sha1 ã«ã—ãŸã„ãŒä»–ã®ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ã«ã‚ã‚ã›ã¦ crc32 ã«ã—ã¨ã
 static void rominfo_print(const struct textcontrol *l, const struct memory *m)
 {
 	if(m->size != 0){
@@ -95,7 +91,7 @@ static void rominfo_print(const struct textcontrol *l, const struct memory *m)
 void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename)
 {
 	int error = 0;
-	//RAM adapter bios size 0x2000 ¤ÏÊÑ¹¹¤·¤Ê¤¤
+	//RAM adapter bios size 0x2000 ã¯å¤‰æ›´ã—ãªã„
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){
 		error += mirroring_fix(l, &(r->cpu_rom), PROGRAM_ROM_MIN);
 	}
@@ -105,7 +101,7 @@ void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgCha
 	if((DEBUG == 0) && (error != 0)){
 		return;
 	}
-	//½¤ÀµºÑ¤ß ROM ¾ğÊóÉ½¼¨
+	//ä¿®æ­£æ¸ˆã¿ ROM æƒ…å ±è¡¨ç¤º
 	l->append(l->object, wgT("%s, mapper %d\n"), romfilename, (int) r->mappernum);
 	rominfo_print(l, &(r->cpu_rom));
 	rominfo_print(l, &(r->ppu_rom));
@@ -119,7 +115,7 @@ void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgCha
 	f = fopen(romfilename, "wb");
 #endif
 	fseek(f, 0, SEEK_SET);
-	//RAM adapter bios ¤Ë¤Ï NES ¥Ø¥Ã¥À¤òºî¤é¤Ê¤¤
+	//RAM adapter bios ã«ã¯ NES ãƒ˜ãƒƒãƒ€ã‚’ä½œã‚‰ãªã„
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){ 
 		fwrite(header, sizeof(uint8_t), NES_HEADER_SIZE, f);
 	}
@@ -174,8 +170,8 @@ void backupram_create(const struct memory *r, const wgChar *ramfilename)
 }
 
 /*
-memory size ¤Ï 2¾è¤µ¤ì¤Æ¤¤¤¯ÃÍ¤¬Àµ¾ïÃÍ.
-¤¿¤À¤·¡¢region ¤ÎºÇ¾®ÃÍ¤è¤ê¾®¤µ¤¤¾ì¹ç¤Ï test ÍÑ¤È¤·¤ÆÀµ¾ï¤Ë¤¹¤ë
+memory size ã¯ 2ä¹—ã•ã‚Œã¦ã„ãå€¤ãŒæ­£å¸¸å€¤.
+ãŸã ã—ã€region ã®æœ€å°å€¤ã‚ˆã‚Šå°ã•ã„å ´åˆã¯ test ç”¨ã¨ã—ã¦æ­£å¸¸ã«ã™ã‚‹
 */
 int memorysize_check(const long size, int region)
 {
@@ -185,7 +181,7 @@ int memorysize_check(const long size, int region)
 		min = PROGRAM_ROM_MIN;
 		break;
 	case MEMORY_AREA_CPU_RAM:
-		min = 0x800; //¤¤¤Ş¤Î¤È¤³¤í. taito ·Ï¤Ï¤â¤Ã¤È¾®¤µ¤¤¤è¤¦¤Êµ¤¤¬¤¹¤ë
+		min = 0x800; //ã„ã¾ã®ã¨ã“ã‚. taito ç³»ã¯ã‚‚ã£ã¨å°ã•ã„ã‚ˆã†ãªæ°—ãŒã™ã‚‹
 		break;
 	case MEMORY_AREA_PPU:
 		min = CHARCTER_ROM_MIN;
@@ -210,8 +206,8 @@ int memorysize_check(const long size, int region)
 }
 
 /*
-romimage ¤¬ bank ¤ÎÄêµÁÃÍ¤è¤ê¾®¤µ¤¤¾ì¹ç¤Ï romarea ¤ÎËöÈø¤ËÄ¥¤ë¡£ 
-Æ±¤¸¥Ç¡¼¥¿¤ò memcpy ¤·¤¿¤Û¤¦¤¬°ÂÁ´¤À¤¬¡¢¤È¤ê¤¢¤¨¤º¤Ç¡£
+romimage ãŒ bank ã®å®šç¾©å€¤ã‚ˆã‚Šå°ã•ã„å ´åˆã¯ romarea ã®æœ«å°¾ã«å¼µã‚‹ã€‚ 
+åŒã˜ãƒ‡ãƒ¼ã‚¿ã‚’ memcpy ã—ãŸã»ã†ãŒå®‰å…¨ã ãŒã€ã¨ã‚Šã‚ãˆãšã§ã€‚
 */
 static void nesfile_datapointer_set(const uint8_t *buf, struct memory *m, long size)
 {
@@ -223,14 +219,14 @@ static void nesfile_datapointer_set(const uint8_t *buf, struct memory *m, long s
 	if(size < m->size){
 		long fillsize = m->size - size;
 		assert(fillsize >= 0); //fillsize is minus
-		memset(data, 0xff, fillsize); //ROM ¤ÎÌ¤»ÈÍÑÎÎ°è¤Ï 0xff ¤¬´ğËÜ
+		memset(data, 0xff, fillsize); //ROM ã®æœªä½¿ç”¨é ˜åŸŸã¯ 0xff ãŒåŸºæœ¬
 		data += fillsize;
 		size -= fillsize;
 	}
 	memcpy(data, buf, size);
 }
 
-//flashmemory device capacity check ¤¬È´¤±¤Æ¤ë¤±¤É¤É¤³¤Ç¤ä¤ë¤«Ì¤Äê
+//flashmemory device capacity check ãŒæŠœã‘ã¦ã‚‹ã‘ã©ã©ã“ã§ã‚„ã‚‹ã‹æœªå®š
 bool nesfile_load(const struct textcontrol *l, const wgChar *file, struct romimage *r)
 {
 	int imagesize;
@@ -298,4 +294,3 @@ bool nesfile_load(const struct textcontrol *l, const wgChar *file, struct romima
 	Free(buf);
 	return true;
 }
-#endif

@@ -20,10 +20,9 @@ CC = gcc
 
 OBJ_CUI = anago_cui.o cui_gauge.o
 OBJ_GUI = anago_gui.o anago_frame.o
-OBJ_CORE = header.o crc32.o file.o widget.o \
-	script_program.o script_dump.o script_common.o \
-	progress.o flash_device.o \
-	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o
+OBJ_CORE = romimage.o crc32.o file.o widget.o \
+	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o \
+	script_program.o script_dump.o script_common.o flash_device.o
 
 ifneq ($(strip $(APP_CUI)),)
 	OBJ_CUI += $(OBJ_CORE)

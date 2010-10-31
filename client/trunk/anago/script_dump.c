@@ -6,8 +6,7 @@
 #include <sqstdaux.h>
 #include "type.h"
 #include "widget.h"
-#include "header.h"
-#include "progress.h"
+#include "romimage.h"
 #include "memory_manage.h"
 #include "reader_master.h"
 #include "squirrel_wrap.h"
@@ -161,7 +160,11 @@ static void memory_new_init(struct dump_memory_driver *d)
 	d->memory.offset = 0;
 	d->memory.data = Malloc(d->memory.size);
 	d->gauge.range_set(d->gauge.bar, d->memory.size);
-	d->gauge.value_set(d->gauge.bar, d->gauge.label, 0);
+	if(d->memory.size == 0){
+		d->gauge.label_set(d->gauge.label, wgT("skip"));
+	}else{
+		d->gauge.value_set(d->gauge.bar, d->gauge.label, 0);
+	}
 }
 
 //test 時/1度目の call で使用

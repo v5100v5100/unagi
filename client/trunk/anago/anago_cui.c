@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 #include "memory_manage.h"
 #include "type.h"
 #include "widget.h"
 #include "cui_gauge.h"
-#include "header.h"
+#include "romimage.h"
 #include "reader_master.h"
 #include "reader_kazzo.h"
 #include "script_dump.h"
@@ -240,11 +241,15 @@ int anago_cui(int c, wgChar **v)
 		Free(v);
 #endif
 	}else{ //usage
+#ifdef _UNICODE
 		size_t len = strlen(vv[0]) + 1;
 		wchar_t *t = Malloc(sizeof(wchar_t) * len);
 		mbstowcs(t, vv[0], len);
 		usage(t);
 		Free(t);
+#else
+		usage(v[0]);
+#endif
 	}
 	mm_end();
 	return 0;

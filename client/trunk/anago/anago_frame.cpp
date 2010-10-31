@@ -11,7 +11,7 @@
 #include "reader_master.h"
 #include "reader_kazzo.h"
 extern "C"{
-  #include "header.h"
+  #include "romimage.h"
   #include "flash_device.h"
   #include "script_dump.h"
   #include "script_program.h"
