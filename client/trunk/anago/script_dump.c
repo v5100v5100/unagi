@@ -160,11 +160,7 @@ static void memory_new_init(struct dump_memory_driver *d)
 	d->memory.offset = 0;
 	d->memory.data = Malloc(d->memory.size);
 	d->gauge.range_set(d->gauge.bar, d->memory.size);
-	if(d->memory.size == 0){
-		d->gauge.label_set(d->gauge.label, wgT("skip"));
-	}else{
-		d->gauge.value_set(d->gauge.bar, d->gauge.label, 0);
-	}
+	d->gauge.value_set(d->gauge.bar, d->gauge.label, 0);
 }
 
 //test 時/1度目の call で使用
@@ -307,15 +303,15 @@ static SQInteger memory_size_set(HSQUIRRELVM v)
 static bool script_execute(HSQUIRRELVM v, struct dump_config *d)
 {
 	bool ret = true;
-	if(SQ_FAILED(sqstd_dofile(v, _SC("dumpcore.nut"), SQFalse, SQTrue))){
+	if(SQ_FAILED(sqstd_dofile(v, wgT("dumpcore.nut"), SQFalse, SQTrue))){
 		d->log.append(d->log.object, wgT("dump core script error\n"));
 		ret = false;
-	}else if(SQ_FAILED(sqstd_dofile(v, d->script, SQFalse, SQTrue))){
+/*	}else if(SQ_FAILED(sqstd_dofile(v, d->script, SQFalse, SQTrue))){
 		d->log.append(d->log.object, wgT("%s open error\n"), d->script);
-		ret = false;
+		ret = false;*/
 	}else{
 		SQRESULT r = qr_call(
-			v, wgT("dump"), (SQUserPointer) d, true, 
+			v, wgT("dump"), (SQUserPointer) d, d->script, 
 			3, d->mappernum, d->cpu.increase, d->ppu.increase
 		);
 		if(SQ_FAILED(r)){
@@ -372,6 +368,7 @@ bool script_dump_execute(struct dump_config *d)
 	}
 	d->control->init(d->handle);
 	if(connection_check(d->handle, &d->log, d->cpu.access, d->ppu.access) == false){
+		d->control->close(d->handle);
 		return false;
 	}
 	{

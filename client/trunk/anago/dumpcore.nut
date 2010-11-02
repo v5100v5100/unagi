@@ -1,6 +1,7 @@
-mega <- 0x20000;
-function dump(d, mappernum, increase_cpu, increase_ppu)
+function dump(d, script, mappernum, increase_cpu, increase_ppu)
 {
+	const mega = 0x20000;
+	dofile(script);
 	local vram = board.vram_mirrorfind == true ? 1 : 0;
 	if(mappernum == -1){
 		mappernum = board.mappernum;

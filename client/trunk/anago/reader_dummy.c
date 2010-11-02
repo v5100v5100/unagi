@@ -1,114 +1,121 @@
-#include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
+#include "type.h"
+#include "widget.h"
 #include "reader_master.h"
-#include "reader_dummy.h"
+#include "memory_manage.h"
 
-static void dummy_init(void)
+struct reader_handle{
+	void (*except)(const wgChar *str);
+};
+
+static const struct reader_handle *dummy_open(void (*except)(const wgChar *str))
 {
+	struct reader_handle *h;
+	h = Malloc(sizeof(struct reader_handle));
+	h->except = except;
+	return h;
 }
-static int dummy_open_close(enum reader_control oc)
+
+static void dummy_close(const struct reader_handle *h)
 {
-	return OK;
+	Free((void *) h);
 }
-//---- cpu ----
-static void dummy_cpu_read(long address, long length, uint8_t *data)
+
+/*static void throw(const struct reader_handle *h)
 {
-	printf("%s %06x %04x\n", __FUNCTION__, (int) address, (int) length);
-	memset(data, 0x55, length);
-}
-static void dummy_cpu_write_6502(long address, long length, const uint8_t *data)
+#ifdef _UNICODE
+		size_t length = strlen(usb_strerror());
+		wchar_t *mm = Malloc(sizeof(wchar_t) * (length + 1));
+		mbstowcs(mm, usb_strerror(), length + 1);
+		h->except(mm);
+		Free(mm);
+#else
+		h->except(usb_strerror());
+#endif
+}*/
+
+static void dummy_read(const struct reader_handle *h, const struct gauge *g, long address, long length, uint8_t *data)
 {
-	printf("%s %04x %04x %02x\n", __FUNCTION__, (int) address, (int) length, (int) *data);
-}
-static void dummy_cpu_flash_config(long c000x, long c2aaa, long c5555, long unit, bool retry)
-{
-	printf("%s %04x %04x %04x %04x\n", __FUNCTION__, (int) c000x, (int) c2aaa, (int) c5555, (int) unit);
-}
-static long dummy_cpu_flash_program(long address, long length, const u8 *data, bool dowait, bool skip)
-{
-	int i = 0x10;
-	printf("%s %06x\n", __FUNCTION__, (int) address);
-	if(0){
-		while(i != 0){
-			printf("%02x ", *data);
-			data++;
-			i--;
-		}
-		printf("\n");
+	const int packet = 0x200;
+	while(length >= packet){
+		wait(10);
+		memset(data, 2, packet);
+		data += packet;
+		length -= packet;
+		g->value_add(g->bar, g->label, packet);
 	}
-	return 0x100;
-}
-
-static void dummy_cpu_flash_erase(long address, bool dowait)
-{
-	printf("%s %04x\n", __FUNCTION__, (int) address);
-}
-
-//---- ppu ----
-static void dummy_ppu_read(long address, long length, u8 *data)
-{
-	printf("%s %06x %04x\n", __FUNCTION__, (int) address, (int) length);
-	memset(data, 0x55, length);
-}
-static void dummy_ppu_write(long address, long length, const uint8_t *data)
-{
-	printf("%s %04x %04x %02x\n", __FUNCTION__, (int) address, (int) length, (int) *data);
-}
-static void dummy_ppu_flash_config(long c000x, long c2aaa, long c5555, long unit, bool retry)
-{
-	printf("%s %04x %04x %04x %04x\n", __FUNCTION__, (int) c000x, (int) c2aaa, (int) c5555, (int) unit);
-}
-static long dummy_ppu_flash_program(long address, long length, const u8 *data, bool dowait, bool skip)
-{
-	int i = 0x10;
-	printf("%s %06x\n", __FUNCTION__, (int) address);
-	if(0){
-		while(i != 0){
-			printf("%02x ", *data);
-			data++;
-			i--;
-		}
-		printf("\n");
+	if(length != 0){
+		memset(data, 33, length);
+		g->value_add(g->bar, g->label, length);
 	}
-	return 0x100;
 }
 
-static void dummy_ppu_flash_erase(long address, bool dowait)
+static void dummy_init(const struct reader_handle *h)
 {
-	printf("%s %04x\n", __FUNCTION__, (int) address);
 }
 
-static void dummy_flash_status(uint8_t s[2])
+static void dummy_write(const struct reader_handle *h, long address, long length, const uint8_t *data)
+{
+	Sleep(4);
+}
+
+static void dummy_flash_config(const struct reader_handle *h, long c000x, long c2aaa, long c5555, long unit, bool retry)
+{
+}
+
+static void dummy_flash_erase(const struct reader_handle *h, long address, bool dowait)
+{
+	if(dowait == true){
+		wait(10);
+	}
+}
+
+static long dummy_flash_program(const struct reader_handle *h, const struct gauge *g, long address, long length, const uint8_t *data, bool dowait, bool skip)
+{
+	if(dowait == true){
+		wait(20);
+	}
+	g->value_add(g->bar, g->label, 0x200);
+	return 0x200;
+}
+
+static void dummy_flash_status(const struct reader_handle *h, uint8_t s[2])
 {
 	s[0] = 0;
 	s[1] = 0;
 }
-static void dummy_flash_device_get(uint8_t s[2])
+
+static void dummy_flash_device_get(const struct reader_handle *h, uint8_t s[2])
 {
-	s[0] = 0x01;
-	s[1] = 0xa4;
+	s[0] = 0;
+	s[1] = 0;
 }
-static uint8_t dummy_vram_connection(void)
+
+static uint8_t dummy_vram_connection(const struct reader_handle *h)
 {
-	return 0x05;
+	return 0;
 }
+
 const struct reader_driver DRIVER_DUMMY = {
-	.name = "tester",
-	.open_or_close = dummy_open_close,
-	.init = dummy_init,
-	.cpu_read = dummy_cpu_read, .ppu_read = dummy_ppu_read,
-	.cpu_write_6502 = dummy_cpu_write_6502,
-	.flash_support = true,
-	.ppu_write = dummy_ppu_write,
-	.cpu_flash_config = dummy_cpu_flash_config,
-	.cpu_flash_erase = dummy_cpu_flash_erase,
-	.cpu_flash_program = dummy_cpu_flash_program,
-	.cpu_flash_device_get = dummy_flash_device_get,
-	.ppu_flash_config = dummy_ppu_flash_config,
-	.ppu_flash_erase = dummy_ppu_flash_erase,
-	.ppu_flash_program = dummy_ppu_flash_program,
-	.ppu_flash_device_get = dummy_flash_device_get,
-	.flash_status = dummy_flash_status,
-	.vram_connection = dummy_vram_connection
+	.cpu = {
+		.memory_read = dummy_read, 
+		.memory_write = dummy_write,
+		.flash_config = dummy_flash_config,
+		.flash_erase = dummy_flash_erase,
+		.flash_program = dummy_flash_program,
+		.flash_device_get = dummy_flash_device_get
+	}, .ppu = {
+		.memory_read = dummy_read,
+		.memory_write = dummy_write,
+		.flash_config = dummy_flash_config,
+		.flash_erase = dummy_flash_erase,
+		.flash_program = dummy_flash_program,
+		.flash_device_get = dummy_flash_device_get
+	}, .control  = {
+		.name = wgT("dummy"),
+		.open = dummy_open, .close = dummy_close,
+		.init = dummy_init,
+		.flash_status = dummy_flash_status,
+		.vram_connection = dummy_vram_connection
+	}
 };

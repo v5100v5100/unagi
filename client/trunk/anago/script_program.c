@@ -231,11 +231,8 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 static void gauge_init(struct flash_memory_driver *t)
 {
 	t->gauge.range_set(t->gauge.bar, t->programming.count);
-	if(t->programming.count == 0){
-		t->gauge.label_set(t->gauge.label, wgT("skip"));
-	}else{
-		t->gauge.value_set(t->gauge.bar, t->gauge.label, t->programming.offset);
-	}
+
+	t->gauge.value_set(t->gauge.bar, t->gauge.label, 0);
 }
 
 static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, struct flash_memory_driver *t, bool compare, SQInteger *state, struct textcontrol *log)
@@ -248,7 +245,7 @@ static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, st
 			}
 		}
 
-		sq_wakeupvm(co, SQFalse, SQFalse, SQTrue/*, SQTrue*/);
+		sq_wakeupvm(co, SQFalse, SQFalse, SQTrue, SQFalse);
 		*state = sq_getvmstate(co);
 	}else{
 		program_execute(h, t);
@@ -340,15 +337,15 @@ static SQInteger ppu_program_count(HSQUIRRELVM v)
 static bool script_execute(HSQUIRRELVM v, const wgChar *function, struct program_config *c)
 {
 	bool ret = true;
-	if(SQ_FAILED(sqstd_dofile(v, _SC("flashcore.nut"), SQFalse, SQTrue))){
+	if(SQ_FAILED(sqstd_dofile(v, _SC("programcore.nut"), SQFalse, SQTrue))){
 		c->log.append(c->log.object, wgT("flash core script error\n"));
 		ret = false;
-	}else if(SQ_FAILED(sqstd_dofile(v, c->script, SQFalse, SQTrue))){
+/*	}else if(SQ_FAILED(sqstd_dofile(v, c->script, SQFalse, SQTrue))){
 		c->log.append(c->log.object, wgT("%s open error\n"), c->script);
-		ret = false;
+		ret = false;*/
 	}else{
 		SQRESULT r = qr_call(
-			v, function, (SQUserPointer) c, true, 
+			v, function, (SQUserPointer) c, c->script,
 			1 + 3 * 2, c->mappernum, 
 			c->cpu.memory.transtype, c->cpu.memory.size, c->cpu.flash.capacity,
 			c->ppu.memory.transtype, c->ppu.memory.size, c->cpu.flash.capacity
@@ -472,6 +469,7 @@ bool script_program_execute(struct program_config *c)
 //program start, reader finalize
 	if(connection_check(c->handle, &c->log, c->cpu.access, c->ppu.access) == false){
 		nesbuffer_free(&rom, 0);
+		c->control->close(c->handle);
 		return false;
 	}
 	bool ret = zendan(c);

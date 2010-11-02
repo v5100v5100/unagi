@@ -41,7 +41,7 @@ class frame_main : public wxFrame
 	private:
 	
 	protected:
-		wxNotebook* m_notebook3;
+		wxNotebook* m_notebook;
 		wxPanel* m_panel_dump;
 		wxStaticText* m_dump_script_label;
 		wxChoice* m_dump_script_choice;
@@ -101,6 +101,37 @@ class frame_main : public wxFrame
 		
 		frame_main( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("anago wx"), const wxPoint& pos = wxPoint( 32,32 ), const wxSize& size = wxSize( 340,460 ), long style = wxDEFAULT_FRAME_STYLE|wxTAB_TRAVERSAL );
 		~frame_main();
+	
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// Class rampanel
+///////////////////////////////////////////////////////////////////////////////
+class rampanel : public wxPanel 
+{
+	private:
+	
+	protected:
+		wxStaticText* m_script_label;
+		wxChoice* m_script_choice;
+		wxStaticText* m_ramimage_label;
+		wxFilePickerCtrl* m_ramimage_picker;
+		wxStaticLine* m_staticline1;
+		wxStaticText* m_cpu_label;
+		wxGauge* m_cpu_gauge;
+		wxChoice* m_cpu_increase;
+		wxStaticText* m_cpu_value;
+		wxStaticLine* m_staticline3;
+		wxButton* m_button;
+		
+		// Virtual event handlers, overide them in your derived class
+		virtual void dump_button_click( wxCommandEvent& event ) { event.Skip(); }
+		
+	
+	public:
+		
+		rampanel( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxTAB_TRAVERSAL );
+		~rampanel();
 	
 };
 

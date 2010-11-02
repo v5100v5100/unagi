@@ -17,6 +17,9 @@ extern "C"{
   #include "script_program.h"
   void qr_version_print(const struct textcontrol *l);
 }
+#if DEBUG==1
+extern const struct reader_driver DRIVER_DUMMY;
+#endif
 #ifdef _UNICODE
   #define STRNCPY wcsncpy
 #else
@@ -33,7 +36,11 @@ static void value_set(void *gauge, void *label, int value)
 	wxGauge *g = static_cast<wxGauge *>(gauge);
 	wxStaticText *l = static_cast<wxStaticText *>(label);
 	wxString str;
-	str.Printf(wxT("0x%06x/0x%06x"), value, g->GetRange());
+	if(g->GetRange() == 1){
+		str = wxT("skip             ");
+	}else{
+		str.Printf(wxT("0x%06x/0x%06x"), value, g->GetRange());
+	}
 	
 	wxMutexGuiEnter();
 	g->SetValue(value);
@@ -168,11 +175,13 @@ class anago_frame : public frame_main
 private:
 	wxThread *m_anago_thread;
 	const wxString m_config_file;
+	const struct reader_driver *m_reader;
 	wxString m_dump_sound_success, m_dump_sound_fail;
 	wxString m_program_sound_success, m_program_sound_fail;
 	enum{
 		STATUS_IDLE, STATUS_DUMPPING, STATUS_PROGRAMMING
 	}m_status;
+	
 	void gauge_init(struct gauge *t)
 	{
 		t->label_set = label_set;
@@ -268,9 +277,9 @@ private:
 			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
 		}
 
-		config.control = &DRIVER_KAZZO.control;
-		config.cpu.access = &DRIVER_KAZZO.cpu;
-		config.ppu.access = &DRIVER_KAZZO.ppu;
+		config.control = &m_reader->control;
+		config.cpu.access = &m_reader->cpu;
+		config.ppu.access = &m_reader->ppu;
 
 		m_dump_script_choice->Disable();
 		m_dump_romimage_picker->Disable();
@@ -382,9 +391,9 @@ private:
 			return;
 		}
 
-		f.control = &DRIVER_KAZZO.control;
-		f.cpu.access = &DRIVER_KAZZO.cpu;
-		f.ppu.access = &DRIVER_KAZZO.ppu;
+		f.control = &m_reader->control;
+		f.cpu.access = &m_reader->cpu;
+		f.ppu.access = &m_reader->ppu;
 
 		m_program_script_choice->Disable();
 		m_program_romimage_picker->Disable();
@@ -451,7 +460,7 @@ protected:
 	}
 public:
 	/** Constructor */
-	anago_frame( wxWindow* parent )
+	anago_frame(wxWindow* parent, const struct reader_driver *r)
 	  : frame_main(parent), 
 #ifdef WIN32
 	  m_config_file(wxGetCwd() + wxT("/anago.cfg"))
@@ -459,6 +468,7 @@ public:
 	  m_config_file(wxT(".anago"))
 #endif
 	{
+		m_reader = r;
 //form config load
 		{
 			wxFileConfig config(wxEmptyString, wxEmptyString, m_config_file);
@@ -540,11 +550,16 @@ public:
 //		wxBitmap bitmap_okada(araki);
 		m_version_photo->SetBitmap(bitmap_okada);
 		m_version_photo->SetToolTip(tooltip);
+		
+		if(DEBUG==1){
+			m_dump_romimage_picker->GetTextCtrl()->SetLabel(wxT("t.nes"));
+		}
 	}
 
 	void DumpThreadFinish(void)
 	{
 		m_dump_script_choice->Enable();
+		m_dump_script_choice->SetFocus();
 		m_dump_romimage_picker->Enable();
 		m_dump_check_battery->Enable();
 		m_dump_check_forcemapper->Enable();
@@ -560,6 +575,7 @@ public:
 	void ProgramThreadFinish(void)
 	{
 		m_program_script_choice->Enable();
+		m_dump_script_choice->SetFocus();
 		m_program_romimage_picker->Enable();
 		m_program_compare->Enable();
 		m_program_button->SetLabel(wxT("&program"));
@@ -644,7 +660,11 @@ private:
 public: 
 	bool OnInit()
 	{
-		m_frame = new anago_frame(NULL);
+		if(DEBUG== 1 && this->argc >= 2){
+			m_frame = new anago_frame(NULL, &DRIVER_DUMMY);
+		}else{
+			m_frame = new anago_frame(NULL, &DRIVER_KAZZO);
+		}
 		m_frame->Show();
 		
 		return true;

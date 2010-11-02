@@ -3,7 +3,7 @@
 struct textcontrol;
 HSQUIRRELVM qr_open(struct textcontrol *p);
 void qr_function_register_global(HSQUIRRELVM v, const wgChar *name, SQFUNCTION f);
-SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool settop, int argnum, ...);
+SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, const SQChar *scriptfile, int argnum, ...);
 void qr_close(HSQUIRRELVM v);
 SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...);
 SQRESULT qr_userpointer_get(HSQUIRRELVM v, SQUserPointer *up);

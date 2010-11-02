@@ -34,8 +34,6 @@ static void print_other(HSQUIRRELVM v, const SQChar *s, ...)
 HSQUIRRELVM qr_open(const struct textcontrol *p)
 {
 	HSQUIRRELVM v = sq_open(0x400);
-	sqstd_seterrorhandlers(v);
-	sqstd_register_iolib(v);
 	if(p == NULL){
 		sq_setprintfunc(v, print_stdout);
 	}else{
@@ -43,6 +41,8 @@ HSQUIRRELVM qr_open(const struct textcontrol *p)
 		sq_setprintfunc(v, print_other);
 	}
 	sq_pushroottable(v);
+	sqstd_seterrorhandlers(v);
+	sqstd_register_iolib(v);
 	return v;
 }
 
@@ -56,7 +56,7 @@ void qr_function_register_global(HSQUIRRELVM v, const SQChar *name, SQFUNCTION f
 	sq_pop(v, 1);
 }
 
-SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bool settop, int argnum, ...)
+SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, const SQChar *scriptfile, int argnum, ...)
 {
 	SQRESULT r = SQ_ERROR;
 	SQInteger top = sq_gettop(v);
@@ -68,14 +68,13 @@ SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, bo
 		va_start(ap, argnum);
 		sq_pushroottable(v);
 		sq_pushuserpointer(v, up);
+		sq_pushstring(v, scriptfile, -1);
 		for(i = 0; i < argnum; i++){
 			sq_pushinteger(v, va_arg(ap, long));
 		}
-		r = sq_call(v, 2 + argnum, SQFalse, SQTrue); //calls the function 
+		r = sq_call(v, 3 + argnum, SQFalse, SQTrue); //calls the function 
 	}
-	if(settop == true){
-		sq_settop(v, top); //restores the original stack size
-	}
+	sq_settop(v, top); //restores the original stack size
 	return r;
 }
 

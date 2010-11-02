@@ -103,6 +103,8 @@ static void value_set(void *obj, void *d, int value)
 	t->value = value;
 	if(t->range != 0){
 		draw(t);
+	}else{
+		PRINTF(wgT("%s skip"), t->name);
 	}
 	console_move(1);
 }

@@ -77,21 +77,20 @@ static bool program_rom_set(const wgChar *device, wgChar trans, struct memory *m
 	return true;
 }
 
-static void program(int c, wgChar **v)
+static void program(int c, wgChar **v, const struct reader_driver *r)
 {
 	struct program_config config;
 	config.cpu.memory.data = NULL;
 	config.ppu.memory.data = NULL;
 	config.script = v[2];
 	config.target = v[3];
-	config.control = &DRIVER_KAZZO.control;
-	config.cpu.access = &DRIVER_KAZZO.cpu;
-	config.ppu.access = &DRIVER_KAZZO.ppu;
+	config.control = &r->control;
+	config.cpu.access = &r->cpu;
+	config.ppu.access = &r->ppu;
 	config.compare = false;
 	config.testrun = false;
 	switch(v[1][0]){
 	case 'a':
-//		config.reader = &DRIVER_DUMMY;
 		config.testrun = true;
 		break;
 	case 'F':
@@ -142,7 +141,7 @@ static void program(int c, wgChar **v)
 	cui_gauge_destory(&config.ppu.gauge);
 }
 
-static void dump(int c, wgChar **v)
+static void dump(int c, wgChar **v, const struct reader_driver *r)
 {
 	struct dump_config config;
 	if(c < 4){
@@ -177,9 +176,9 @@ static void dump(int c, wgChar **v)
 	}
 	config.script = v[2];
 	config.target = v[3];
-	config.control = &DRIVER_KAZZO.control;
-	config.cpu.access = &DRIVER_KAZZO.cpu;
-	config.ppu.access = &DRIVER_KAZZO.ppu;
+	config.control = &r->control;
+	config.cpu.access = &r->cpu;
+	config.ppu.access = &r->ppu;
 	cui_gauge_new(&config.cpu.gauge, wgT("Program  ROM"), 2, -2);
 	cui_gauge_new(&config.ppu.gauge, wgT("Charcter ROM"), 1, -1);
 	config.except = except;
@@ -204,6 +203,10 @@ static void usage(const wgChar *v)
 	PRINTF(wgT("%s [mode] [script] [target] ....\n"), v);
 }
 
+#if DEBUG==1
+extern const struct reader_driver DRIVER_DUMMY;
+#endif
+
 #ifdef WIN32
 int main(int c, char **vv)
 #else
@@ -212,6 +215,7 @@ int anago_cui(int c, wgChar **v)
 {
 	mm_init();
 	if(c >= 2){
+		const struct reader_driver *r = &DRIVER_KAZZO;
 #ifdef _UNICODE
 		int i;
 		wchar_t **v;
@@ -223,11 +227,19 @@ int anago_cui(int c, wgChar **v)
 		}
 #endif
 		switch(v[1][0]){
-		case wgT('a'): case wgT('f'): case wgT('F'):
-			program(c, v);
+#if DEBUG==1
+		case wgT('x'):
+			r = &DRIVER_DUMMY;
+#endif
+		case wgT('f'): case wgT('F'):
+			program(c, v, r);
 			break;
+#if DEBUG==1
+		case wgT('z'): 
+			r = &DRIVER_DUMMY;
+#endif
 		case wgT('d'): case wgT('D'):
-			dump(c,v);
+			dump(c,v, r);
 			break;
 		default:
 			usage(v[0]);

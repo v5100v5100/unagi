@@ -1,7 +1,7 @@
 APP_CUI = anago.exe
 APP_GUI = anago_wx.exe
 LIBUSB = d:/dev/LibUSB-Win32
-SQUIRREL = ../SQUIRREL2
+SQUIRREL = ../SQUIRREL224
 KAZZO = ../../kazzo/firmware
 WX_CONFIG = /d/dev/wxWidgets/build_unicode_sound3/wx-config
 CPPFLAGS =  -D_UNICODE

@@ -17,8 +17,8 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	wxBoxSizer* bSizer4;
 	bSizer4 = new wxBoxSizer( wxVERTICAL );
 	
-	m_notebook3 = new wxNotebook( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
-	m_panel_dump = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	m_notebook = new wxNotebook( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+	m_panel_dump = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer9;
 	bSizer9 = new wxBoxSizer( wxVERTICAL );
 	
@@ -142,8 +142,8 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_panel_dump->SetSizer( bSizer9 );
 	m_panel_dump->Layout();
 	bSizer9->Fit( m_panel_dump );
-	m_notebook3->AddPage( m_panel_dump, wxT("dump"), true );
-	m_panel_program = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	m_notebook->AddPage( m_panel_dump, wxT("dump"), true );
+	m_panel_program = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer91;
 	bSizer91 = new wxBoxSizer( wxVERTICAL );
 	
@@ -272,8 +272,8 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_panel_program->SetSizer( bSizer91 );
 	m_panel_program->Layout();
 	bSizer91->Fit( m_panel_program );
-	m_notebook3->AddPage( m_panel_program, wxT("program"), false );
-	m_panel_version = new wxPanel( m_notebook3, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	m_notebook->AddPage( m_panel_program, wxT("program"), false );
+	m_panel_version = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer30;
 	bSizer30 = new wxBoxSizer( wxVERTICAL );
 	
@@ -310,9 +310,9 @@ frame_main::frame_main( wxWindow* parent, wxWindowID id, const wxString& title, 
 	m_panel_version->SetSizer( bSizer30 );
 	m_panel_version->Layout();
 	bSizer30->Fit( m_panel_version );
-	m_notebook3->AddPage( m_panel_version, wxT("version"), false );
+	m_notebook->AddPage( m_panel_version, wxT("version"), false );
 	
-	bSizer4->Add( m_notebook3, 0, wxALL|wxEXPAND, 0 );
+	bSizer4->Add( m_notebook, 0, wxALL|wxEXPAND, 0 );
 	
 	m_panel_log = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer6;
@@ -343,5 +343,97 @@ frame_main::~frame_main()
 	m_dump_check_forcemapper->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( frame_main::mapper_change_check ), NULL, this );
 	m_dump_button->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( frame_main::dump_button_click ), NULL, this );
 	m_program_button->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( frame_main::program_button_click ), NULL, this );
+	
+}
+
+rampanel::rampanel( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style ) : wxPanel( parent, id, pos, size, style )
+{
+	this->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_ACTIVEBORDER ) );
+	
+	wxBoxSizer* bSizer9;
+	bSizer9 = new wxBoxSizer( wxVERTICAL );
+	
+	wxFlexGridSizer* fgSizer1;
+	fgSizer1 = new wxFlexGridSizer( 2, 2, 0, 0 );
+	fgSizer1->AddGrowableCol( 1 );
+	fgSizer1->SetFlexibleDirection( wxBOTH );
+	fgSizer1->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
+	
+	m_script_label = new wxStaticText( this, wxID_ANY, wxT("&script"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_script_label->Wrap( -1 );
+	fgSizer1->Add( m_script_label, 0, wxALL, 5 );
+	
+	wxArrayString m_script_choiceChoices;
+	m_script_choice = new wxChoice( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_script_choiceChoices, 0 );
+	m_script_choice->SetSelection( 0 );
+	fgSizer1->Add( m_script_choice, 0, wxALL|wxEXPAND, 5 );
+	
+	m_ramimage_label = new wxStaticText( this, wxID_ANY, wxT("&RAM image"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_ramimage_label->Wrap( -1 );
+	fgSizer1->Add( m_ramimage_label, 0, wxALL, 5 );
+	
+	m_ramimage_picker = new wxFilePickerCtrl( this, wxID_ANY, wxEmptyString, wxT("Select a file"), wxT("*.sav"), wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_OVERWRITE_PROMPT|wxFLP_SAVE|wxFLP_USE_TEXTCTRL );
+	fgSizer1->Add( m_ramimage_picker, 0, wxALL|wxEXPAND, 5 );
+	
+	bSizer9->Add( fgSizer1, 0, wxEXPAND, 5 );
+	
+	m_staticline1 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	bSizer9->Add( m_staticline1, 0, wxALL|wxEXPAND, 2 );
+	
+	wxBoxSizer* bSizer12;
+	bSizer12 = new wxBoxSizer( wxHORIZONTAL );
+	
+	m_cpu_label = new wxStaticText( this, wxID_ANY, wxT("Work RAM"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_cpu_label->Wrap( -1 );
+	m_cpu_label->SetMinSize( wxSize( 80,-1 ) );
+	
+	bSizer12->Add( m_cpu_label, 0, wxALL, 5 );
+	
+	m_cpu_gauge = new wxGauge( this, wxID_ANY, 100, wxDefaultPosition, wxSize( -1,12 ), wxGA_HORIZONTAL );
+	bSizer12->Add( m_cpu_gauge, 1, wxALL|wxALIGN_CENTER_VERTICAL, 0 );
+	
+	bSizer9->Add( bSizer12, 1, wxEXPAND, 5 );
+	
+	wxBoxSizer* bSizer14;
+	bSizer14 = new wxBoxSizer( wxHORIZONTAL );
+	
+	wxArrayString m_cpu_increaseChoices;
+	m_cpu_increase = new wxChoice( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_cpu_increaseChoices, 0 );
+	m_cpu_increase->SetSelection( 0 );
+	m_cpu_increase->SetMinSize( wxSize( 60,-1 ) );
+	
+	bSizer14->Add( m_cpu_increase, 0, wxALL, 5 );
+	
+	m_cpu_value = new wxStaticText( this, wxID_ANY, wxT("0x000000/0x000000"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_cpu_value->Wrap( -1 );
+	m_cpu_value->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), 76, 90, 90, false, wxEmptyString ) );
+	
+	bSizer14->Add( m_cpu_value, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+	
+	bSizer9->Add( bSizer14, 1, wxALIGN_RIGHT, 5 );
+	
+	m_staticline3 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	bSizer9->Add( m_staticline3, 0, wxEXPAND | wxALL, 2 );
+	
+	wxBoxSizer* bSizer61;
+	bSizer61 = new wxBoxSizer( wxHORIZONTAL );
+	
+	m_button = new wxButton( this, wxID_ANY, wxT("&dump"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer61->Add( m_button, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+	
+	bSizer9->Add( bSizer61, 0, wxALIGN_RIGHT, 5 );
+	
+	this->SetSizer( bSizer9 );
+	this->Layout();
+	bSizer9->Fit( this );
+	
+	// Connect Events
+	m_button->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( rampanel::dump_button_click ), NULL, this );
+}
+
+rampanel::~rampanel()
+{
+	// Disconnect Events
+	m_button->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( rampanel::dump_button_click ), NULL, this );
 	
 }

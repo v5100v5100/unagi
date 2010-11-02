@@ -24,12 +24,13 @@ function loopsize_get(t, trans, image_size, device_size)
 }
 
 function testrun(
-	d, mapper, 
+	d, script, mapper, 
 	cpu_trans, cpu_image_size, cpu_device_size,
 	ppu_trans, ppu_image_size, ppu_device_size
 )
 {
 	local trans_empty = 0;
+	dofile(script);
 	if((board.mappernum != mapper) && (mapper != 0)){
 		print("mapper number are not connected\n");
 		print("af:" + board.mappernum + " image:" + mapper + "\n");
@@ -49,12 +50,13 @@ function testrun(
 }
 
 function program(
-	d, mapper, 
+	d, script, mapper, 
 	cpu_trans, cpu_image_size, cpu_device_size,
 	ppu_trans, ppu_image_size, ppu_device_size
 )
 {
 	local trans_empty = 0;
+	dofile(script);
 	if((board.mappernum != mapper) && (mapper != 0)){
 		return;
 	}

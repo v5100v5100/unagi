@@ -3,7 +3,7 @@ VPATH = ..
 ifeq ($(RELEASE),1)
   CPPFLAGS += -O2 -DNDEBUG
 else
-  CPPFLAGS += -ggdb -O0
+  CPPFLAGS += -g -O0
 endif
 CPPFLAGS += -Wall -Werror -DDEBUG=1
 CFLAGS = -I.. -I$(SQUIRREL)/include -I$(KAZZO)
@@ -24,6 +24,9 @@ OBJ_CORE = romimage.o crc32.o file.o widget.o \
 	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o \
 	script_program.o script_dump.o script_common.o flash_device.o
 
+ifeq ($(strip $(RELEASE)),)
+	OBJ_CORE += reader_dummy.o
+endif
 ifneq ($(strip $(APP_CUI)),)
 	OBJ_CUI += $(OBJ_CORE)
 	OBJ_GUI += $(OBJ_CORE)
