@@ -63,16 +63,18 @@ SQRESULT qr_call(HSQUIRRELVM v, const SQChar *functionname, SQUserPointer up, co
 	sq_pushroottable(v);
 	sq_pushstring(v, functionname, -1);
 	if(SQ_SUCCEEDED(sq_get(v,-2))){
-		int i;
 		va_list ap;
-		va_start(ap, argnum);
+		int i;
+		
 		sq_pushroottable(v);
 		sq_pushuserpointer(v, up);
 		sq_pushstring(v, scriptfile, -1);
+		va_start(ap, argnum);
 		for(i = 0; i < argnum; i++){
 			sq_pushinteger(v, va_arg(ap, long));
 		}
 		r = sq_call(v, 3 + argnum, SQFalse, SQTrue); //calls the function 
+		va_end(ap);
 	}
 	sq_settop(v, top); //restores the original stack size
 	return r;

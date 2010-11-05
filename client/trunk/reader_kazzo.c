@@ -35,7 +35,7 @@ struct reader_handle{
 	void (*except)(const wgChar *str);
 };
 
-static const struct reader_handle *kazzo_open(void (*except)(const wgChar *str))
+static const struct reader_handle *kazzo_open(void (*except)(const wgChar *str), const struct textcontrol *log)
 {
 	struct reader_handle *h;
 	usb_dev_handle *usb = device_open();

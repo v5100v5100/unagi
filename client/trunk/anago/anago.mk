@@ -3,9 +3,9 @@ VPATH = ..
 ifeq ($(RELEASE),1)
   CPPFLAGS += -O2 -DNDEBUG
 else
-  CPPFLAGS += -g -O0
+  CPPFLAGS += -g -O0 -DDEBUG=1
 endif
-CPPFLAGS += -Wall -Werror -DDEBUG=1
+CPPFLAGS += -Wall -Werror
 CFLAGS = -I.. -I$(SQUIRREL)/include -I$(KAZZO)
 ifneq ($(strip $(LIBUSB)),)
   CFLAGS += -I$(LIBUSB)/include

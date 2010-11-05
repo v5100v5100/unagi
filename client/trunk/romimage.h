@@ -1,12 +1,6 @@
 #ifndef _ROMIAMGE_H_
 #define _ROMIAMGE_H_
-enum mode{
-	MODE_TEST,
-	MODE_ROM_DUMP,
-	MODE_RAM_READ,
-	MODE_RAM_WRITE,
-	MODE_ROM_PROGRAM
-};
+
 enum trastype{
 	TRANSTYPE_EMPTY,
 	TRANSTYPE_TOP,

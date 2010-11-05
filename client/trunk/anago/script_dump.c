@@ -5,6 +5,7 @@
 #include <sqstdio.h>
 #include <sqstdaux.h>
 #include "type.h"
+#include "file.h"
 #include "widget.h"
 #include "romimage.h"
 #include "memory_manage.h"
@@ -13,28 +14,25 @@
 #include "script_common.h"
 #include "script_dump.h"
 
-static SQInteger write_memory(HSQUIRRELVM v, const struct reader_handle *h, struct dump_memory_driver *t)
-{
-	long address, data;
-	SQRESULT r = qr_argument_get(v, 2, &address, &data);
-	if(SQ_FAILED(r)){
-		return r;
-	}
-	uint8_t d8 = (uint8_t) data;
-	t->access->memory_write(h, address, 1, &d8);
-	return 0;
-}
-static SQInteger cpu_write(HSQUIRRELVM v)
+static SQInteger cpu_write_1byte(HSQUIRRELVM v)
 {
 	struct dump_config *d;
+	long address, data;
+
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return write_memory(v, d->handle, &d->cpu);
+	r = qr_argument_get(v, 2, &address, &data);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	uint8_t d8 = (uint8_t) data;
+	d->cpu.access->memory_write(d->handle, address, 1, &d8);
+	return 0;
 }
 
-//¤³¤³¤Î printf ¤Ï debug ÍÑ¤Ë»Ä¤·¤Æ¤ª¤¯
+//ã“ã“ã® printf ã¯ debug ç”¨ã«æ®‹ã—ã¦ãŠã
 static void buffer_show(struct memory *t, long length)
 {
 	int i;
@@ -90,12 +88,12 @@ static SQInteger read_memory(HSQUIRRELVM v, const struct reader_handle *h, struc
 	if(SQ_FAILED(r)){
 		return r;
 	}
+	assert(t->memory.attribute == MEMORY_ATTR_WRITE);
 	t->access->memory_read(h, &t->gauge, address, length == 0 ? 1: length, t->memory.data + t->memory.offset);
 	if((length != 0) && (progress == false)){
 		buffer_show(&t->memory, length);
 	}
 	t->memory.offset += length;
-
 	return 0;
 }
 
@@ -163,7 +161,7 @@ static void memory_new_init(struct dump_memory_driver *d)
 	d->gauge.value_set(d->gauge.bar, d->gauge.label, 0);
 }
 
-//test »þ/1ÅÙÌÜ¤Î call ¤Ç»ÈÍÑ
+//test æ™‚/1åº¦ç›®ã® call ã§ä½¿ç”¨
 static SQInteger memory_new(HSQUIRRELVM v)
 {
 	struct dump_config *d;
@@ -181,7 +179,7 @@ static SQInteger memory_new(HSQUIRRELVM v)
 	return 0;
 }
 
-//dump »þ/2ÅÙÌÜ¤Î call ¤Ç nesfile_save ¤È¤·¤Æ»ÈÍÑ
+//dump æ™‚/2åº¦ç›®ã® call ã§ nesfile_save ã¨ã—ã¦ä½¿ç”¨
 static SQInteger nesfile_save(HSQUIRRELVM v)
 {
 	struct dump_config *d;
@@ -218,7 +216,7 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 	return 0;
 }
 
-//dump »þ/1ÅÙÌÜ¤Î call ¤Ç nesfile_save ¤È¤·¤Æ»ÈÍÑ
+//dump æ™‚/1åº¦ç›®ã® call ã§ nesfile_save ã¨ã—ã¦ä½¿ç”¨
 static SQInteger length_check(HSQUIRRELVM v)
 {
 	struct dump_config *d;
@@ -267,7 +265,7 @@ static SQInteger read_count(HSQUIRRELVM v, const struct textcontrol *l, struct d
 static SQInteger cpu_read_count(HSQUIRRELVM v)
 {
 	static const struct range range_address = {0x8000, 0x10000};
-	//length == 0 ¤Ï ÂÐ¾Ý¥¢¥É¥ì¥¹¤ò¸Æ¤ó¤Ç¡¢¥Ð¥Ã¥Õ¥¡¤Ë¤¤¤ì¤Ê¤¤¡£mmc2, mmc4 ¤Ç»ÈÍÑ¤¹¤ë¡£
+	//length == 0 ã¯ å¯¾è±¡ã‚¢ãƒ‰ãƒ¬ã‚¹ã‚’å‘¼ã‚“ã§ã€ãƒãƒƒãƒ•ã‚¡ã«ã„ã‚Œãªã„ã€‚mmc2, mmc4 ã§ä½¿ç”¨ã™ã‚‹ã€‚
 	static const struct range range_length = {0x0000, 0x4000};
 	struct dump_config *d;
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
@@ -306,9 +304,6 @@ static bool script_execute(HSQUIRRELVM v, struct dump_config *d)
 	if(SQ_FAILED(sqstd_dofile(v, wgT("dumpcore.nut"), SQFalse, SQTrue))){
 		d->log.append(d->log.object, wgT("dump core script error\n"));
 		ret = false;
-/*	}else if(SQ_FAILED(sqstd_dofile(v, d->script, SQFalse, SQTrue))){
-		d->log.append(d->log.object, wgT("%s open error\n"), d->script);
-		ret = false;*/
 	}else{
 		SQRESULT r = qr_call(
 			v, wgT("dump"), (SQUserPointer) d, d->script, 
@@ -325,11 +320,11 @@ static bool script_execute(HSQUIRRELVM v, struct dump_config *d)
 	return ret;
 }
 
-static void dump_memory_driver_init(struct dump_memory_driver *dd)
+static void dump_memory_driver_init(struct dump_memory_driver *dd, enum memory_attribute at)
 {
 	dd->memory.size = 0;
 	dd->memory.offset = 0;
-	dd->memory.attribute = MEMORY_ATTR_WRITE;
+	dd->memory.attribute = at;
 	dd->memory.transtype = TRANSTYPE_FULL;
 	dd->memory.data = NULL;
 	dd->read_count = 0;
@@ -337,31 +332,28 @@ static void dump_memory_driver_init(struct dump_memory_driver *dd)
 
 bool script_dump_execute(struct dump_config *d)
 {
-	dump_memory_driver_init(&d->cpu);
+	dump_memory_driver_init(&d->cpu, MEMORY_ATTR_WRITE);
 	d->cpu.memory.name = wgT("Program");
 	
-	dump_memory_driver_init(&d->ppu);
+	dump_memory_driver_init(&d->ppu, MEMORY_ATTR_WRITE);
 	d->ppu.memory.name = wgT("Charcter");
 	
 	{
-		HSQUIRRELVM v = qr_open(&d->log); 
+		HSQUIRRELVM v = qr_open(&d->log);
 		qr_function_register_global(v, wgT("ppu_ramfind"), script_nop);
 		qr_function_register_global(v, wgT("cpu_write"), cpu_write_check);
 		qr_function_register_global(v, wgT("memory_new"), memory_size_set);
 		qr_function_register_global(v, wgT("nesfile_save"), length_check);
 		qr_function_register_global(v, wgT("cpu_read"), cpu_read_count);
 		qr_function_register_global(v, wgT("ppu_read"), ppu_read_count);
-		qr_function_register_global(v, wgT("require"), script_require);
 		if(script_execute(v, d) == false){
 			qr_close(v);
 			return false;
 		}
 		qr_close(v);
 	}
-/*	if(d->progress == true){
-		progress_init();
-	}*/
-	d->handle = d->control->open(d->except);
+
+	d->handle = d->control->open(d->except, &d->log);
 	if(d->handle == NULL){
 		d->log.append(d->log.object, wgT("reader open error\n"));
 		return false;
@@ -375,12 +367,167 @@ bool script_dump_execute(struct dump_config *d)
 		HSQUIRRELVM v = qr_open(&d->log); 
 		qr_function_register_global(v, wgT("memory_new"), memory_new);
 		qr_function_register_global(v, wgT("nesfile_save"), nesfile_save);
-		qr_function_register_global(v, wgT("cpu_write"), cpu_write);
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write_1byte);
 		qr_function_register_global(v, wgT("cpu_read"), cpu_read);
 		qr_function_register_global(v, wgT("ppu_read"), ppu_read);
 		qr_function_register_global(v, wgT("ppu_ramfind"), ppu_ramfind);
-		qr_function_register_global(v, wgT("require"), script_require);
 		script_execute(v, d);
+		qr_close(v);
+	}
+	d->control->close(d->handle);
+	d->handle = NULL;
+	return true;
+}
+
+static bool workram_execute(HSQUIRRELVM v, struct dump_config *d)
+{
+	bool ret = true;
+	if(SQ_FAILED(sqstd_dofile(v, wgT("dumpcore.nut"), SQFalse, SQTrue))){
+		d->log.append(d->log.object, wgT("dump core script error\n"));
+		ret = false;
+	}else{
+		SQRESULT r = qr_call(
+			v, wgT("workram_rw"), (SQUserPointer) d, d->script, 
+			1, d->cpu.increase
+		);
+		if(SQ_FAILED(r)){
+			ret = false;
+			Free(d->cpu.memory.data);
+			Free(d->ppu.memory.data);
+			d->cpu.memory.data = NULL;
+			d->ppu.memory.data = NULL;
+		}
+	}
+	return ret;
+}
+
+static SQInteger cpu_ramrw_check(HSQUIRRELVM v)
+{
+	static const struct range range_address = {0x6000, 0xdfff};
+	static const struct range range_length = {1, 0x2000};
+	struct dump_config *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	return read_count(v, &d->log, &d->cpu, &range_address, &range_length);
+}
+
+static SQInteger ramimage_open(HSQUIRRELVM v)
+{
+	struct dump_config *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	if(buf_load(d->cpu.memory.data, d->target, d->cpu.memory.size) == NG){
+		return r = sq_throwerror(v, wgT("RAM image open error"));
+	}
+	return 0;
+}
+
+static SQInteger memory_finalize(HSQUIRRELVM v)
+{
+	struct dump_config *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	if(d->mode == MODE_RAM_READ){
+		buf_save(d->cpu.memory.data, d->target, d->cpu.memory.size);
+	}
+	Free(d->cpu.memory.data);
+	Free(d->ppu.memory.data);
+	d->cpu.memory.data = NULL;
+	d->ppu.memory.data = NULL;
+	
+	return 0;
+}
+
+static SQInteger cpu_write_ramimage(HSQUIRRELVM v)
+{
+	struct dump_config *d;
+	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+
+	long address, length;
+	uint8_t *cmp;
+	const uint8_t *writedata = d->cpu.memory.data;
+	writedata += d->cpu.memory.offset;
+	
+	r = qr_argument_get(v, 2, &address, &length);
+	if(SQ_FAILED(r)){
+		return r;
+	}
+	cmp = Malloc(length);
+	assert(d->cpu.memory.attribute == MEMORY_ATTR_READ);
+	//&d->cpu.gauge, 
+	d->cpu.access->memory_write(
+		d->handle, address, length, writedata
+	);
+	d->cpu.access->memory_read(
+		d->handle, &d->cpu.gauge, address, length, cmp
+	);
+	d->cpu.memory.offset += length;
+
+	r = memcmp(cmp, writedata, length);
+	Free(cmp);
+	if(r != 0){
+		r = sq_throwerror(v, wgT("memory write failed"));
+	}
+	return 0;
+}
+
+bool script_workram_execute(struct dump_config *d)
+{
+	dump_memory_driver_init(&d->cpu, d->mode == MODE_RAM_READ ? MEMORY_ATTR_WRITE : MEMORY_ATTR_READ);
+	dump_memory_driver_init(&d->ppu, MEMORY_ATTR_NOTUSE);
+	d->cpu.memory.name = wgT("Workram");
+	d->ppu.memory.name = wgT("N/A");
+
+	{
+		HSQUIRRELVM v = qr_open(&d->log);
+		qr_function_register_global(v, wgT("memory_new"), memory_new);
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write_check);
+		qr_function_register_global(v, wgT("cpu_ramrw"), cpu_ramrw_check);
+		qr_function_register_global(v, wgT("memory_finalize"), length_check);
+		if(workram_execute(v, d) == false){
+			qr_close(v);
+			return false;
+		}
+		qr_close(v);
+	}
+	
+	d->handle = d->control->open(d->except, &d->log);
+	if(d->handle == NULL){
+		d->log.append(d->log.object, wgT("reader open error\n"));
+		return false;
+	}
+	d->control->init(d->handle);
+	if(connection_check(d->handle, &d->log, d->cpu.access, d->ppu.access) == false){
+		d->control->close(d->handle);
+		return false;
+	}
+	{
+		HSQUIRRELVM v = qr_open(&d->log); 
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write_1byte);
+		switch(d->mode){
+		case MODE_RAM_READ:
+			qr_function_register_global(v, wgT("memory_new"), script_nop);
+			qr_function_register_global(v, wgT("cpu_ramrw"), cpu_read);
+			break;
+		case MODE_RAM_WRITE:
+			qr_function_register_global(v, wgT("memory_new"), ramimage_open);
+			qr_function_register_global(v, wgT("cpu_ramrw"), cpu_write_ramimage);
+			break;
+		default:
+			assert(0);
+			break;
+		}
+		qr_function_register_global(v, wgT("memory_finalize"), memory_finalize);
+		workram_execute(v, d);
 		qr_close(v);
 	}
 	d->control->close(d->handle);

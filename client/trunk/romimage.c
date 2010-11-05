@@ -126,6 +126,7 @@ void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgCha
 	fclose(f);
 }
 
+/*
 static inline void memory_malloc(struct memory *m)
 {
 	m->data = NULL;
@@ -133,6 +134,7 @@ static inline void memory_malloc(struct memory *m)
 		m->data = Malloc(m->size);
 	}
 }
+
 
 bool nesbuffer_malloc(struct romimage *r, int mode)
 {
@@ -146,7 +148,7 @@ bool nesbuffer_malloc(struct romimage *r, int mode)
 		break;
 	}
 	return true;
-}
+}*/
 
 static inline void memory_free(struct memory *m)
 {
@@ -159,9 +161,6 @@ void nesbuffer_free(struct romimage *r, int mode)
 {
 	memory_free(&(r->cpu_rom));
 	memory_free(&(r->ppu_rom));
-	if(mode == MODE_RAM_READ){
-		memory_free(&(r->cpu_ram));
-	}
 }
 
 void backupram_create(const struct memory *r, const wgChar *ramfilename)

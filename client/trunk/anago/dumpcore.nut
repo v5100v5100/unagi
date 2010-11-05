@@ -20,3 +20,11 @@ function dump(d, script, mappernum, increase_cpu, increase_ppu)
 	nesfile_save(d, mappernum, vram);
 	return;
 }
+
+function workram_rw(d, script, increase_cpu)
+{
+	dofile(script);
+	memory_new(d, board.cpu_ramsize * increase_cpu, 0);
+	cpu_ram_access(d, board.cpu_ramsize / board.cpu_banksize, board.cpu_ramsize);
+	memory_finalize(d);
+}

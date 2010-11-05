@@ -6,13 +6,15 @@
 
 struct reader_handle{
 	void (*except)(const wgChar *str);
+	const struct textcontrol *log;
 };
 
-static const struct reader_handle *dummy_open(void (*except)(const wgChar *str))
+static const struct reader_handle *dummy_open(void (*except)(const wgChar *str), const struct textcontrol *log)
 {
 	struct reader_handle *h;
 	h = Malloc(sizeof(struct reader_handle));
 	h->except = except;
+	h->log = log;
 	return h;
 }
 
@@ -52,6 +54,14 @@ static void dummy_read(const struct reader_handle *h, const struct gauge *g, lon
 
 static void dummy_init(const struct reader_handle *h)
 {
+}
+
+static void dummy_cpu_write(const struct reader_handle *h, long address, long length, const uint8_t *data)
+{
+	if(length == 1){
+		h->log->append(h->log->object, wgT(" cpu_write $%04x <- $%02x\n"), (int) address, *data);
+	}
+	Sleep(4);
 }
 
 static void dummy_write(const struct reader_handle *h, long address, long length, const uint8_t *data)
@@ -99,7 +109,7 @@ static uint8_t dummy_vram_connection(const struct reader_handle *h)
 const struct reader_driver DRIVER_DUMMY = {
 	.cpu = {
 		.memory_read = dummy_read, 
-		.memory_write = dummy_write,
+		.memory_write = dummy_cpu_write,
 		.flash_config = dummy_flash_config,
 		.flash_erase = dummy_flash_erase,
 		.flash_program = dummy_flash_program,

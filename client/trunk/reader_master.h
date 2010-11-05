@@ -21,7 +21,7 @@ struct reader_memory_access{
 };
 struct reader_control{
 	const wgChar *name;
-	const struct reader_handle *(*open)(void (*except)(const wgChar *str));
+	const struct reader_handle *(*open)(void (*except)(const wgChar *str), const struct textcontrol *log);
 	void (*close)(const struct reader_handle *h);
 	void (*init)(const struct reader_handle *h);
 	void (*flash_status)(const struct reader_handle *h, uint8_t s[2]);

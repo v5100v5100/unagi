@@ -152,8 +152,18 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 	config.ppu.increase = 1;
 	config.progress = true;
 	switch(v[1][0]){
+	case wgT('d'):
+		config.mode = MODE_ROM_DUMP;
+		break;
 	case wgT('D'):
+		config.mode = MODE_ROM_DUMP;
 		config.progress = false;
+		break;
+	case wgT('r'): case wgT('R'):
+		config.mode = MODE_RAM_READ;
+		break;
+	case wgT('w'): case wgT('W'):
+		config.mode = MODE_RAM_WRITE;
 		break;
 	}
 	switch(v[1][1]){
@@ -192,7 +202,11 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 	}
 	config.battery = false;
 	log_set(&config.log);
-	script_dump_execute(&config);
+	if(config.mode == MODE_ROM_DUMP){
+		script_dump_execute(&config);
+	}else{
+		script_workram_execute(&config);
+	}
 	cui_gauge_destory(&config.cpu.gauge);
 	cui_gauge_destory(&config.ppu.gauge);
 }
@@ -229,16 +243,17 @@ int anago_cui(int c, wgChar **v)
 		switch(v[1][0]){
 #if DEBUG==1
 		case wgT('x'):
-			r = &DRIVER_DUMMY;
+			r = &DRIVER_DUMMY; //though down
 #endif
 		case wgT('f'): case wgT('F'):
 			program(c, v, r);
 			break;
 #if DEBUG==1
-		case wgT('z'): 
-			r = &DRIVER_DUMMY;
+		case wgT('z'): case wgT('R'): case wgT('W'): 
+			r = &DRIVER_DUMMY; //though down
 #endif
 		case wgT('d'): case wgT('D'):
+		case wgT('r'): case wgT('w'):
 			dump(c,v, r);
 			break;
 		default:

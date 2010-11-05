@@ -1,6 +1,10 @@
 #ifndef _SCRIPT_DUMP_H_
 #define _SCRIPT_DUMP_H_
+enum dump_mode{
+	MODE_ROM_DUMP, MODE_RAM_READ, MODE_RAM_WRITE
+};
 struct dump_config{
+	enum dump_mode mode;
 	const wgChar *script;
 	const wgChar *target;
 	const struct reader_handle *handle;
@@ -18,4 +22,5 @@ struct dump_config{
 	void (*except)(const wgChar *str);
 };
 bool script_dump_execute(struct dump_config *c);
+bool script_workram_execute(struct dump_config *d);
 #endif

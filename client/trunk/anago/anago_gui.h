@@ -82,6 +82,25 @@ class frame_main : public wxFrame
 		wxStaticLine* m_staticline31;
 		wxCheckBox* m_program_compare;
 		wxButton* m_program_button;
+		wxPanel* m_panel_wram;
+		wxStaticLine* m_staticline111;
+		wxStaticText* m_staticText221;
+		wxStaticLine* m_staticline71;
+		wxStaticText* m_staticText16;
+		wxChoice* m_ram_read_script;
+		wxStaticText* m_staticText17;
+		wxFilePickerCtrl* m_ram_read_picker;
+		wxGauge* m_ram_read_gauge;
+		wxButton* m_ram_read_button;
+		wxStaticLine* m_staticline12;
+		wxStaticText* m_staticText22;
+		wxStaticLine* m_staticline7;
+		wxStaticText* m_staticText161;
+		wxChoice* m_ram_write_script;
+		wxStaticText* m_staticText171;
+		wxFilePickerCtrl* m_ram_write_picker;
+		wxGauge* m_ram_write_gauge;
+		wxButton* m_ram_write_button;
 		wxPanel* m_panel_version;
 		wxStaticText* m_version_title;
 		wxStaticText* m_version_copyright;
@@ -101,37 +120,6 @@ class frame_main : public wxFrame
 		
 		frame_main( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("anago wx"), const wxPoint& pos = wxPoint( 32,32 ), const wxSize& size = wxSize( 340,460 ), long style = wxDEFAULT_FRAME_STYLE|wxTAB_TRAVERSAL );
 		~frame_main();
-	
-};
-
-///////////////////////////////////////////////////////////////////////////////
-/// Class rampanel
-///////////////////////////////////////////////////////////////////////////////
-class rampanel : public wxPanel 
-{
-	private:
-	
-	protected:
-		wxStaticText* m_script_label;
-		wxChoice* m_script_choice;
-		wxStaticText* m_ramimage_label;
-		wxFilePickerCtrl* m_ramimage_picker;
-		wxStaticLine* m_staticline1;
-		wxStaticText* m_cpu_label;
-		wxGauge* m_cpu_gauge;
-		wxChoice* m_cpu_increase;
-		wxStaticText* m_cpu_value;
-		wxStaticLine* m_staticline3;
-		wxButton* m_button;
-		
-		// Virtual event handlers, overide them in your derived class
-		virtual void dump_button_click( wxCommandEvent& event ) { event.Skip(); }
-		
-	
-	public:
-		
-		rampanel( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxTAB_TRAVERSAL );
-		~rampanel();
 	
 };
 

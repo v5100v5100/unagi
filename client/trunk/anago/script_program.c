@@ -130,10 +130,9 @@ static SQInteger program_regist(HSQUIRRELVM v, const struct reader_handle *h, st
 		t->command_change = false;
 	}
 	
-/*	printf("programming %s ROM area 0x%06x...\n", name, t->memory->offset);
-	fflush(stdout);*/
 	return sq_suspendvm(v);
 }
+
 static void program_execute(const struct reader_handle *h, struct flash_memory_driver *t)
 {
 	const long w = t->access->flash_program(
@@ -340,9 +339,6 @@ static bool script_execute(HSQUIRRELVM v, const wgChar *function, struct program
 	if(SQ_FAILED(sqstd_dofile(v, _SC("programcore.nut"), SQFalse, SQTrue))){
 		c->log.append(c->log.object, wgT("flash core script error\n"));
 		ret = false;
-/*	}else if(SQ_FAILED(sqstd_dofile(v, c->script, SQFalse, SQTrue))){
-		c->log.append(c->log.object, wgT("%s open error\n"), c->script);
-		ret = false;*/
 	}else{
 		SQRESULT r = qr_call(
 			v, function, (SQUserPointer) c, c->script,
@@ -460,7 +456,7 @@ bool script_program_execute(struct program_config *c)
 		return false;
 	}
 //reader initalize
-	c->handle = c->control->open(c->except);
+	c->handle = c->control->open(c->except, &c->log);
 	if(c->handle == NULL){
 		c->log.append(c->log.object, wgT("reader open error\n"));
 		nesbuffer_free(&rom, 0);

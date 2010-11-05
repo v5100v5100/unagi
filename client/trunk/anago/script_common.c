@@ -40,24 +40,6 @@ SQInteger cpu_write_check(HSQUIRRELVM v)
 	return range_check(v, wgT("data"), data, &range_data);
 }
 
-SQInteger script_require(HSQUIRRELVM v)
-{
-	if(sq_gettop(v) != 2){
-		return sq_throwerror(v, wgT("argument number error"));
-	}
-	if(sq_gettype(v, 2) != OT_STRING){
-		return sq_throwerror(v, wgT("argument type error"));
-	}
-	const SQChar *file;
-	if(SQ_FAILED(sq_getstring(v, 2, &file))){
-		return sq_throwerror(v, wgT("require error"));
-	}
-	if(SQ_FAILED(sqstd_dofile(v, file, SQFalse, SQTrue))){
-		return sq_throwerror(v, wgT("require error"));
-	}
-	return 0;
-}
-
 static bool connection_check_main(const struct reader_handle *h, const struct textcontrol *text, const struct reader_memory_access *m, long address)
 {
 	const int size = 0x10;

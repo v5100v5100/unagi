@@ -116,7 +116,7 @@ static void label_set(void *label, const wxChar *format, ...)
 	wxMutexGuiLeave();
 }
 
-void choice_append(void *choice, const wxChar *str)
+static void choice_append(void *choice, const wxChar *str)
 {
 	wxChoice *c = static_cast<wxChoice *>(choice);
 	c->Append(wxString(str));
@@ -189,10 +189,11 @@ private:
 		t->value_set = value_set;
 		t->value_add = value_add;
 	}
-	void script_choice_init(wxChoice *c, wxString filespec)
+	void script_choice_init(wxControlWithItems *c, wxString filespec)
 	{
 		wxDir dir(wxGetCwd());
 		wxString filename;
+		wxArrayString ar;
 
 		c->Clear();
 		if ( !dir.IsOpened() ){
@@ -200,17 +201,21 @@ private:
 		}
 		bool cont = dir.GetFirst(&filename, filespec, wxDIR_FILES);
 		while ( cont ){
-			c->Append(filename);
+			ar.Add(filename);
 			cont = dir.GetNext(&filename);
 		}
-		if(c->GetCount() == 0){
+		if(ar.GetCount() == 0){
 			*m_log << wxT("warning: ") << filespec << wxT(" script not found.\n");
 		}else{
+			ar.Sort(false);
+			for(size_t i = 0; i < ar.GetCount(); i++){
+				c->Append(ar[i]);
+			}
 			c->Select(0);
 		}
 	}
 //---- dump mode functions ----
-	void dump_increase_init(wxChoice *c)
+	void dump_increase_init(wxControlWithItems *c)
 	{
 		c->Clear();
 		c->Append(wxT("x1"));
@@ -218,7 +223,7 @@ private:
 		c->Append(wxT("x4"));
 		c->Select(0);
 	}
-	int dump_increase_get(wxChoice *c)
+	int dump_increase_get(wxControlWithItems *c)
 	{
 		switch(c->GetSelection()){
 		case 0: return 1;
@@ -304,7 +309,7 @@ private:
 	}
 	
 //----- program mode functions ----
-	void program_padding_init(wxChoice *c)
+	void program_padding_init(wxControlWithItems *c)
 	{
 		c->Clear();
 		c->Append(wxT("full"));
@@ -458,6 +463,21 @@ protected:
 	{
 		m_log->Clear();
 	}
+	
+private:
+	void program_device_load(wxControlWithItems *choice, wxFileConfig *c, wxString key)
+	{
+		wxString device;
+		int val;
+		c->Read(key, &device);
+		val = choice->FindString(device);
+		if(val == wxNOT_FOUND){
+			choice->Select(0);
+		}else{
+			choice->Select(val);
+		}
+	}
+	
 public:
 	/** Constructor */
 	anago_frame(wxWindow* parent, const struct reader_driver *r)
@@ -468,10 +488,10 @@ public:
 	  m_config_file(wxT(".anago"))
 #endif
 	{
+		wxFileConfig config(wxEmptyString, wxEmptyString, m_config_file);
 		m_reader = r;
 //form config load
 		{
-			wxFileConfig config(wxEmptyString, wxEmptyString, m_config_file);
 			wxPoint position;
 			
 			config.Read(wxT("position.x"), &position.x, 32);
@@ -506,8 +526,8 @@ public:
 		if(m_program_cpu_device->GetCount() == 0){
 			*m_log << wxT("warning: flash device parameter not found\n");
 		}else{
-			m_program_cpu_device->Select(0);
-			m_program_ppu_device->Select(0);
+			program_device_load(m_program_cpu_device, &config, wxT("program.cpu.device"));
+			program_device_load(m_program_ppu_device, &config, wxT("program.ppu.device"));
 		}
 		this->program_padding_init(m_program_cpu_padding);
 		this->program_padding_init(m_program_ppu_padding);
@@ -600,6 +620,9 @@ public:
 		wxSize size = this->GetSize();
 		config.Write(wxT("size.x"), size.x);
 		config.Write(wxT("size.y"), size.y);
+		
+		config.Write(wxT("program.cpu.device"), m_program_cpu_device->GetStringSelection());
+		config.Write(wxT("program.ppu.device"), m_program_ppu_device->GetStringSelection());
 	}
 };
 
@@ -646,7 +669,7 @@ extern "C"{
 }
 int main(int c, wxChar **v)
 {
-	if(c < 2){
+	if(c < 3){
 		return wxEntry(c, v);
 	}
 	return anago_cui(c, v);
