@@ -1,7 +1,7 @@
 all: $(APP_GUI) $(APP_CUI)
 VPATH = ..
 ifeq ($(RELEASE),1)
-  CPPFLAGS += -O2 -DNDEBUG
+  CPPFLAGS += -O2 -DNDEBUG -DDEBUG=0
 else
   CPPFLAGS += -g -O0 -DDEBUG=1
 endif
@@ -19,13 +19,13 @@ endif
 CC = gcc
 
 OBJ_CUI = anago_cui.o cui_gauge.o
-OBJ_GUI = anago_gui.o anago_frame.o
+OBJ_GUI = anago_gui.o anago_frame.o nescartxml.o
 OBJ_CORE = romimage.o crc32.o file.o widget.o \
-	reader_kazzo.o usb_device.o squirrel_wrap.o memory_manage.o \
+	reader_kazzo.o reader_dummy.o usb_device.o squirrel_wrap.o \
 	script_program.o script_dump.o script_common.o flash_device.o
 
 ifeq ($(strip $(RELEASE)),)
-	OBJ_CORE += reader_dummy.o
+	OBJ_CORE += memory_manage.o
 endif
 ifneq ($(strip $(APP_CUI)),)
 	OBJ_CUI += $(OBJ_CORE)

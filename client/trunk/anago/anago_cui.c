@@ -148,7 +148,7 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 		PUTS(wgT("argument error"));
 		return;
 	}
-	config.cpu.increase = 1;
+	config.cpu.increase = INCREASE_AUTO;
 	config.ppu.increase = 1;
 	config.progress = true;
 	switch(v[1][0]){
@@ -167,6 +167,9 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 		break;
 	}
 	switch(v[1][1]){
+	case wgT('1'):
+		config.cpu.increase = 1;
+		break;
 	case wgT('2'):
 		config.cpu.increase = 2;
 		break;
@@ -189,7 +192,11 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 	config.control = &r->control;
 	config.cpu.access = &r->cpu;
 	config.ppu.access = &r->ppu;
-	cui_gauge_new(&config.cpu.gauge, wgT("Program  ROM"), 2, -2);
+	if(config.mode == MODE_ROM_DUMP){
+		cui_gauge_new(&config.cpu.gauge, wgT("Program  ROM"), 2, -2);
+	}else{
+		cui_gauge_new(&config.cpu.gauge, wgT("Work RAM"), 2, -2);
+	}
 	cui_gauge_new(&config.ppu.gauge, wgT("Charcter ROM"), 1, -1);
 	config.except = except;
 	config.mappernum = -1;
