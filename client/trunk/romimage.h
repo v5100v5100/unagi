@@ -53,7 +53,7 @@ enum{
 };
 
 bool nesbuffer_malloc(struct romimage *r, int mode);
-void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename);
+uint32_t nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename);
 void nesbuffer_free(struct romimage *r, int mode);
 void backupram_create(const struct memory *r, const wgChar *ramfilename);
 int memorysize_check(const long size, int region);

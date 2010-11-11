@@ -153,6 +153,12 @@ static SQInteger ppu_ramfind(HSQUIRRELVM v)
 	return 1;
 }
 
+static SQInteger return_true(HSQUIRRELVM v)
+{
+	sq_pushbool(v, SQFalse);
+	return 1;
+}
+
 static void memory_new_init(struct dump_memory_driver *d)
 {
 	d->memory.offset = 0;
@@ -175,7 +181,9 @@ static SQInteger memory_new(HSQUIRRELVM v)
 	}
 
 	memory_new_init(&d->cpu);
-	memory_new_init(&d->ppu);
+	if(d->mode == MODE_ROM_DUMP){
+		memory_new_init(&d->ppu);
+	}
 	return 0;
 }
 
@@ -208,7 +216,7 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 	if(d->battery == true){
 		image.backupram = 1;
 	}
-	nesfile_create(&d->log, &image, d->target);
+	d->crc = nesfile_create(&d->log, &image, d->target);
 	nesbuffer_free(&image, 0); //0 is MODE_xxx_xxxx
 	
 	d->cpu.memory.data = NULL;
@@ -340,12 +348,12 @@ bool script_dump_execute(struct dump_config *d)
 	
 	{
 		HSQUIRRELVM v = qr_open(&d->log);
-		qr_function_register_global(v, wgT("ppu_ramfind"), script_nop);
 		qr_function_register_global(v, wgT("cpu_write"), cpu_write_check);
 		qr_function_register_global(v, wgT("memory_new"), memory_size_set);
 		qr_function_register_global(v, wgT("nesfile_save"), length_check);
 		qr_function_register_global(v, wgT("cpu_read"), cpu_read_count);
 		qr_function_register_global(v, wgT("ppu_read"), ppu_read_count);
+		qr_function_register_global(v, wgT("ppu_ramfind"), return_true);
 		if(script_execute(v, d) == false){
 			qr_close(v);
 			return false;
@@ -393,9 +401,9 @@ static bool workram_execute(HSQUIRRELVM v, struct dump_config *d)
 		if(SQ_FAILED(r)){
 			ret = false;
 			Free(d->cpu.memory.data);
-			Free(d->ppu.memory.data);
 			d->cpu.memory.data = NULL;
-			d->ppu.memory.data = NULL;
+//			Free(d->ppu.memory.data);
+//			d->ppu.memory.data = NULL;
 		}
 	}
 	return ret;
@@ -437,9 +445,9 @@ static SQInteger memory_finalize(HSQUIRRELVM v)
 		buf_save(d->cpu.memory.data, d->target, d->cpu.memory.size);
 	}
 	Free(d->cpu.memory.data);
-	Free(d->ppu.memory.data);
 	d->cpu.memory.data = NULL;
-	d->ppu.memory.data = NULL;
+//	Free(d->ppu.memory.data);
+//	d->ppu.memory.data = NULL;
 	
 	return 0;
 }

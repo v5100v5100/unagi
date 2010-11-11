@@ -7,8 +7,13 @@ WX_DECLARE_HASH_MAP(unsigned long, wxXmlNode *, wxIntegerHash, wxIntegerEqual, C
 RomDb::RomDb(wxString file)
 {
 	m_hash = new CartridgeHash(2200);
+	m_document = new wxXmlDocument(file);
+}
+
+RomDb::RomDb(void)
+{
+	m_hash = new CartridgeHash(20);
 	m_document = new wxXmlDocument();
-	m_document->Load(file);
 }
 
 RomDb::~RomDb(void)
@@ -19,7 +24,11 @@ RomDb::~RomDb(void)
 
 bool RomDb::Generate(void)
 {
-	wxXmlNode *game = m_document->GetRoot()->GetChildren();
+	wxXmlNode *root = m_document->GetRoot();
+	if(root == NULL){
+		return false;
+	}
+	wxXmlNode *game = root->GetChildren();
 	if(game == NULL){
 		return false;
 	}
@@ -50,7 +59,7 @@ bool RomDb::Generate(void)
 	return true;
 }
 
-void RomDb::Search(unsigned long crc, wxTextCtrl *log)
+void RomDb::Search(unsigned long crc, wxTextCtrl *log) const
 {
 	wxXmlNode *cartridge = (*m_hash)[crc];
 	if(cartridge == NULL){

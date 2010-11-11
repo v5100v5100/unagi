@@ -3,6 +3,9 @@
 enum dump_mode{
 	MODE_ROM_DUMP, MODE_RAM_READ, MODE_RAM_WRITE
 };
+enum {
+	INCREASE_AUTO = 11
+};
 struct dump_config{
 	enum dump_mode mode;
 	const wgChar *script;
@@ -18,6 +21,7 @@ struct dump_config{
 	long mappernum;
 	bool progress;
 	bool battery;
+	unsigned long crc;
 	struct textcontrol log;
 	void (*except)(const wgChar *str);
 };

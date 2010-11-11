@@ -85,20 +85,20 @@ class panel_workram : public wxPanel
 		wxStaticText* m_staticText221;
 		wxStaticLine* m_staticline71;
 		wxStaticText* m_staticText16;
-		wxChoice* m_ram_read_script;
+		wxChoice* m_read_script;
 		wxStaticText* m_staticText17;
-		wxFilePickerCtrl* m_ram_read_picker;
-		wxGauge* m_ram_read_gauge;
-		wxButton* m_ram_read_button;
+		wxFilePickerCtrl* m_read_picker;
+		wxGauge* m_read_gauge;
+		wxButton* m_read_button;
 		wxStaticLine* m_staticline12;
 		wxStaticText* m_staticText22;
 		wxStaticLine* m_staticline7;
 		wxStaticText* m_staticText161;
-		wxChoice* m_ram_write_script;
+		wxChoice* m_write_script;
 		wxStaticText* m_staticText171;
-		wxFilePickerCtrl* m_ram_write_picker;
-		wxGauge* m_ram_write_gauge;
-		wxButton* m_ram_write_button;
+		wxFilePickerCtrl* m_write_picker;
+		wxGauge* m_write_gauge;
+		wxButton* m_write_button;
 		
 		// Virtual event handlers, overide them in your derived class
 		virtual void read_button_click( wxCommandEvent& event ) { event.Skip(); }
@@ -120,29 +120,29 @@ class panel_dump : public wxPanel
 	private:
 	
 	protected:
-		wxStaticText* m_dump_script_label;
-		wxChoice* m_dump_script_choice;
-		wxStaticText* m_dump_romimage_label;
-		wxFilePickerCtrl* m_dump_romimage_picker;
+		wxStaticText* m_script_label;
+		wxChoice* m_script_choice;
+		wxStaticText* m_romimage_label;
+		wxFilePickerCtrl* m_romimage_picker;
 		wxStaticLine* m_staticline1;
-		wxStaticText* m_dump_cpu_label;
-		wxGauge* m_dump_cpu_gauge;
-		wxChoice* m_dump_cpu_increase;
-		wxStaticText* m_dump_cpu_value;
+		wxStaticText* m_cpu_label;
+		wxGauge* m_cpu_gauge;
+		wxChoice* m_cpu_increase;
+		wxStaticText* m_cpu_value;
 		wxStaticLine* m_staticline2;
-		wxStaticText* m_dump_ppu_label;
-		wxGauge* m_dump_ppu_gauge;
-		wxChoice* m_dump_ppu_increase;
-		wxStaticText* m_dump_ppu_value;
+		wxStaticText* m_ppu_label;
+		wxGauge* m_ppu_gauge;
+		wxChoice* m_ppu_increase;
+		wxStaticText* m_ppu_value;
 		wxStaticLine* m_staticline3;
-		wxCheckBox* m_dump_check_battery;
-		wxCheckBox* m_dump_check_forcemapper;
-		wxTextCtrl* m_dump_text_forcemapper;
-		wxButton* m_dump_button;
+		wxCheckBox* m_check_battery;
+		wxCheckBox* m_check_forcemapper;
+		wxTextCtrl* m_text_forcemapper;
+		wxButton* m_button;
 		
 		// Virtual event handlers, overide them in your derived class
 		virtual void mapper_change_check( wxCommandEvent& event ) { event.Skip(); }
-		virtual void dump_button_click( wxCommandEvent& event ) { event.Skip(); }
+		virtual void button_click( wxCommandEvent& event ) { event.Skip(); }
 		
 	
 	public:
@@ -160,28 +160,28 @@ class panel_program : public wxPanel
 	private:
 	
 	protected:
-		wxStaticText* m_program_script_label;
-		wxChoice* m_program_script_choice;
-		wxStaticText* m_program_label;
-		wxFilePickerCtrl* m_program_romimage_picker;
+		wxStaticText* m_script_label;
+		wxChoice* m_script_choice;
+		wxStaticText* m_romimage_label;
+		wxFilePickerCtrl* m_romimage_picker;
 		wxStaticLine* m_staticline11;
-		wxStaticText* m_program_cpu_label;
-		wxGauge* m_program_cpu_gauge;
-		wxChoice* m_program_cpu_device;
-		wxChoice* m_program_cpu_padding;
-		wxStaticText* m_program_cpu_value;
+		wxStaticText* m_cpu_label;
+		wxGauge* m_cpu_gauge;
+		wxChoice* m_cpu_device;
+		wxChoice* m_cpu_padding;
+		wxStaticText* m_cpu_value;
 		wxStaticLine* m_staticline21;
-		wxStaticText* m_program_ppu_label;
-		wxGauge* m_program_ppu_gauge;
-		wxChoice* m_program_ppu_device;
-		wxChoice* m_program_ppu_padding;
-		wxStaticText* m_program_ppu_value;
+		wxStaticText* m_ppu_label;
+		wxGauge* m_ppu_gauge;
+		wxChoice* m_ppu_device;
+		wxChoice* m_ppu_padding;
+		wxStaticText* m_ppu_value;
 		wxStaticLine* m_staticline31;
-		wxCheckBox* m_program_compare;
-		wxButton* m_program_button;
+		wxCheckBox* m_compare;
+		wxButton* m_button;
 		
 		// Virtual event handlers, overide them in your derived class
-		virtual void program_button_click( wxCommandEvent& event ) { event.Skip(); }
+		virtual void button_click( wxCommandEvent& event ) { event.Skip(); }
 		
 	
 	public:

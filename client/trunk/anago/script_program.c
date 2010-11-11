@@ -239,7 +239,7 @@ static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, st
 	if(t->programming.length == 0){
 		if(t->programming.offset != 0 && compare == true){
 			if(program_compare(h, t) == false){
-				log->append(log->object, wgT("%s memory compare error\n"), t->memory.name);
+				log->append(log->object, wgT("%s memory compare error, offset 0x%06x\n"), t->memory.name, t->programming.offset);
 				return false;
 			}
 		}

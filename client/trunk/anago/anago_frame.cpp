@@ -4,6 +4,8 @@
 #include <wx/dir.h>
 #include <wx/sound.h>
 #include <wx/fileconf.h>
+#include <wx/filename.h>
+#include <cassert>
 #include <cstdarg>
 #include "type.h"
 #include "anago_gui.h"
@@ -43,7 +45,9 @@ static void value_set(void *gauge, void *label, int value)
 	
 	wxMutexGuiEnter();
 	g->SetValue(value);
-	l->SetLabel(str);
+	if(label != NULL){
+		l->SetLabel(str);
+	}
 	wxMutexGuiLeave();
 }
 
@@ -123,27 +127,60 @@ static void choice_append(void *choice, const wxChar *str)
 
 //---- script execute thread ----
 class anago_frame;
-class anago_panel_dump;
+//class anago_panel_dump;
 class anago_panel_program;
 
 class anago_dumper : public wxThread
 {
 private:
-	anago_panel_dump *m_frame;
-	struct dump_config m_config;
+	wxWindow *const m_frame;
+	wxTextCtrl *const m_log;
 	const wxSound m_sound_success, m_sound_fail;
+	RomDb *const m_romdb;
+
+	struct dump_config m_config;
 protected:
-	void *Entry(void);
+	void *Entry(void)
+	{
+		try{
+			bool r;
+			switch(m_config.mode){
+			case MODE_ROM_DUMP:
+				r = script_dump_execute(&m_config);
+				break;
+			case MODE_RAM_READ: case MODE_RAM_WRITE:
+				r = script_workram_execute(&m_config);
+				break;
+			default:
+				assert(0);
+				break;
+			}
+			if(r == true && m_sound_success.IsOk() == true){
+				m_sound_success.Play();
+			}
+		}catch(const wxChar *t){
+			if(m_sound_fail.IsOk() == true){
+				m_sound_fail.Play();
+			}
+			*m_log << t;
+		}
+		if(m_romdb != NULL){
+			m_romdb->Search(m_config.crc, m_log);
+		}
+		m_frame->Enable();
+		return NULL;
+	}
 	void OnExit()
 	{
 		delete [] m_config.script;
 		delete [] m_config.target;
 	}
 public:
-	anago_dumper(anago_panel_dump *f, const struct dump_config *d, wxString sound_success, wxString sound_fail) 
-	  : wxThread(), m_sound_success(sound_success), m_sound_fail(sound_fail)
+	anago_dumper(wxWindow *f, const struct dump_config *d, wxTextCtrl *log, wxString sound_success, wxString sound_fail, RomDb *db = NULL) 
+	  : wxThread(), m_frame(f), m_log(log), 
+	  m_sound_success(sound_success), m_sound_fail(sound_fail),
+	  m_romdb(db)
 	{
-		m_frame = f;
 		m_config = *d; //struct data copy
 	}
 };
@@ -151,42 +188,66 @@ public:
 class anago_programmer : public wxThread
 {
 private:
-	anago_panel_program *m_frame;
+	wxWindow *const m_frame;
+	wxTextCtrl *const m_log;
 	struct program_config m_config;
 	const wxSound m_sound_success, m_sound_fail;
 protected:
-	void *Entry(void);
+	void *Entry(void)
+	{
+		try{
+			if(script_program_execute(&m_config) == true){
+				if(m_sound_success.IsOk() == true){
+					m_sound_success.Play();
+				}
+			}
+		}catch(const wxChar *t){
+			if(m_sound_fail.IsOk() == true){
+				m_sound_fail.Play();
+			}
+			*m_log << t;
+		}
+		m_frame->Enable();
+		return NULL;
+	}
+
 	void OnExit()
 	{
 		delete [] m_config.script;
 		delete [] m_config.target;
 	}
 public:
-	anago_programmer(anago_panel_program *f, const struct program_config *d, wxString sound_success, wxString sound_fail) 
-	  : wxThread(), m_sound_success(sound_success), m_sound_fail(sound_fail)
+	anago_programmer(wxWindow *f, wxTextCtrl *log, const struct program_config *d, wxString sound_success, wxString sound_fail) 
+	  : wxThread(), m_frame(f), m_log(log),
+	  m_sound_success(sound_success), m_sound_fail(sound_fail)
 	{
-		m_frame = f;
 		m_config = *d;
 	}
 };
 
-static void script_choice_init(wxControlWithItems *c, wxString filespec, wxTextCtrl *log)
+static void script_choice_init(wxControlWithItems *c, wxArrayString filespec, wxTextCtrl *log)
 {
 	wxDir dir(wxGetCwd());
-	wxString filename;
 	wxArrayString ar;
 
 	c->Clear();
 	if ( !dir.IsOpened() ){
 		return;
 	}
-	bool cont = dir.GetFirst(&filename, filespec, wxDIR_FILES);
-	while ( cont ){
-		ar.Add(filename);
-		cont = dir.GetNext(&filename);
+	for(size_t i = 0; i < filespec.GetCount(); i++){
+		wxString filename;
+		bool cont = dir.GetFirst(&filename, filespec[i], wxDIR_FILES);
+		while ( cont ){
+			ar.Add(filename);
+			cont = dir.GetNext(&filename);
+		}
 	}
 	if(ar.GetCount() == 0){
-		*log << wxT("warning: ") << filespec << wxT(" script not found.\n");
+		*log << wxT("warning: ");
+		for(size_t i = 0; i < filespec.GetCount(); i++){
+			*log << filespec[i] << wxT(" ");
+		}
+		*log << wxT("script not found.\n");
 	}else{
 		ar.Sort(false);
 		for(size_t i = 0; i < ar.GetCount(); i++){
@@ -196,7 +257,14 @@ static void script_choice_init(wxControlWithItems *c, wxString filespec, wxTextC
 	}
 }
 
-void gauge_init(struct gauge *t)
+static void script_choice_init(wxControlWithItems *c, wxString filespec, wxTextCtrl *log)
+{
+	wxArrayString spec;
+	spec.Add(filespec);
+	script_choice_init(c, spec, log);
+}
+
+static void gauge_init(struct gauge *t)
 {
 	t->label_set = label_set;
 	t->range_set = range_set;
@@ -213,13 +281,14 @@ class anago_panel_dump : public panel_dump
 {
 private:
 	wxThread *m_anago_thread;
-	wxTextCtrl *m_log;
-	const struct reader_driver *m_reader;
-	wxString m_dump_sound_success, m_dump_sound_fail;
+	const struct reader_driver *const m_reader;
+	enum anago_status *const m_status;
+	wxTextCtrl *const m_log;
+	wxString m_sound_success, m_sound_fail;
+	wxString m_database;
 	RomDb *m_romdb;
-	enum anago_status m_status;
 
-	void dump_increase_init(wxControlWithItems *c)
+	void increase_init(wxControlWithItems *c)
 	{
 		c->Clear();
 		c->Append(wxT("x1"));
@@ -227,7 +296,7 @@ private:
 		c->Append(wxT("x4"));
 		c->Select(0);
 	}
-	int dump_increase_get(wxControlWithItems *c)
+	int increase_get(wxControlWithItems *c)
 	{
 		switch(c->GetSelection()){
 		case 0: return 1;
@@ -237,28 +306,28 @@ private:
 		}
 		return 1;
 	}
-	void dump_execute(void)
+	void execute(void)
 	{
 		struct dump_config config;
 		config.mode = MODE_ROM_DUMP;
-		config.cpu.gauge.bar = m_dump_cpu_gauge;
-		config.cpu.gauge.label = m_dump_cpu_value;
+		config.cpu.gauge.bar = m_cpu_gauge;
+		config.cpu.gauge.label = m_cpu_value;
 		gauge_init(&config.cpu.gauge);
 
-		config.ppu.gauge.bar = m_dump_ppu_gauge;
-		config.ppu.gauge.label = m_dump_ppu_value;
+		config.ppu.gauge.bar = m_ppu_gauge;
+		config.ppu.gauge.label = m_ppu_value;
 		gauge_init(&config.ppu.gauge);
 		
 		config.log.object = m_log;
 		config.log.append = text_append;
 		config.log.append_va = text_append_va;
 		config.except = throw_error;
-		config.cpu.increase = dump_increase_get(m_dump_cpu_increase);
-		config.ppu.increase = dump_increase_get(m_dump_ppu_increase);
+		config.cpu.increase = increase_get(m_cpu_increase);
+		config.ppu.increase = increase_get(m_ppu_increase);
 		config.progress = true;
-		config.battery = m_dump_check_battery->GetValue();
+		config.battery = m_check_battery->GetValue();
 		{
-			wxString str_script = m_dump_script_choice->GetStringSelection();
+			wxString str_script = m_script_choice->GetStringSelection();
 			wxChar *t = new wxChar[str_script.Length() + 1];
 			config.script = t;
 			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
@@ -267,8 +336,8 @@ private:
 		{
 			wxString str;
 			config.mappernum = -1;
-			if(m_dump_check_forcemapper->GetValue() == true){
-				str = m_dump_text_forcemapper->GetValue();
+			if(m_check_forcemapper->GetValue() == true){
+				str = m_text_forcemapper->GetValue();
 				if(str.ToLong(&config.mappernum) == false){
 					*m_log << wxT("bad mapper number\n");
 					return;
@@ -277,7 +346,7 @@ private:
 		}
 
 		{
-			wxTextCtrl *text = m_dump_romimage_picker->GetTextCtrl();
+			wxTextCtrl *text = m_romimage_picker->GetTextCtrl();
 			wxString str_rom = text->GetValue();
 			wxChar *t = new wxChar[str_rom.Length() + 1];
 			if(text->IsEmpty() == true){
@@ -292,38 +361,30 @@ private:
 		config.cpu.access = &m_reader->cpu;
 		config.ppu.access = &m_reader->ppu;
 
-		m_dump_script_choice->Disable();
-		m_dump_romimage_picker->Disable();
-		m_dump_check_battery->Disable();
-		m_dump_check_forcemapper->Disable();
-		m_dump_button->SetLabel(wxT("cancel"));
-		m_dump_text_forcemapper->Disable();
-		m_dump_cpu_increase->Disable();
-		m_dump_ppu_increase->Disable();
+		this->Disable();
 
 /*		if(m_anago_thread != NULL){ //???
 			delete m_anago_thread;
 		}*/
-		m_anago_thread = new anago_dumper(this, &config, m_dump_sound_success, m_dump_sound_fail);
+		m_anago_thread = new anago_dumper(this, &config, m_log, m_sound_success, m_sound_fail, m_romdb);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
 			*m_log << wxT("thread creating error");
 		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
 			*m_log << wxT("thread running error");
 		}else{
-//			m_status = STATUS_DUMPPING;
+			*m_status = STATUS_DUMPPING;
 		}
 	}
 protected:
-	void dump_button_click(wxCommandEvent& event)
+	void button_click(wxCommandEvent& event)
 	{
-		switch(m_status){
+		switch(*m_status){
 		case STATUS_IDLE:
-			this->dump_execute();
+			this->execute();
 			break;
 		case STATUS_DUMPPING:
 			m_anago_thread->Kill();
-			this->DumpThreadFinish();
-			m_status = STATUS_IDLE;
+			this->Enable();
 			break;
 		default: //do nothing
 			break;
@@ -332,85 +393,82 @@ protected:
 
 	void mapper_change_check(wxCommandEvent& event)
 	{
-		if(m_dump_check_forcemapper->GetValue() == true){
-			m_dump_text_forcemapper->Enable();
+		if(m_check_forcemapper->GetValue() == true){
+			m_text_forcemapper->Enable();
 		}else{
-			m_dump_text_forcemapper->Disable();
+			m_text_forcemapper->Disable();
 		}
 	}
+
 public:
-	anago_panel_dump(wxWindow *p, const struct reader_driver *r, wxFileConfig *config, wxTextCtrl *log) : panel_dump(p), m_status(STATUS_IDLE)
+	anago_panel_dump(wxNotebook *p, const struct reader_driver *r, enum anago_status *status, wxFileConfig *config, wxTextCtrl *log)
+	  : panel_dump(p), m_reader(r), m_status(status), m_log(log)
 	{
-		m_reader = r;
-		m_log = log;
-		m_romdb = new RomDb(wxT("NesCarts (2010-02-08).xml"));
-		m_romdb->Generate();
+		config->Read(wxT("dump.database"), &m_database, wxT("NesCarts (2010-02-08).xml"));
+		if(wxFileName::FileExists(m_database) == true){
+			m_romdb = new RomDb(m_database);
+			m_romdb->Generate();
+		}else{
+			*log << wxT("m_database not found\n");
+			m_romdb = new RomDb();
+		}
 
-		config->Read(wxT("dump.sound.success"), &m_dump_sound_success, wxT("tinkalink2.wav"));
-		config->Read(wxT("dump.sound.fail"), &m_dump_sound_fail, wxT("doggrowl.wav"));
+		config->Read(wxT("dump.sound.success"), &m_sound_success, wxT("tinkalink2.wav"));
+		config->Read(wxT("dump.sound.fail"), &m_sound_fail, wxT("doggrowl.wav"));
 
-		script_choice_init(m_dump_script_choice, wxT("*.ad"), log);
-		this->dump_increase_init(m_dump_cpu_increase);
-		m_dump_cpu_increase->Append(wxT("Auto"));
-		m_dump_cpu_increase->Select(3);
-		this->dump_increase_init(m_dump_ppu_increase);
+		wxArrayString ar;
+		ar.Add(wxT("*.ad"));
+		ar.Add(wxT("*.ae"));
+		script_choice_init(m_script_choice, ar, log);
+		this->increase_init(m_cpu_increase);
+		m_cpu_increase->Append(wxT("Auto"));
+		m_cpu_increase->Select(3);
+		this->increase_init(m_ppu_increase);
 		if(DEBUG==1){
-			m_dump_romimage_picker->GetTextCtrl()->SetLabel(wxT("t.nes"));
+			m_romimage_picker->GetTextCtrl()->SetLabel(wxT("t.nes"));
 		}
 	}
-	void DumpThreadFinish(unsigned long crc)
+	virtual ~anago_panel_dump(void)
 	{
-		m_romdb->Search(crc, m_log);
-		this->DumpThreadFinish();
+		delete m_romdb;
 	}
-	void DumpThreadFinish(void)
+	bool Enable(bool t = true)
 	{
-		m_dump_script_choice->Enable();
-		m_dump_script_choice->SetFocus();
-		m_dump_romimage_picker->Enable();
-		m_dump_check_battery->Enable();
-		m_dump_check_forcemapper->Enable();
-		m_dump_cpu_increase->Enable();
-		m_dump_ppu_increase->Enable();
-		m_dump_button->SetLabel(wxT("&dump"));
-		if(m_dump_check_forcemapper->GetValue() == true){
-			m_dump_text_forcemapper->Enable();
+		m_script_choice->Enable(t);
+		m_romimage_picker->Enable(t);
+		m_check_battery->Enable(t);
+		m_check_forcemapper->Enable(t);
+		m_cpu_increase->Enable(t);
+		m_ppu_increase->Enable(t);
+		if(t == true){
+			*m_status = STATUS_IDLE;
+			m_button->SetLabel(wxT("&dump"));
+			if(m_check_forcemapper->GetValue() == true){
+				m_text_forcemapper->Enable();
+			}
+		}else{
+			m_button->SetLabel(wxT("cancel"));
+			m_check_forcemapper->Disable();
 		}
-		m_status = STATUS_IDLE;
+		m_button->SetFocus();
+		return true;
 	}
-	void LogAppend(const wxChar *t)
+	bool Disable(void)
 	{
-		*m_log << t;
+		return this->Enable(false);
 	}
 };
-
-void *anago_dumper::Entry(void)
-{
-	try{
-		if(script_dump_execute(&m_config) == true){
-			if(m_sound_success.IsOk() == true){
-				m_sound_success.Play();
-			}
-		}
-	}catch(const wxChar *t){
-		if(m_sound_fail.IsOk() == true){
-			m_sound_fail.Play();
-		}
-		m_frame->LogAppend(t);
-	}
-	m_frame->DumpThreadFinish(m_config.crc);
-	return NULL;
-}
 
 class anago_panel_program : public panel_program
 {
 private:
 	wxThread *m_anago_thread;
-	const struct reader_driver *m_reader;
-	wxString m_program_sound_success, m_program_sound_fail;
-	enum anago_status m_status;
-	wxTextCtrl *m_log;
-	void program_padding_init(wxControlWithItems *c)
+	const struct reader_driver *const m_reader;
+	wxString m_sound_success, m_sound_fail;
+	enum anago_status *const m_status;
+	wxTextCtrl *const m_log;
+	
+	void padding_init(wxControlWithItems *c)
 	{
 		c->Clear();
 		c->Append(wxT("full"));
@@ -419,7 +477,7 @@ private:
 		c->Append(wxT("empty"));
 		c->Select(0);
 	}
-	bool program_rom_set(wxString device, int trans, struct memory *m, struct flash_device *f)
+	bool rom_set(wxString device, int trans, struct memory *m, struct flash_device *f)
 	{
 		m->offset = 0;
 		if(flash_device_get(device, f) == false){
@@ -444,16 +502,16 @@ private:
 		return true;
 	}
 
-	void program_execute(void)
+	void execute(void)
 	{
 		struct program_config f;
 		
-		f.cpu.gauge.bar = m_program_cpu_gauge;
-		f.cpu.gauge.label = m_program_cpu_value;
+		f.cpu.gauge.bar = m_cpu_gauge;
+		f.cpu.gauge.label = m_cpu_value;
 		gauge_init(&f.cpu.gauge);
 
-		f.ppu.gauge.bar = m_program_ppu_gauge;
-		f.ppu.gauge.label = m_program_ppu_value;
+		f.ppu.gauge.bar = m_ppu_gauge;
+		f.ppu.gauge.label = m_ppu_value;
 		gauge_init(&f.ppu.gauge);
 		
 		f.log.object = m_log;
@@ -462,14 +520,14 @@ private:
 		f.except = throw_error;
 		
 		{
-			wxString str_script = m_program_script_choice->GetStringSelection();
+			wxString str_script = m_script_choice->GetStringSelection();
 			wxChar *t = new wxChar[str_script.Length() + 1];
 			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
 			f.script = t;
 		}
 
 		{
-			wxTextCtrl *text = m_program_romimage_picker->GetTextCtrl();
+			wxTextCtrl *text = m_romimage_picker->GetTextCtrl();
 			wxString str_rom = text->GetValue();
 			if(text->IsEmpty() == true){
 				*m_log << wxT("Enter filename to ROM image\n");
@@ -479,19 +537,19 @@ private:
 			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
 			f.target = t;
 		}
-		f.compare = m_program_compare->GetValue();
+		f.compare = m_compare->GetValue();
 		f.testrun = false;
 
-		if(program_rom_set(
-			m_program_cpu_device->GetStringSelection(), 
-			m_program_cpu_padding->GetSelection(),
+		if(rom_set(
+			m_cpu_device->GetStringSelection(), 
+			m_cpu_padding->GetSelection(),
 			&f.cpu.memory, &f.cpu.flash
 		) == false){
 			return;
 		}
-		if(program_rom_set(
-			m_program_ppu_device->GetStringSelection(), 
-			m_program_ppu_padding->GetSelection(),
+		if(rom_set(
+			m_ppu_device->GetStringSelection(), 
+			m_ppu_padding->GetSelection(),
 			&f.ppu.memory, &f.ppu.flash
 		) == false){
 			return;
@@ -501,27 +559,19 @@ private:
 		f.cpu.access = &m_reader->cpu;
 		f.ppu.access = &m_reader->ppu;
 
-		m_program_script_choice->Disable();
-		m_program_romimage_picker->Disable();
-		m_program_compare->Disable();
-		m_program_button->SetLabel(wxT("cancel"));
-		m_program_cpu_padding->Disable();
-		m_program_cpu_device->Disable();
-		m_program_ppu_padding->Disable();
-		m_program_ppu_device->Disable();
-		m_program_compare->Disable();
+		this->Disable();
 
-		m_anago_thread = new anago_programmer(this, &f, m_program_sound_success, m_program_sound_fail);
+		m_anago_thread = new anago_programmer(this, m_log, &f, m_sound_success, m_sound_fail);
 		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
 			*m_log << wxT("thread creating error");
 		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
 			*m_log << wxT("thread running error");
 		}else{
-			m_status = STATUS_PROGRAMMING;
+			*m_status = STATUS_PROGRAMMING;
 		}
 	}
 
-	void program_device_load(wxControlWithItems *choice, wxFileConfig *c, wxString key)
+	void device_load(wxControlWithItems *choice, wxFileConfig *c, wxString key)
 	{
 		wxString device;
 		int val;
@@ -534,103 +584,225 @@ private:
 		}
 	}
 protected:
-	void program_button_click(wxCommandEvent& event)
+	void button_click(wxCommandEvent& event)
 	{
-		switch(m_status){
+		switch(*m_status){
 		case STATUS_IDLE:
-			this->program_execute();
+			this->execute();
 			break;
 		case STATUS_PROGRAMMING:
 			m_anago_thread->Kill();
-			this->ProgramThreadFinish();
-			m_status = STATUS_IDLE;
+			this->Enable();
 			break;
 		default: //do nothing
 			break;
 		}
 	}
 public:
-	anago_panel_program(wxWindow *p, const struct reader_driver *r, wxFileConfig *config, wxTextCtrl *log) : panel_program(p), m_status(STATUS_IDLE)
+	anago_panel_program(wxNotebook *p, const struct reader_driver *r, enum anago_status *status, wxFileConfig *config, wxTextCtrl *log) 
+	  : panel_program(p), m_reader(r), m_status(status), m_log(log)
 	{
-		m_reader = r;
-		m_log = log;
-		config->Read(wxT("program.sound.success"), &m_program_sound_success, wxT("cuckoo.wav"));
-		config->Read(wxT("program.sound.fail"), &m_program_sound_fail, wxT("doggrowl.wav"));
-		script_choice_init(m_program_script_choice, wxT("*.af"), m_log);
+		config->Read(wxT("program.sound.success"), &m_sound_success, wxT("cuckoo.wav"));
+		config->Read(wxT("program.sound.fail"), &m_sound_fail, wxT("doggrowl.wav"));
+		script_choice_init(m_script_choice, wxT("*.af"), m_log);
 		{
 			struct flash_listup list;
-			list.obj_cpu = m_program_cpu_device;
-			list.obj_ppu = m_program_ppu_device;
+			list.obj_cpu = m_cpu_device;
+			list.obj_ppu = m_ppu_device;
 			list.append = choice_append;
 			flash_device_listup(&list);
 		}
-		if(m_program_cpu_device->GetCount() == 0){
+		if(m_cpu_device->GetCount() == 0){
 			*m_log << wxT("warning: flash device parameter not found\n");
 		}else{
-			program_device_load(m_program_cpu_device, config, wxT("program.cpu.device"));
-			program_device_load(m_program_ppu_device, config, wxT("program.ppu.device"));
+			device_load(m_cpu_device, config, wxT("program.cpu.device"));
+			device_load(m_ppu_device, config, wxT("program.ppu.device"));
 		}
-		this->program_padding_init(m_program_cpu_padding);
-		this->program_padding_init(m_program_ppu_padding);
+		this->padding_init(m_cpu_padding);
+		this->padding_init(m_ppu_padding);
 		
 		m_anago_thread = NULL;
-		m_status = STATUS_IDLE;
 	}
-	void ProgramThreadFinish(void)
+	bool Enable(bool t = true)
 	{
-		m_program_script_choice->Enable();
-		m_program_romimage_picker->Enable();
-		m_program_compare->Enable();
-		m_program_button->SetLabel(wxT("&program"));
-		m_program_cpu_padding->Enable();
-		m_program_cpu_device->Enable();
-		m_program_ppu_padding->Enable();
-		m_program_ppu_device->Enable();
-		m_status = STATUS_IDLE;
+		m_script_choice->Enable(t);
+		m_romimage_picker->Enable(t);
+		m_compare->Enable(t);
+		m_cpu_padding->Enable(t);
+		m_cpu_device->Enable(t);
+		m_ppu_padding->Enable(t);
+		m_ppu_device->Enable(t);
+		if(t == true){
+			*m_status = STATUS_IDLE;
+			m_button->SetLabel(wxT("&program"));
+		}else{
+			m_button->SetLabel(wxT("cancel"));
+		}
+		m_button->SetFocus();
+		return true;
 	}
-	void LogAppend(const wxChar *t)
+	bool Disable(void)
 	{
-		*m_log << t;
+		return this->Enable(false);
 	}
 	void ConfigWrite(wxFileConfig *c)
 	{
-		c->Write(wxT("program.cpu.device"), m_program_cpu_device->GetStringSelection());
-		c->Write(wxT("program.ppu.device"), m_program_ppu_device->GetStringSelection());
+		c->Write(wxT("program.cpu.device"), m_cpu_device->GetStringSelection());
+		c->Write(wxT("program.ppu.device"), m_ppu_device->GetStringSelection());
 	}
 };
-
-void *anago_programmer::Entry(void)
-{
-	try{
-		if(script_program_execute(&m_config) == true){
-			if(m_sound_success.IsOk() == true){
-				m_sound_success.Play();
-			}
-		}
-	}catch(const wxChar *t){
-		if(m_sound_fail.IsOk() == true){
-			m_sound_fail.Play();
-		}
-		m_frame->LogAppend(t);
-	}
-	m_frame->ProgramThreadFinish();
-	return NULL;
-}
 
 class anago_panel_workram : public panel_workram
 {
 private:
-//	wxTextCtrl *m_log;
+	wxThread *m_anago_thread;
+	const struct reader_driver *const m_reader;
+	enum anago_status *const m_status;
+	wxTextCtrl *const m_log;
+	wxString m_sound_success, m_sound_fail;
+
+	void execute(struct dump_config *c, wxControlWithItems *script, wxFilePickerCtrl *picker, enum anago_status status)
+	{
+		c->cpu.gauge.label = NULL;
+		gauge_init(&c->cpu.gauge);
+		
+		c->log.object = m_log;
+		c->log.append = text_append;
+		c->log.append_va = text_append_va;
+		c->except = throw_error;
+		c->cpu.increase = 1; //increase_get(m_cpu_increase);
+		c->progress = true;
+		{
+			wxString str_script = script->GetStringSelection();
+			wxChar *t = new wxChar[str_script.Length() + 1];
+			c->script = t;
+			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
+		}
+		{
+			wxTextCtrl *text = picker->GetTextCtrl();
+			wxString str_rom = text->GetValue();
+			wxChar *t = new wxChar[str_rom.Length() + 1];
+			if(text->IsEmpty() == true){
+				*m_log << wxT("Enter filename to ROM image\n");
+				return;
+			}
+			c->target = t;
+			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
+		}
+		c->control = &m_reader->control;
+		c->cpu.access = &m_reader->cpu;
+		c->ppu.access = &m_reader->ppu;
+		
+		m_anago_thread = new anago_dumper(this, c, m_log, m_sound_success, m_sound_fail);
+		if(m_anago_thread->Create() != wxTHREAD_NO_ERROR){
+			*m_log << wxT("thread creating error");
+		}else if(m_anago_thread->Run() != wxTHREAD_NO_ERROR){
+			*m_log << wxT("thread running error");
+		}else{
+			*m_status = status; //先に status を設定すること
+			this->Disable();
+		}
+	}
+
+	void read(void)
+	{
+		struct dump_config config;
+		config.mode = MODE_RAM_READ;
+		config.cpu.gauge.bar = m_read_gauge;
+		execute(&config, m_read_script, m_read_picker, STATUS_RAM_READ);
+	}
+	void write(void)
+	{
+		struct dump_config config;
+		config.mode = MODE_RAM_WRITE;
+		config.cpu.gauge.bar = m_write_gauge;
+		execute(&config, m_write_script, m_write_picker, STATUS_RAM_WRITE);
+	}
 protected:
 	void read_button_click(wxCommandEvent& event)
 	{
+		switch(*m_status){
+		case STATUS_IDLE:
+			read();
+			break;
+		case STATUS_RAM_READ:
+			this->Enable();
+			break;
+		default: //do nothing
+			break;
+		}
+	}
+
+	void write_button_click(wxCommandEvent& event)
+	{
+		switch(*m_status){
+		case STATUS_IDLE:
+			write();
+			break;
+		case STATUS_RAM_WRITE:
+			this->Enable();
+			break;
+		default: //do nothing
+			break;
+		}
 	}
 public:
-	anago_panel_workram(wxWindow *p, wxTextCtrl *log) : panel_workram(p)
+	anago_panel_workram(wxWindow *p, const struct reader_driver *r, enum anago_status *status, wxFileConfig *config, wxTextCtrl *log)
+	  : panel_workram(p), m_reader(r), m_status(status), m_log(log)
 	{
-//		m_log = log;
-		script_choice_init(m_ram_read_script, wxT("*.ad"), log);
-		script_choice_init(m_ram_write_script, wxT("*.ad"), log);
+		config->Read(wxT("workram.sound.success"), &m_sound_success, wxT("tinkalink2.wav"));
+		config->Read(wxT("workram.sound.fail"), &m_sound_fail, wxT("doggrowl.wav"));
+
+		script_choice_init(m_read_script, wxT("*.ae"), log);
+		script_choice_init(m_write_script, wxT("*.ae"), log);
+		
+		if(DEBUG == 1){
+			m_read_picker->GetTextCtrl()->SetLabel(wxT("t.sav"));
+		}
+	}
+	
+	bool Enable(bool t = true)
+	{
+		m_read_script->Enable(t);
+		m_read_picker->Enable(t);
+		m_write_script->Enable(t);
+		m_write_picker->Enable(t);
+		if(t == true){
+			switch(*m_status){
+			case STATUS_RAM_READ:
+				m_read_button->SetLabel(wxT("&read"));
+				m_read_button->SetFocus();
+				m_write_button->Enable();
+				break;
+			case STATUS_RAM_WRITE:
+				m_write_button->SetLabel(wxT("&write"));
+				m_write_button->SetFocus();
+				m_read_button->Enable();
+				break;
+			default:
+				break;
+			}
+			*m_status = STATUS_IDLE;
+		}else{
+			switch(*m_status){
+			case STATUS_RAM_READ:
+				m_read_button->SetLabel(wxT("&cancel"));
+				m_write_button->Disable();
+				break;
+			case STATUS_RAM_WRITE:
+				m_write_button->SetLabel(wxT("&cancel"));
+				m_read_button->Disable();
+				break;
+			default:
+				break;
+			}
+		}
+		return true;
+	}
+
+	bool Disable(void)
+	{
+		return this->Enable(false);
 	}
 };
 
@@ -682,6 +854,7 @@ public:
 class anago_frame : public frame_main
 {
 private:
+	enum anago_status m_status; //ここだけ実体, 各パネルはこのポインタ
 	const wxString m_config_file;
 	anago_panel_program *m_panel_program;
 protected:
@@ -693,7 +866,7 @@ protected:
 public:
 	/** Constructor */
 	anago_frame(wxWindow* parent, const struct reader_driver *r)
-	  : frame_main(parent), 
+	  : frame_main(parent), m_status(STATUS_IDLE),
 #ifdef WIN32
 	  m_config_file(wxGetCwd() + wxT("/anago.cfg"))
 #else
@@ -713,10 +886,12 @@ public:
 		config.Read(wxT("size.y"), &size.y, 460);
 		this->SetSize(size);
 
-		m_notebook->AddPage(new anago_panel_dump(m_notebook, r, &config, m_log), wxT("dump"), false);
-		m_panel_program = new anago_panel_program(m_notebook, r, &config, m_log);
+		m_notebook->AddPage(new anago_panel_dump(m_notebook, r, &m_status, &config, m_log), wxT("dump"), false);
+
+		m_panel_program = new anago_panel_program(m_notebook, r, &m_status, &config, m_log);
 		m_notebook->AddPage(m_panel_program, wxT("program"), false);
-		m_notebook->AddPage(new anago_panel_workram(m_notebook, m_log), wxT("workram"), false);
+
+		m_notebook->AddPage(new anago_panel_workram(m_notebook, r, &m_status, &config, m_log), wxT("workram"), false);
 		m_notebook->AddPage(new anago_panel_version(m_notebook), wxT("version"), false);
 	}
 

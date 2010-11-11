@@ -610,7 +610,7 @@
                 </object>
             </object>
         </object>
-        <object class="Panel" expanded="0">
+        <object class="Panel" expanded="1">
             <property name="bg"></property>
             <property name="context_help"></property>
             <property name="context_menu">1</property>
@@ -658,12 +658,12 @@
             <event name="OnSetFocus"></event>
             <event name="OnSize"></event>
             <event name="OnUpdateUI"></event>
-            <object class="wxBoxSizer" expanded="0">
+            <object class="wxBoxSizer" expanded="1">
                 <property name="minimum_size"></property>
                 <property name="name">bSizer17</property>
                 <property name="orient">wxVERTICAL</property>
                 <property name="permission">none</property>
-                <object class="sizeritem" expanded="0">
+                <object class="sizeritem" expanded="1">
                     <property name="border">2</property>
                     <property name="flag">wxEXPAND</property>
                     <property name="proportion">1</property>
@@ -838,7 +838,7 @@
                         </object>
                     </object>
                 </object>
-                <object class="sizeritem" expanded="0">
+                <object class="sizeritem" expanded="1">
                     <property name="border">2</property>
                     <property name="flag">wxEXPAND</property>
                     <property name="proportion">0</property>
@@ -926,7 +926,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_ram_read_script</property>
+                                <property name="name">m_read_script</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -1038,7 +1038,7 @@
                                 <property name="maximum_size"></property>
                                 <property name="message">Select a file</property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_ram_read_picker</property>
+                                <property name="name">m_read_picker</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -1106,7 +1106,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">-1,12</property>
-                                <property name="name">m_ram_read_gauge</property>
+                                <property name="name">m_read_gauge</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="range">100</property>
@@ -1164,7 +1164,7 @@
                                 <property name="label">&amp;read</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_ram_read_button</property>
+                                <property name="name">m_read_button</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -1381,11 +1381,11 @@
                         </object>
                     </object>
                 </object>
-                <object class="sizeritem" expanded="0">
+                <object class="sizeritem" expanded="1">
                     <property name="border">2</property>
                     <property name="flag">wxEXPAND</property>
                     <property name="proportion">0</property>
-                    <object class="wxFlexGridSizer" expanded="0">
+                    <object class="wxFlexGridSizer" expanded="1">
                         <property name="cols">2</property>
                         <property name="flexible_direction">wxBOTH</property>
                         <property name="growablecols">1</property>
@@ -1469,7 +1469,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_ram_write_script</property>
+                                <property name="name">m_write_script</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -1581,7 +1581,7 @@
                                 <property name="maximum_size"></property>
                                 <property name="message">Select a file</property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_ram_write_picker</property>
+                                <property name="name">m_write_picker</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -1649,7 +1649,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">-1,12</property>
-                                <property name="name">m_ram_write_gauge</property>
+                                <property name="name">m_write_gauge</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="range">100</property>
@@ -1707,7 +1707,7 @@
                                 <property name="label">&amp;write</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_ram_write_button</property>
+                                <property name="name">m_write_button</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -1836,7 +1836,7 @@
                                 <property name="label">&amp;script</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_script_label</property>
+                                <property name="name">m_script_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -1892,7 +1892,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_script_choice</property>
+                                <property name="name">m_script_choice</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -1948,7 +1948,7 @@
                                 <property name="label">&amp;ROM image</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_romimage_label</property>
+                                <property name="name">m_romimage_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2004,7 +2004,7 @@
                                 <property name="maximum_size"></property>
                                 <property name="message">Select a file</property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_romimage_picker</property>
+                                <property name="name">m_romimage_picker</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2127,7 +2127,7 @@
                                 <property name="label">Program ROM</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">80,-1</property>
-                                <property name="name">m_dump_cpu_label</property>
+                                <property name="name">m_cpu_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2182,7 +2182,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_cpu_gauge</property>
+                                <property name="name">m_cpu_gauge</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="range">100</property>
@@ -2250,7 +2250,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">60,-1</property>
-                                <property name="name">m_dump_cpu_increase</property>
+                                <property name="name">m_cpu_increase</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -2306,7 +2306,7 @@
                                 <property name="label">0x000000/0x000000</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">-1,-1</property>
-                                <property name="name">m_dump_cpu_value</property>
+                                <property name="name">m_cpu_value</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2427,7 +2427,7 @@
                                 <property name="label">Charcter ROM</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">80,-1</property>
-                                <property name="name">m_dump_ppu_label</property>
+                                <property name="name">m_ppu_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2482,7 +2482,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_ppu_gauge</property>
+                                <property name="name">m_ppu_gauge</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="range">100</property>
@@ -2550,7 +2550,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">60,-1</property>
-                                <property name="name">m_dump_ppu_increase</property>
+                                <property name="name">m_ppu_increase</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -2606,7 +2606,7 @@
                                 <property name="label">0x000000/0x000000</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">-1,-1</property>
-                                <property name="name">m_dump_ppu_value</property>
+                                <property name="name">m_ppu_value</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2728,7 +2728,7 @@
                                 <property name="label">&amp;battery</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_check_battery</property>
+                                <property name="name">m_check_battery</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2785,7 +2785,7 @@
                                 <property name="label">&amp;change mapper</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_check_forcemapper</property>
+                                <property name="name">m_check_forcemapper</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2841,7 +2841,7 @@
                                 <property name="maximum_size"></property>
                                 <property name="maxlength">0</property>
                                 <property name="minimum_size">40,-1</property>
-                                <property name="name">m_dump_text_forcemapper</property>
+                                <property name="name">m_text_forcemapper</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2902,7 +2902,7 @@
                                 <property name="label">&amp;dump</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_dump_button</property>
+                                <property name="name">m_button</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -2916,7 +2916,7 @@
                                 <property name="window_extra_style"></property>
                                 <property name="window_name"></property>
                                 <property name="window_style"></property>
-                                <event name="OnButtonClick">dump_button_click</event>
+                                <event name="OnButtonClick">button_click</event>
                                 <event name="OnChar"></event>
                                 <event name="OnEnterWindow"></event>
                                 <event name="OnEraseBackground"></event>
@@ -2946,7 +2946,7 @@
                 </object>
             </object>
         </object>
-        <object class="Panel" expanded="1">
+        <object class="Panel" expanded="0">
             <property name="bg"></property>
             <property name="context_help"></property>
             <property name="context_menu">1</property>
@@ -3031,7 +3031,7 @@
                                 <property name="label">&amp;script</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_script_label</property>
+                                <property name="name">m_script_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -3087,7 +3087,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_script_choice</property>
+                                <property name="name">m_script_choice</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -3143,7 +3143,7 @@
                                 <property name="label">&amp;ROM image</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_label</property>
+                                <property name="name">m_romimage_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -3199,7 +3199,7 @@
                                 <property name="maximum_size"></property>
                                 <property name="message">Select a file</property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_romimage_picker</property>
+                                <property name="name">m_romimage_picker</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -3322,7 +3322,7 @@
                                 <property name="label">Program flash</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">80,-1</property>
-                                <property name="name">m_program_cpu_label</property>
+                                <property name="name">m_cpu_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -3377,7 +3377,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_cpu_gauge</property>
+                                <property name="name">m_cpu_gauge</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="range">100</property>
@@ -3445,7 +3445,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">100,-1</property>
-                                <property name="name">m_program_cpu_device</property>
+                                <property name="name">m_cpu_device</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -3501,7 +3501,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">60,-1</property>
-                                <property name="name">m_program_cpu_padding</property>
+                                <property name="name">m_cpu_padding</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -3557,7 +3557,7 @@
                                 <property name="label">0x000000/0x000000</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">-1,-1</property>
-                                <property name="name">m_program_cpu_value</property>
+                                <property name="name">m_cpu_value</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -3678,7 +3678,7 @@
                                 <property name="label">Charcter flash</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">80,-1</property>
-                                <property name="name">m_program_ppu_label</property>
+                                <property name="name">m_ppu_label</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -3733,7 +3733,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_ppu_gauge</property>
+                                <property name="name">m_ppu_gauge</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="range">100</property>
@@ -3801,7 +3801,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">100,-1</property>
-                                <property name="name">m_program_ppu_device</property>
+                                <property name="name">m_ppu_device</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -3857,7 +3857,7 @@
                                 <property name="id">wxID_ANY</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">60,-1</property>
-                                <property name="name">m_program_ppu_padding</property>
+                                <property name="name">m_ppu_padding</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="selection">0</property>
@@ -3913,7 +3913,7 @@
                                 <property name="label">0x000000/0x000000</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size">-1,-1</property>
-                                <property name="name">m_program_ppu_value</property>
+                                <property name="name">m_ppu_value</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -4035,7 +4035,7 @@
                                 <property name="label">&amp;compare</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_compare</property>
+                                <property name="name">m_compare</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -4092,7 +4092,7 @@
                                 <property name="label">&amp;program</property>
                                 <property name="maximum_size"></property>
                                 <property name="minimum_size"></property>
-                                <property name="name">m_program_button</property>
+                                <property name="name">m_button</property>
                                 <property name="permission">protected</property>
                                 <property name="pos"></property>
                                 <property name="size"></property>
@@ -4106,7 +4106,7 @@
                                 <property name="window_extra_style"></property>
                                 <property name="window_name"></property>
                                 <property name="window_style"></property>
-                                <event name="OnButtonClick">program_button_click</event>
+                                <event name="OnButtonClick">button_click</event>
                                 <event name="OnChar"></event>
                                 <event name="OnEnterWindow"></event>
                                 <event name="OnEraseBackground"></event>

@@ -17,7 +17,7 @@ GZIP file format specification version 4.3
    }
    if (crc != original_crc) error();
 */
-static uint32_t update_crc(uint32_t crc, const uint8_t *buf, int len)
+uint32_t crc32_update(uint32_t crc, const uint8_t *buf, int len)
 {
 	uint32_t c = crc ^ 0xffffffffUL;
 	int n;
@@ -32,5 +32,5 @@ static uint32_t update_crc(uint32_t crc, const uint8_t *buf, int len)
 //uint32_t crc(uint8_t *buf, int len) //変数名とかぶるのでかえる
 uint32_t crc32_get(const uint8_t *buf, int len)
 {
-	return update_crc(0UL, buf, len);
+	return crc32_update(0UL, buf, len);
 }

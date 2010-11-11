@@ -88,7 +88,7 @@ static void rominfo_print(const struct textcontrol *l, const struct memory *m)
 	}
 }
 
-void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename)
+uint32_t nesfile_create(const struct textcontrol *l, struct romimage *r, const wgChar *romfilename)
 {
 	int error = 0;
 	//RAM adapter bios size 0x2000 は変更しない
@@ -99,7 +99,7 @@ void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgCha
 		error += mirroring_fix(l, &(r->ppu_rom), CHARCTER_ROM_MIN);
 	}
 	if((DEBUG == 0) && (error != 0)){
-		return;
+		return 0;
 	}
 	//修正済み ROM 情報表示
 	l->append(l->object, wgT("%s, mapper %d\n"), romfilename, (int) r->mappernum);
@@ -119,11 +119,14 @@ void nesfile_create(const struct textcontrol *l, struct romimage *r, const wgCha
 	if(r->cpu_rom.size >= PROGRAM_ROM_MIN){ 
 		fwrite(header, sizeof(uint8_t), NES_HEADER_SIZE, f);
 	}
+	uint32_t crc = crc32_get(r->cpu_rom.data, r->cpu_rom.size);
 	fwrite(r->cpu_rom.data, sizeof(uint8_t), r->cpu_rom.size, f);
 	if(r->ppu_rom.size != 0){
 		fwrite(r->ppu_rom.data, sizeof(uint8_t), r->ppu_rom.size, f);
+		crc = crc32_update(crc, r->ppu_rom.data, r->ppu_rom.size);
 	}
 	fclose(f);
+	return crc;
 }
 
 /*
