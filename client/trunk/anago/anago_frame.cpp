@@ -126,10 +126,6 @@ static void choice_append(void *choice, const wxChar *str)
 }
 
 //---- script execute thread ----
-class anago_frame;
-//class anago_panel_dump;
-class anago_panel_program;
-
 class anago_dumper : public wxThread
 {
 private:
@@ -143,7 +139,7 @@ protected:
 	void *Entry(void)
 	{
 		try{
-			bool r;
+			bool r = false;
 			switch(m_config.mode){
 			case MODE_ROM_DUMP:
 				r = script_dump_execute(&m_config);
@@ -256,13 +252,13 @@ static void script_choice_init(wxControlWithItems *c, wxArrayString filespec, wx
 		c->Select(0);
 	}
 }
-
+/*
 static void script_choice_init(wxControlWithItems *c, wxString filespec, wxTextCtrl *log)
 {
 	wxArrayString spec;
 	spec.Add(filespec);
 	script_choice_init(c, spec, log);
-}
+}*/
 
 static void gauge_init(struct gauge *t)
 {
@@ -419,6 +415,8 @@ public:
 		wxArrayString ar;
 		ar.Add(wxT("*.ad"));
 		ar.Add(wxT("*.ae"));
+		ar.Add(wxT("*.af"));
+		ar.Add(wxT("*.ag"));
 		script_choice_init(m_script_choice, ar, log);
 		this->increase_init(m_cpu_increase);
 		m_cpu_increase->Append(wxT("Auto"));
@@ -604,7 +602,12 @@ public:
 	{
 		config->Read(wxT("program.sound.success"), &m_sound_success, wxT("cuckoo.wav"));
 		config->Read(wxT("program.sound.fail"), &m_sound_fail, wxT("doggrowl.wav"));
-		script_choice_init(m_script_choice, wxT("*.af"), m_log);
+		{
+			wxArrayString t;
+			t.Add(wxT("*.af"));
+			t.Add(wxT("*.ag"));
+			script_choice_init(m_script_choice, t, m_log);
+		}
 		{
 			struct flash_listup list;
 			list.obj_cpu = m_cpu_device;
@@ -753,8 +756,11 @@ public:
 		config->Read(wxT("workram.sound.success"), &m_sound_success, wxT("tinkalink2.wav"));
 		config->Read(wxT("workram.sound.fail"), &m_sound_fail, wxT("doggrowl.wav"));
 
-		script_choice_init(m_read_script, wxT("*.ae"), log);
-		script_choice_init(m_write_script, wxT("*.ae"), log);
+		wxArrayString ar;
+		ar.Add(wxT("*.ae"));
+		ar.Add(wxT("*.ag"));
+		script_choice_init(m_read_script, ar, log);
+		script_choice_init(m_write_script, ar, log);
 		
 		if(DEBUG == 1){
 			m_read_picker->GetTextCtrl()->SetLabel(wxT("t.sav"));

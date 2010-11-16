@@ -52,6 +52,6 @@ function workram_rw(d, script, increase_cpu)
 	dofile(script);
 	local cpu_dumpsize = dumpsize_get(board.cpu_ram, increase_cpu);
 	memory_new(d, cpu_dumpsize, 0);
-	cpu_ram_access(d, cpu_dumpsize / board.cpu_ram.banksize, cpu_dumpsize);
+	cpu_ram_access(d, cpu_dumpsize / board.cpu_ram.banksize, board.cpu_ram.banksize);
 	memory_finalize(d);
 }

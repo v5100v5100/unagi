@@ -14,21 +14,15 @@
 #include "script_common.h"
 #include "script_dump.h"
 
-static SQInteger cpu_write_1byte(HSQUIRRELVM v)
+static SQInteger cpu_write(HSQUIRRELVM v)
 {
 	struct dump_config *d;
-	long address, data;
 
 	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	r = qr_argument_get(v, 2, &address, &data);
-	if(SQ_FAILED(r)){
-		return r;
-	}
-	uint8_t d8 = (uint8_t) data;
-	d->cpu.access->memory_write(d->handle, address, 1, &d8);
+	cpu_write_execute(v, d->handle, d->cpu.access);
 	return 0;
 }
 
@@ -375,7 +369,7 @@ bool script_dump_execute(struct dump_config *d)
 		HSQUIRRELVM v = qr_open(&d->log); 
 		qr_function_register_global(v, wgT("memory_new"), memory_new);
 		qr_function_register_global(v, wgT("nesfile_save"), nesfile_save);
-		qr_function_register_global(v, wgT("cpu_write"), cpu_write_1byte);
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write);
 		qr_function_register_global(v, wgT("cpu_read"), cpu_read);
 		qr_function_register_global(v, wgT("ppu_read"), ppu_read);
 		qr_function_register_global(v, wgT("ppu_ramfind"), ppu_ramfind);
@@ -520,7 +514,7 @@ bool script_workram_execute(struct dump_config *d)
 	}
 	{
 		HSQUIRRELVM v = qr_open(&d->log); 
-		qr_function_register_global(v, wgT("cpu_write"), cpu_write_1byte);
+		qr_function_register_global(v, wgT("cpu_write"), cpu_write);
 		switch(d->mode){
 		case MODE_RAM_READ:
 			qr_function_register_global(v, wgT("memory_new"), script_nop);

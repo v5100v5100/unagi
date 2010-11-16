@@ -36,7 +36,7 @@ else
 endif
 
 $(APP_GUI): $(OBJ_GUI) 
-	g++ -o $@ $(LDFLAG) $(OBJ_GUI) `$(WX_CONFIG) --libs core,adv` -lusb -lsqstdlib -lsquirrel
+	g++ -o $@ $(LDFLAG) $(OBJ_GUI) `$(WX_CONFIG) --libs core,adv,xml` -lusb -lsqstdlib -lsquirrel
 $(APP_CUI): $(OBJ_CUI) 
 	g++ -o $@ $(LDFLAG) $(OBJ_CUI) -lusb -lsqstdlib -lsquirrel
 clean:

@@ -58,15 +58,20 @@ static void dummy_init(const struct reader_handle *h)
 
 static void dummy_cpu_write(const struct reader_handle *h, long address, long length, const uint8_t *data)
 {
-	if(length == 1){
-		h->log->append(h->log->object, wgT(" cpu_write $%04x <- $%02x\n"), (int) address, *data);
+	if(length <= 8){
+		long i;
+		for(i = 0; i < length; i++){
+			h->log->append(h->log->object, wgT(" cpu_write $%04x <- $%02x\n"), (int) address, *data);
+			address++;
+			data++;
+		}
 	}
-	Sleep(4);
+	wait(4);
 }
 
 static void dummy_write(const struct reader_handle *h, long address, long length, const uint8_t *data)
 {
-	Sleep(4);
+	wait(4);
 }
 
 static void dummy_flash_config(const struct reader_handle *h, long c000x, long c2aaa, long c5555, long unit, bool retry)

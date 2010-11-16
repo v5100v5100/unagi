@@ -66,17 +66,7 @@ static SQInteger ppu_command(HSQUIRRELVM v)
 	}
 	return command_set(v, &d->ppu);
 }
-static SQInteger write_memory(HSQUIRRELVM v, const struct reader_handle *h, struct flash_memory_driver *t)
-{
-	long address, data;
-	SQRESULT r = qr_argument_get(v, 2, &address, &data);
-	if(SQ_FAILED(r)){
-		return r;
-	}
-	uint8_t d8 = (uint8_t) data;
-	t->access->memory_write(h, address, 1, &d8);
-	return 0;
-}
+
 static SQInteger cpu_write(HSQUIRRELVM v)
 {
 	struct program_config *d;
@@ -84,8 +74,10 @@ static SQInteger cpu_write(HSQUIRRELVM v)
 	if(SQ_FAILED(r)){
 		return r;
 	}
-	return write_memory(v, d->handle, &d->cpu);
+	cpu_write_execute(v, d->handle, d->cpu.access);
+	return 0;
 }
+
 static SQInteger erase_set(HSQUIRRELVM v, const struct reader_handle *h, struct flash_memory_driver *t, struct textcontrol *log)
 {
 	t->access->flash_config(h, t->c000x, t->c2aaa, t->c5555, t->flash.pagesize, t->flash.retry);

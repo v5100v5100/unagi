@@ -10,6 +10,7 @@
 #include "romimage.h"
 #include "reader_master.h"
 #include "reader_kazzo.h"
+#include "reader_dummy.h"
 #include "script_dump.h"
 #include "flash_device.h"
 #include "script_program.h"
@@ -152,7 +153,7 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 	config.ppu.increase = 1;
 	config.progress = true;
 	switch(v[1][0]){
-	case wgT('d'):
+	case wgT('d'): case wgT('z'):
 		config.mode = MODE_ROM_DUMP;
 		break;
 	case wgT('D'):
@@ -222,11 +223,15 @@ static void usage(const wgChar *v)
 {
 	PUTS(wgT("famicom bus simluator 'anago'"));
 	PRINTF(wgT("%s [mode] [script] [target] ....\n"), v);
+	PUTS(wgT("d - ROM dump with kazzo"));
+	PUTS(wgT("f - flash program with kazzo"));
+	PUTS(wgT("r - workram read with kazzo"));
+	PUTS(wgT("w - workram write with kazzo"));
+	PUTS(wgT("z - ROM dump for test"));
+	PUTS(wgT("x - flash program for test"));
+	PUTS(wgT("R - workram read for test"));
+	PUTS(wgT("W - workram write for test"));
 }
-
-#if DEBUG==1
-extern const struct reader_driver DRIVER_DUMMY;
-#endif
 
 #ifdef WIN32
 int main(int c, char **vv)
@@ -248,17 +253,13 @@ int anago_cui(int c, wgChar **v)
 		}
 #endif
 		switch(v[1][0]){
-#if DEBUG==1
 		case wgT('x'):
 			r = &DRIVER_DUMMY; //though down
-#endif
 		case wgT('f'): case wgT('F'):
 			program(c, v, r);
 			break;
-#if DEBUG==1
 		case wgT('z'): case wgT('R'): case wgT('W'): 
 			r = &DRIVER_DUMMY; //though down
-#endif
 		case wgT('d'): case wgT('D'):
 		case wgT('r'): case wgT('w'):
 			dump(c,v, r);

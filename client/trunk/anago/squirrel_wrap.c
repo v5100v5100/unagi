@@ -86,7 +86,7 @@ void qr_close(HSQUIRRELVM v)
 	sq_close(v); 
 }
 
-static bool long_get(HSQUIRRELVM v, SQInteger index, long *d)
+bool qr_long_get(HSQUIRRELVM v, SQInteger index, long *d)
 {
 	if(sq_gettype(v, index) != OT_INTEGER){
 		return false;
@@ -108,7 +108,7 @@ SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...)
 	va_start(ap, num);
 	SQInteger i;
 	for(i = 0; i < num; i++){
-		if(long_get(v, i + 3, va_arg(ap, long *)) == false){
+		if(qr_long_get(v, i + 3, va_arg(ap, long *)) == false){
 			return sq_throwerror(v, _SC("argument type error"));
 		}
 	}

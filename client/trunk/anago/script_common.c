@@ -4,6 +4,7 @@
 #include <sqstdio.h>
 #include <sqstdaux.h>
 #include "type.h"
+#include "memory_manage.h"
 #include "squirrel_wrap.h"
 #include "reader_master.h"
 #include "widget.h"
@@ -28,16 +29,92 @@ SQInteger cpu_write_check(HSQUIRRELVM v)
 {
 	static const struct range range_address = {0x4000, 0x10000};
 	static const struct range range_data = {0x0, 0xff};
-	long address, data;
-	SQRESULT r = qr_argument_get(v, 2, &address, &data);
-	if(SQ_FAILED(r)){
-		return r;
+	const SQInteger data_index = 4;
+	long address;
+	switch(sq_gettype(v, data_index)){
+	case OT_INTEGER:{
+		long data;
+		SQRESULT r = qr_argument_get(v, 2, &address, &data);
+		if(SQ_FAILED(r)){
+			return r;
+		}
+		r = range_check(v, wgT("address"), address, &range_address);
+		if(SQ_FAILED(r)){
+			return r;
+		}
+		return range_check(v, wgT("data"), data, &range_data);}
+	case OT_ARRAY:{
+		SQInteger i;
+		if(qr_long_get(v, 3, &address) == false){
+			return sq_throwerror(v, _SC("argument number error"));
+		}
+		for(i = 0; i < sq_getsize(v, data_index); i++){
+			long data;
+			SQRESULT r = range_check(v, wgT("address"), address, &range_address);
+			if(SQ_FAILED(r)){
+				return r;
+			}
+			sq_pushinteger(v, i);
+			if(SQ_FAILED(sq_get(v, -2))){
+				return r;
+			}
+			if(qr_long_get(v, -1, &data) == false){
+				return sq_throwerror(v, wgT("script type error"));
+			}
+			sq_pop(v, 1);
+			r = range_check(v, wgT("data"), data, &range_data);
+			if(SQ_FAILED(r)){
+				return r;
+			}
+			address++;
+		}
+		return 0;}
+	default:
+		return sq_throwerror(v, wgT("script type error"));
 	}
-	r = range_check(v, wgT("address"), address, &range_address);
-	if(SQ_FAILED(r)){
-		return r;
+	return 0;
+}
+
+void cpu_write_execute(HSQUIRRELVM v, const struct reader_handle *h, const struct reader_memory_access *t)
+{
+	const SQInteger data_index = 4;
+	long address;
+	switch(sq_gettype(v, data_index)){
+	case OT_INTEGER:{
+		long data;
+		uint8_t d8;
+		SQRESULT r = qr_argument_get(v, 2, &address, &data);
+		assert(r == SQ_OK);
+		d8 = (uint8_t) (data & 0xff);
+		t->memory_write(h, address, 1, &d8);
+		}break;
+	case OT_ARRAY:{
+		long i;
+		bool rr = qr_long_get(v, 3, &address);
+		assert(rr == true);
+		
+		const long size = (long) sq_getsize(v, data_index);
+		uint8_t *const d8 = Malloc(size * sizeof(uint8_t));
+		
+		for(i = 0; i < size; i++){
+			long data;
+			SQRESULT r;
+			sq_pushinteger(v, i);
+			r = sq_get(v, -2);
+			assert(r == SQ_OK);
+			rr = qr_long_get(v, -1, &data);
+			assert(rr = true);
+			sq_pop(v, 1);
+			d8[i] = (uint8_t) (data & 0xff);
+		}
+		t->memory_write(h, address, size, d8);
+		Free(d8);
+		}break;
+	default:
+		assert(0);
+		break;
 	}
-	return range_check(v, wgT("data"), data, &range_data);
+	return;
 }
 
 static bool connection_check_main(const struct reader_handle *h, const struct textcontrol *text, const struct reader_memory_access *m, long address)
