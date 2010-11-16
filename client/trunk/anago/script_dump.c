@@ -200,7 +200,11 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 	image.ppu_rom = d->ppu.memory;
 	image.mirror = MIRROR_PROGRAMABLE;
 	if(mirrorfind == 1){
-		if(d->control->vram_connection(d->handle) == 0x05){
+		uint8_t c = d->control->vram_connection(d->handle);
+		if(DEBUG == 1){
+			d->log.append(d->log.object, wgT("vram connection %x\n"), c);
+		}
+		if(c == 0x0a){
 			image.mirror = MIRROR_VERTICAL;
 		}else{
 			image.mirror = MIRROR_HORIZONAL;
