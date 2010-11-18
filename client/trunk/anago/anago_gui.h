@@ -89,6 +89,7 @@ class panel_workram : public wxPanel
 		wxStaticText* m_staticText17;
 		wxFilePickerCtrl* m_read_picker;
 		wxGauge* m_read_gauge;
+		wxChoice* m_read_increase;
 		wxButton* m_read_button;
 		wxStaticLine* m_staticline12;
 		wxStaticText* m_staticText22;
@@ -98,6 +99,7 @@ class panel_workram : public wxPanel
 		wxStaticText* m_staticText171;
 		wxFilePickerCtrl* m_write_picker;
 		wxGauge* m_write_gauge;
+		wxChoice* m_write_increase;
 		wxButton* m_write_button;
 		
 		// Virtual event handlers, overide them in your derived class
