@@ -13,6 +13,7 @@
 #include "widget.h"
 #include "reader_master.h"
 #include "reader_kazzo.h"
+#include "reader_dummy.h"
 extern "C"{
   #include "romimage.h"
   #include "flash_device.h"
@@ -20,109 +21,118 @@ extern "C"{
   #include "script_program.h"
   void qr_version_print(const struct textcontrol *l);
 }
-extern const struct reader_driver DRIVER_DUMMY;
 #ifdef _UNICODE
   #define STRNCPY wcsncpy
 #else
   #define STRNCPY strncpy
 #endif
-//---- C++ -> C -> C++ wrapping functions ----
-static void throw_error(const wxChar *t)
-{
-	throw t;
-}
-
-static void value_set(void *gauge, void *label, int value)
-{
-	wxGauge *g = static_cast<wxGauge *>(gauge);
-	wxStaticText *l = static_cast<wxStaticText *>(label);
-	wxString str;
-	if(g->GetRange() == 1){
-		str = wxT("skip             ");
-	}else{
-		str.Printf(wxT("0x%06x/0x%06x"), value, g->GetRange());
+//---- C++ -> C -> C++ wrapping static functions ----
+namespace c_wrapper{
+	static void throw_error(const wxChar *t)
+	{
+		throw t;
 	}
-	
-	wxMutexGuiEnter();
-	g->SetValue(value);
-	if(label != NULL){
+
+	static void value_set(void *gauge, void *label, int value)
+	{
+		wxGauge *g = static_cast<wxGauge *>(gauge);
+		wxStaticText *l = static_cast<wxStaticText *>(label);
+		wxString str;
+		if(g->GetRange() == 1){
+			str = wxT("skip             ");
+		}else{
+			str.Printf(wxT("0x%06x/0x%06x"), value, g->GetRange());
+		}
+		
+		wxMutexGuiEnter();
+		g->SetValue(value);
+		if(label != NULL){
+			l->SetLabel(str);
+		}
+		wxMutexGuiLeave();
+	}
+
+	static void value_add(void *gauge, void *label, int value)
+	{
+		wxGauge *g = static_cast<wxGauge *>(gauge);
+		value += g->GetValue();
+		
+		value_set(gauge, label, value);
+	}
+
+	static void range_set(void *gauge, int value)
+	{
+		wxGauge *g = static_cast<wxGauge *>(gauge);
+		if(value == 0){
+			value = 1;
+		}
+		g->SetRange(value);
+	}
+
+	static void text_append_va(void *log, const wxChar *format, va_list list)
+	{
+		wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
+		wxString str;
+		str.PrintfV(format, list);
+
+		wxMutexGuiEnter();
+		*l << str;
+		wxMutexGuiLeave();
+	}
+
+	static void text_append(void *log, const wxChar *format, ...)
+	{
+		va_list list;
+		va_start(list, format);
+		text_append_va(log, format, list);
+		va_end(list);
+	}
+
+	static void version_append_va(void *log, const wxChar *format, va_list list)
+	{
+		wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
+		wxString str;
+		str.PrintfV(format, list);
+
+		*l << str;
+	}
+
+	static void version_append(void *log, const wxChar *format, ...)
+	{
+		va_list list;
+		va_start(list, format);
+		version_append_va(log, format, list);
+		va_end(list);
+	}
+
+	static void label_set(void *label, const wxChar *format, ...)
+	{
+		wxStaticText *l = static_cast<wxStaticText *>(label);
+		wxString str;
+		va_list list;
+		
+		va_start(list, format);
+		str.PrintfV(format, list);
+		va_end(list);
+
+		wxMutexGuiEnter();
 		l->SetLabel(str);
+		wxMutexGuiLeave();
 	}
-	wxMutexGuiLeave();
-}
 
-static void value_add(void *gauge, void *label, int value)
-{
-	wxGauge *g = static_cast<wxGauge *>(gauge);
-	value += g->GetValue();
-	
-	value_set(gauge, label, value);
-}
-
-static void range_set(void *gauge, int value)
-{
-	wxGauge *g = static_cast<wxGauge *>(gauge);
-	if(value == 0){
-		value = 1;
+	static void choice_append(void *choice, const wxChar *str)
+	{
+		wxChoice *c = static_cast<wxChoice *>(choice);
+		c->Append(wxString(str));
 	}
-	g->SetRange(value);
-}
 
-static void text_append_va(void *log, const wxChar *format, va_list list)
-{
-	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
-	wxString str;
-	str.PrintfV(format, list);
-
-	wxMutexGuiEnter();
-	*l << str;
-	wxMutexGuiLeave();
-}
-
-static void text_append(void *log, const wxChar *format, ...)
-{
-	va_list list;
-	va_start(list, format);
-	text_append_va(log, format, list);
-	va_end(list);
-}
-
-static void version_append_va(void *log, const wxChar *format, va_list list)
-{
-	wxTextCtrl *l = static_cast<wxTextCtrl *>(log);
-	wxString str;
-	str.PrintfV(format, list);
-
-	*l << str;
-}
-
-static void version_append(void *log, const wxChar *format, ...)
-{
-	va_list list;
-	va_start(list, format);
-	version_append_va(log, format, list);
-	va_end(list);
-}
-
-static void label_set(void *label, const wxChar *format, ...)
-{
-	wxStaticText *l = static_cast<wxStaticText *>(label);
-	wxString str;
-	va_list list;
-	
-	va_start(list, format);
-	str.PrintfV(format, list);
-	va_end(list);
-
-	wxMutexGuiEnter();
-	l->SetLabel(str);
-	wxMutexGuiLeave();
-}
-
-static void choice_append(void *choice, const wxChar *str)
-{
-	wxChoice *c = static_cast<wxChoice *>(choice);
-	c->Append(wxString(str));
+	static void gauge_init(struct gauge *t)
+	{
+		t->label_set = label_set;
+		t->range_set = range_set;
+		t->value_set = value_set;
+		t->value_add = value_add;
+	}
 }
 
 //---- script execute thread ----
@@ -252,20 +262,25 @@ static void script_choice_init(wxControlWithItems *c, wxArrayString filespec, wx
 		c->Select(0);
 	}
 }
-/*
-static void script_choice_init(wxControlWithItems *c, wxString filespec, wxTextCtrl *log)
-{
-	wxArrayString spec;
-	spec.Add(filespec);
-	script_choice_init(c, spec, log);
-}*/
 
-static void gauge_init(struct gauge *t)
+static void increase_init(wxControlWithItems *c)
 {
-	t->label_set = label_set;
-	t->range_set = range_set;
-	t->value_set = value_set;
-	t->value_add = value_add;
+	c->Clear();
+	c->Append(wxT("x1"));
+	c->Append(wxT("x2"));
+	c->Append(wxT("x4"));
+	c->Select(0);
+}
+
+static int increase_get(wxControlWithItems *c)
+{
+	switch(c->GetSelection()){
+	case 0: return 1;
+	case 1: return 2;
+	case 2: return 4;
+	case 3: return INCREASE_AUTO;
+	}
+	return 1;
 }
 
 enum anago_status{
@@ -284,40 +299,22 @@ private:
 	wxString m_database;
 	RomDb *m_romdb;
 
-	void increase_init(wxControlWithItems *c)
-	{
-		c->Clear();
-		c->Append(wxT("x1"));
-		c->Append(wxT("x2"));
-		c->Append(wxT("x4"));
-		c->Select(0);
-	}
-	int increase_get(wxControlWithItems *c)
-	{
-		switch(c->GetSelection()){
-		case 0: return 1;
-		case 1: return 2;
-		case 2: return 4;
-		case 3: return INCREASE_AUTO;
-		}
-		return 1;
-	}
 	void execute(void)
 	{
 		struct dump_config config;
 		config.mode = MODE_ROM_DUMP;
 		config.cpu.gauge.bar = m_cpu_gauge;
 		config.cpu.gauge.label = m_cpu_value;
-		gauge_init(&config.cpu.gauge);
+		c_wrapper::gauge_init(&config.cpu.gauge);
 
 		config.ppu.gauge.bar = m_ppu_gauge;
 		config.ppu.gauge.label = m_ppu_value;
-		gauge_init(&config.ppu.gauge);
+		c_wrapper::gauge_init(&config.ppu.gauge);
 		
 		config.log.object = m_log;
-		config.log.append = text_append;
-		config.log.append_va = text_append_va;
-		config.except = throw_error;
+		config.log.append = c_wrapper::text_append;
+		config.log.append_va = c_wrapper::text_append_va;
+		config.except = c_wrapper::throw_error;
 		config.cpu.increase = increase_get(m_cpu_increase);
 		config.ppu.increase = increase_get(m_ppu_increase);
 		config.progress = true;
@@ -418,10 +415,10 @@ public:
 		ar.Add(wxT("*.af"));
 		ar.Add(wxT("*.ag"));
 		script_choice_init(m_script_choice, ar, log);
-		this->increase_init(m_cpu_increase);
+		::increase_init(m_cpu_increase);
 		m_cpu_increase->Append(wxT("Auto"));
 		m_cpu_increase->Select(3);
-		this->increase_init(m_ppu_increase);
+		::increase_init(m_ppu_increase);
 		if(DEBUG==1){
 			m_romimage_picker->GetTextCtrl()->SetLabel(wxT("t.nes"));
 		}
@@ -506,16 +503,16 @@ private:
 		
 		f.cpu.gauge.bar = m_cpu_gauge;
 		f.cpu.gauge.label = m_cpu_value;
-		gauge_init(&f.cpu.gauge);
+		c_wrapper::gauge_init(&f.cpu.gauge);
 
 		f.ppu.gauge.bar = m_ppu_gauge;
 		f.ppu.gauge.label = m_ppu_value;
-		gauge_init(&f.ppu.gauge);
+		c_wrapper::gauge_init(&f.ppu.gauge);
 		
 		f.log.object = m_log;
-		f.log.append = text_append;
-		f.log.append_va = text_append_va;
-		f.except = throw_error;
+		f.log.append = c_wrapper::text_append;
+		f.log.append_va = c_wrapper::text_append_va;
+		f.except = c_wrapper::throw_error;
 		
 		{
 			wxString str_script = m_script_choice->GetStringSelection();
@@ -536,7 +533,6 @@ private:
 			f.target = t;
 		}
 		f.compare = m_compare->GetValue();
-		f.testrun = false;
 
 		if(rom_set(
 			m_cpu_device->GetStringSelection(), 
@@ -612,7 +608,7 @@ public:
 			struct flash_listup list;
 			list.obj_cpu = m_cpu_device;
 			list.obj_ppu = m_ppu_device;
-			list.append = choice_append;
+			list.append = c_wrapper::choice_append;
 			flash_device_listup(&list);
 		}
 		if(m_cpu_device->GetCount() == 0){
@@ -667,13 +663,13 @@ private:
 	void execute(struct dump_config *c, wxControlWithItems *script, wxFilePickerCtrl *picker, enum anago_status status)
 	{
 		c->cpu.gauge.label = NULL;
-		gauge_init(&c->cpu.gauge);
+		c_wrapper::gauge_init(&c->cpu.gauge);
 		
 		c->log.object = m_log;
-		c->log.append = text_append;
-		c->log.append_va = text_append_va;
-		c->except = throw_error;
-		c->cpu.increase = 1; //increase_get(m_cpu_increase);
+		c->log.append = c_wrapper::text_append;
+		c->log.append_va = c_wrapper::text_append_va;
+		c->except = c_wrapper::throw_error;
+		assert(c->cpu.increase != INCREASE_AUTO);
 		c->progress = true;
 		{
 			wxString str_script = script->GetStringSelection();
@@ -712,14 +708,16 @@ private:
 		struct dump_config config;
 		config.mode = MODE_RAM_READ;
 		config.cpu.gauge.bar = m_read_gauge;
-		execute(&config, m_read_script, m_read_picker, STATUS_RAM_READ);
+		config.cpu.increase = ::increase_get(m_read_increase);
+		this->execute(&config, m_read_script, m_read_picker, STATUS_RAM_READ);
 	}
 	void write(void)
 	{
 		struct dump_config config;
 		config.mode = MODE_RAM_WRITE;
 		config.cpu.gauge.bar = m_write_gauge;
-		execute(&config, m_write_script, m_write_picker, STATUS_RAM_WRITE);
+		config.cpu.increase = ::increase_get(m_write_increase);
+		this->execute(&config, m_write_script, m_write_picker, STATUS_RAM_WRITE);
 	}
 protected:
 	void read_button_click(wxCommandEvent& event)
@@ -759,8 +757,10 @@ public:
 		wxArrayString ar;
 		ar.Add(wxT("*.ae"));
 		ar.Add(wxT("*.ag"));
-		script_choice_init(m_read_script, ar, log);
-		script_choice_init(m_write_script, ar, log);
+		::script_choice_init(m_read_script, ar, log);
+		::script_choice_init(m_write_script, ar, log);
+		::increase_init(m_read_increase);
+		::increase_init(m_write_increase);
 		
 		if(DEBUG == 1){
 			m_read_picker->GetTextCtrl()->SetLabel(wxT("t.sav"));
@@ -822,13 +822,13 @@ public:
 			struct textcontrol detail;
 			*m_version_detail << wxT("anago build at ") << wxT(__DATE__) << wxT("\n\n");
 			detail.object = m_version_detail;
-			detail.append = version_append;
-			detail.append_va = version_append_va;
+			detail.append = c_wrapper::version_append;
+			detail.append_va = c_wrapper::version_append_va;
 			qr_version_print(&detail);
 			*m_version_detail << wxVERSION_STRING << wxT(" (c) Julian Smar");
 		}
 		
-#ifdef WIN32
+#if 0 //def WIN32
 		#include "okada.xpm"
 		wxBitmap bitmap_okada(okada);
 		wxString tooltip(wxT(

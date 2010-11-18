@@ -139,6 +139,13 @@ panel_workram::panel_workram( wxWindow* parent, wxWindowID id, const wxPoint& po
 	
 	bSizer18->Add( m_read_gauge, 1, wxALL, 2 );
 	
+	wxArrayString m_read_increaseChoices;
+	m_read_increase = new wxChoice( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_read_increaseChoices, 0 );
+	m_read_increase->SetSelection( 0 );
+	m_read_increase->SetMinSize( wxSize( 40,-1 ) );
+	
+	bSizer18->Add( m_read_increase, 0, wxALL, 2 );
+	
 	m_read_button = new wxButton( this, wxID_ANY, wxT("&read"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer18->Add( m_read_button, 0, wxALL|wxALIGN_RIGHT, 5 );
 	
@@ -190,6 +197,13 @@ panel_workram::panel_workram( wxWindow* parent, wxWindowID id, const wxPoint& po
 	m_write_gauge->SetMinSize( wxSize( -1,12 ) );
 	
 	bSizer181->Add( m_write_gauge, 1, wxALL, 2 );
+	
+	wxArrayString m_write_increaseChoices;
+	m_write_increase = new wxChoice( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_write_increaseChoices, 0 );
+	m_write_increase->SetSelection( 0 );
+	m_write_increase->SetMinSize( wxSize( 40,-1 ) );
+	
+	bSizer181->Add( m_write_increase, 0, wxALL, 2 );
 	
 	m_write_button = new wxButton( this, wxID_ANY, wxT("&write"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer181->Add( m_write_button, 0, wxALL|wxALIGN_RIGHT, 5 );
