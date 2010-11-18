@@ -1,0 +1,2 @@
+unagi_blue ICON "unagi_blue.ico"
+#include "wx/msw/wx.rc"
