@@ -18,8 +18,8 @@ ifneq ($(strip $(LIBUSB)),)
 endif
 CC = gcc
 
-OBJ_CUI = anago_cui.o cui_gauge.o
-OBJ_GUI = anago_gui.o anago_frame.o nescartxml.o
+OBJ_CUI = anago_cui.o cui_gauge.o $(ICON_CUI)
+OBJ_GUI = anago_gui.o anago_frame.o nescartxml.o $(ICON_GUI)
 OBJ_CORE = romimage.o crc32.o file.o widget.o \
 	reader_kazzo.o reader_dummy.o usb_device.o squirrel_wrap.o \
 	script_program.o script_dump.o script_common.o flash_device.o
@@ -45,5 +45,7 @@ clean:
 anago.d:
 	gcc -MM $(CFLAGS) $(CPPFLAGS) *.c > $@
 	g++ -MM $(CFLAGS) $(CXXFLAGS) *.cpp >> $@
-
+.SUFFIXES: .rc .res.o
+.rc.res.o:
+	`$(WX_CONFIG) --rescomp` -i $< -o $@
 -include anago.d

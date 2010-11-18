@@ -6,4 +6,9 @@ KAZZO = ../../kazzo/firmware
 WX_CONFIG = /d/dev/wxWidgets/build_unicode_sound3/wx-config
 CPPFLAGS =  -D_UNICODE
 CXXFLAGS = #-finput-charset=utf-8 -fexec-charset=cp932
+ICON_GUI = anago_gui.res.o
+ICON_CUI = anago_cui.res.o
+
+#unagi.res.o: unagi.rc unagi.ico
+#	windres -i $< -o $@
 include anago.mk

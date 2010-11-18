@@ -6,4 +6,7 @@ KAZZO = ../../kazzo/firmware
 WX_CONFIG = wx-config
 CPPFLAGS =
 CXXFLAGS = 
+ICON_GUI = 
+ICON_CUI = 
+
 include anago.mk

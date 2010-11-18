@@ -899,6 +899,13 @@ public:
 
 		m_notebook->AddPage(new anago_panel_workram(m_notebook, r, &m_status, &config, m_log), wxT("workram"), false);
 		m_notebook->AddPage(new anago_panel_version(m_notebook), wxT("version"), false);
+
+#ifdef WIN32
+		SetIcon(wxIcon(wxT("unagi_blue")));
+#else
+		#include "unagi_blue.xpm"
+		SetIcon(wxIcon(unagi_blue));
+#endif
 	}
 
 	virtual ~anago_frame(void)
