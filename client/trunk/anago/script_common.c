@@ -85,6 +85,7 @@ void cpu_write_execute(HSQUIRRELVM v, const struct reader_handle *h, const struc
 		uint8_t d8;
 		SQRESULT r = qr_argument_get(v, 2, &address, &data);
 		assert(r == SQ_OK);
+		r++; //avoid warning
 		d8 = (uint8_t) (data & 0xff);
 		t->memory_write(h, address, 1, &d8);
 		}break;
