@@ -204,7 +204,11 @@ static SQInteger nesfile_save(HSQUIRRELVM v)
 		if(DEBUG == 1){
 			d->log.append(d->log.object, wgT("vram connection %x\n"), c);
 		}
-		if(c == 0x0a){
+/*
+kazzo 1.0 return value H:9 V:5
+kazzo 2.x return value H:C V:A
+*/
+		if(c == 0x05 || c == 0x0a){
 			image.mirror = MIRROR_VERTICAL;
 		}else{
 			image.mirror = MIRROR_HORIZONAL;

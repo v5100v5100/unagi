@@ -17,7 +17,8 @@ struct program_config{
 		struct gauge gauge;
 	}cpu, ppu;
 	long mappernum;
-	bool compare, testrun;
+	enum vram_mirroring vram_mirroring;
+	bool compare;
 	struct textcontrol log;
 	void (*except)(const wgChar *str);
 };

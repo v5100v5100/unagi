@@ -81,5 +81,5 @@ function program(
 	if(ppu_trans != trans_empty){
 		co_ppu.call(d, ppu_loop.start, ppu_loop.end, board.ppu_rom.banksize);
 	}
-	program_main(d, co_cpu, co_ppu)
+	program_main(d, co_cpu, co_ppu);
 }

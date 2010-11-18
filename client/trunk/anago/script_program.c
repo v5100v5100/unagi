@@ -16,10 +16,39 @@
 
 static SQInteger vram_mirrorfind(HSQUIRRELVM v)
 {
-	struct flash_config *d;
-	SQRESULT r =  qr_userpointer_get(v, (SQUserPointer) &d);
+	struct program_config *d;
+	SQRESULT r = SQ_FAILED(qr_userpointer_get(v, (SQUserPointer) &d));
 	if(SQ_FAILED(r)){
 		return r;
+	}
+	const uint8_t c = d->control->vram_connection(d->handle);
+	if(DEBUG == 1){
+		d->log.append(d->log.object, wgT("vram connection %x\n"), c);
+	}
+	if((c == 0x0a || c == 0x05) && d->vram_mirroring == MIRROR_VERTICAL){
+		return 0;
+	}else if((c == 0x0c || c == 0x09) && d->vram_mirroring == MIRROR_HORIZONAL){
+		return 0;
+	}else{
+		wgChar cartridge, image;
+		switch(c){
+		case 0x05: case 0x0a:
+			image = wgT('V');
+			break;
+		case 0x09: case 0x0c:
+			image = wgT('H');
+			break;
+		default:
+			image = wgT('?');
+			break;
+		}
+		if(d->vram_mirroring == MIRROR_HORIZONAL){
+			cartridge = wgT('H');
+		}else{
+			cartridge = wgT('V');
+		}
+		d->log.append(d->log.object, wgT("warning: vram connection is unmmacted\n"));
+		d->log.append(d->log.object, wgT("cartridge:%c romimage:%c\n"), cartridge, image);
 	}
 	return 0;
 }
@@ -213,7 +242,7 @@ static SQInteger erase_wait(HSQUIRRELVM v)
 		do{
 			wait(2);
 			d->control->flash_status(d->handle, s);
-		//ËÜÍè¤Î°Õ¿Þ¤«¤é¤Ç¤Ï¤³¤³¤Î¾ò·ï¼°¤Ï && ¤Ç¤Ï¤Ê¤¯ || ¤À¤¬¡¢Àè¤Ë erase ¤¬½ª¤ï¤Ã¤¿¥Ç¥Ð¥¤¥¹¤¬Æ°¤«¤»¤ë¤Î¤Ç»Ä¤·¤Æ¤ª¤¯
+		//æœ¬æ¥ã®æ„å›³ã‹ã‚‰ã§ã¯ã“ã“ã®æ¡ä»¶å¼ã¯ && ã§ã¯ãªã || ã ãŒã€å…ˆã« erase ãŒçµ‚ã‚ã£ãŸãƒ‡ãƒã‚¤ã‚¹ãŒå‹•ã‹ã›ã‚‹ã®ã§æ®‹ã—ã¦ãŠã
 		}while((s[0] != KAZZO_TASK_FLASH_IDLE) && (s[1] != KAZZO_TASK_FLASH_IDLE));
 	}
 	return 0;
@@ -231,7 +260,7 @@ static bool program_memoryarea(HSQUIRRELVM co, const struct reader_handle *h, st
 	if(t->programming.length == 0){
 		if(t->programming.offset != 0 && compare == true){
 			if(program_compare(h, t) == false){
-				log->append(log->object, wgT("%s memory compare error, offset 0x%06x\n"), t->memory.name, t->programming.offset);
+				log->append(log->object, wgT("%s memory compare failed, offset 0x%06x\n"), t->memory.name, t->programming.offset);
 				return false;
 			}
 		}
@@ -263,24 +292,26 @@ static SQInteger program_main(HSQUIRRELVM v)
 	}
 	SQInteger state_cpu = sq_getvmstate(co_cpu);
 	SQInteger state_ppu = sq_getvmstate(co_ppu);
-	const long sleepms = d->compare == true ? 6 : 2; //W29C040 ¤Ç compare ¤ò¤¹¤ë¤È¡¢error ¤¬½Ð¤ë¤Î¤Ç½Ð¤Ê¤¤ÃÍ¤ËÄ´À° (¤ä¤Ã¤Ä¤±ÂÐ±þ)
+	const long sleepms = d->compare == true ? 6 : 2; //W29C040 ã§ compare ã‚’ã™ã‚‹ã¨ã€error ãŒå‡ºã‚‹ã®ã§å‡ºãªã„å€¤ã«èª¿æ•´ (ã‚„ã£ã¤ã‘å¯¾å¿œ)
 	
 	while((state_cpu != SQ_VMSTATE_IDLE) || (state_ppu != SQ_VMSTATE_IDLE)){
 		uint8_t s[2];
-//		bool console_update = false;
 		wait(sleepms);
 		d->control->flash_status(d->handle, s);
 		if(state_cpu != SQ_VMSTATE_IDLE && s[0] == KAZZO_TASK_FLASH_IDLE){
 			if(program_memoryarea(co_cpu, d->handle, &d->cpu, d->compare, &state_cpu, &d->log) == false){
+				//sq_pushbool(v, SQFalse);
 				return 0;
 			}
 		}
 		if(state_ppu != SQ_VMSTATE_IDLE && s[1] == KAZZO_TASK_FLASH_IDLE){
 			if(program_memoryarea(co_ppu, d->handle, &d->ppu, d->compare, &state_ppu, &d->log) == false){
+				//sq_pushbool(v, SQFalse);
 				return 0;
 			}
 		}
 	}
+	//sq_pushbool(v, SQTrue);
 	return 0;
 }
 
@@ -385,6 +416,7 @@ static bool zendan(struct program_config *c)
 		}
 	}
 //script execute 
+	//SQBool ret;
 	c->cpu.command_change = true;
 	gauge_init(&c->cpu);
 	c->ppu.command_change = true;
@@ -402,9 +434,11 @@ static bool zendan(struct program_config *c)
 		qr_function_register_global(v, _SC("erase_wait"), erase_wait);
 		qr_function_register_global(v, _SC("vram_mirrorfind"), script_nop);
 		script_execute(v, wgT("program"), c);
+		//assert(sq_gettype(v, -2) == OT_BOOL);
+		//sq_getbool(v, -1, &ret);
 		qr_close(v);
 	}
-	return true;
+	return true; //ret == SQTrue ? true : false;
 }
 
 static bool memory_image_init(const struct memory *from, struct flash_memory_driver *t, struct textcontrol *log)
@@ -437,6 +471,7 @@ bool script_program_execute(struct program_config *c)
 	}
 //variable init
 	c->mappernum = rom.mappernum;
+	c->vram_mirroring = rom.mirror;
 	c->cpu.memory.name = wgT("Program Flash");
 	if(memory_image_init(&rom.cpu_rom, &c->cpu, &c->log) == false){
 		nesbuffer_free(&rom, 0);

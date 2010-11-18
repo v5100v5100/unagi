@@ -89,12 +89,8 @@ static void program(int c, wgChar **v, const struct reader_driver *r)
 	config.cpu.access = &r->cpu;
 	config.ppu.access = &r->ppu;
 	config.compare = false;
-	config.testrun = false;
 	switch(v[1][0]){
-	case 'a':
-		config.testrun = true;
-		break;
-	case 'F':
+	case wgT('F'): case wgT('X'):
 		config.compare = true;
 		break;
 	}
@@ -224,13 +220,15 @@ static void usage(const wgChar *v)
 	PUTS(wgT("famicom bus simluator 'anago'"));
 	PRINTF(wgT("%s [mode] [script] [target] ....\n"), v);
 	PUTS(wgT("d - ROM dump with kazzo"));
-	PUTS(wgT("f - flash program with kazzo"));
+	PUTS(wgT("fF- flash program with kazzo"));
 	PUTS(wgT("r - workram read with kazzo"));
 	PUTS(wgT("w - workram write with kazzo"));
-	PUTS(wgT("z - ROM dump for test"));
-	PUTS(wgT("x - flash program for test"));
-	PUTS(wgT("R - workram read for test"));
-	PUTS(wgT("W - workram write for test"));
+	if(DEBUG == 1){
+		PUTS(wgT("z - ROM dump for test"));
+		PUTS(wgT("xX- flash program for test"));
+		PUTS(wgT("R - workram read for test"));
+		PUTS(wgT("W - workram write for test"));
+	}
 }
 
 #ifdef WIN32
@@ -253,7 +251,7 @@ int anago_cui(int c, wgChar **v)
 		}
 #endif
 		switch(v[1][0]){
-		case wgT('x'):
+		case wgT('x'): case wgT('X'):
 			r = &DRIVER_DUMMY; //though down
 		case wgT('f'): case wgT('F'):
 			program(c, v, r);
