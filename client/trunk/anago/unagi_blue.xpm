@@ -1,5 +1,5 @@
 /* XPM */
-static char *unagi_blue[] = {
+static const char *unagi_blue[] = {
 /* columns rows colors chars-per-pixel */
 "32 32 12 1",
 "  c #010101",
