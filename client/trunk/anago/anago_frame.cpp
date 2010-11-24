@@ -327,7 +327,7 @@ private:
 			wxString str_script = m_script_choice->GetStringSelection();
 			wxChar *t = new wxChar[str_script.Length() + 1];
 			config.script = t;
-			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
+			STRNCPY(t, str_script.c_str(), str_script.Length() + 1);
 		}
 
 		{
@@ -351,7 +351,7 @@ private:
 				return;
 			}
 			config.target = t;
-			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
+			STRNCPY(t, str_rom.c_str(), str_rom.Length() + 1);
 		}
 
 		config.control = &m_reader->control;
@@ -521,7 +521,7 @@ private:
 		{
 			wxString str_script = m_script_choice->GetStringSelection();
 			wxChar *t = new wxChar[str_script.Length() + 1];
-			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
+			STRNCPY(t, str_script.c_str(), str_script.Length() + 1);
 			f.script = t;
 		}
 
@@ -533,7 +533,7 @@ private:
 				return;
 			}
 			wxChar *t = new wxChar[str_rom.Length() + 1];
-			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
+			STRNCPY(t, str_rom.c_str(), str_rom.Length() + 1);
 			f.target = t;
 		}
 		f.compare = m_compare->GetValue();
@@ -679,7 +679,7 @@ private:
 			wxString str_script = script->GetStringSelection();
 			wxChar *t = new wxChar[str_script.Length() + 1];
 			c->script = t;
-			STRNCPY(t, str_script.fn_str(), str_script.Length() + 1);
+			STRNCPY(t, str_script.c_str(), str_script.Length() + 1);
 		}
 		{
 			wxTextCtrl *text = picker->GetTextCtrl();
@@ -690,7 +690,7 @@ private:
 				return;
 			}
 			c->target = t;
-			STRNCPY(t, str_rom.fn_str(), str_rom.Length() + 1);
+			STRNCPY(t, str_rom.c_str(), str_rom.Length() + 1);
 		}
 		c->control = &m_reader->control;
 		c->cpu.access = &m_reader->cpu;
