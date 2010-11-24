@@ -173,7 +173,9 @@ protected:
 		if(m_romdb != NULL){
 			m_romdb->Search(m_config.crc, m_log);
 		}
+		wxMutexGuiEnter();
 		m_frame->Enable();
+		wxMutexGuiLeave();
 		return NULL;
 	}
 	void OnExit()
@@ -213,7 +215,9 @@ protected:
 			}
 			*m_log << t;
 		}
+		wxMutexGuiEnter();
 		m_frame->Enable();
+		wxMutexGuiLeave();
 		return NULL;
 	}
 
