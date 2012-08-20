@@ -118,7 +118,7 @@ SQRESULT qr_argument_get(HSQUIRRELVM v, SQInteger num, ...)
 SQRESULT qr_userpointer_get(HSQUIRRELVM v, SQUserPointer *up)
 {
 	SQRESULT r;
-	assert(sq_gettype(v, 2) == OT_USERPOINTER);
+
 	r = sq_getuserpointer(v, 2, up);
 	if(SQ_FAILED(r)){
 		return sq_throwerror(v, _SC("1st argument must be d (userpointer)"));
