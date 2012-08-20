@@ -401,7 +401,7 @@ public:
 	anago_panel_dump(wxNotebook *p, const struct reader_driver *r, enum anago_status *status, wxFileConfig *config, wxTextCtrl *log)
 	  : panel_dump(p), m_reader(r), m_status(status), m_log(log)
 	{
-		config->Read(wxT("dump.database"), &m_database, wxT("NesCarts (2010-02-08).xml"));
+		config->Read(wxT("dump.database"), &m_database, wxT("NesCarts (2011-09-10).xml"));
 		if(wxFileName::FileExists(m_database) == true){
 			m_romdb = new RomDb(m_database);
 			m_romdb->Generate();
@@ -849,9 +849,9 @@ public:
 //			"行き勝負をかけます。結果はまた報告します。宜しく。"
 		));
 #else
-		#include "taiyo.xpm"
-		wxBitmap bitmap_okada(taiyo);
-		wxString tooltip(wxT("たいよ～ほえ～るず♪"));
+		#include "slyly.xpm"
+		wxBitmap bitmap_okada(slyly);
+		wxString tooltip(wxT("CARP                        ﾋﾟﾛ"));
 #endif
 //		#include "araki.xpm"
 //		wxBitmap bitmap_okada(araki);
