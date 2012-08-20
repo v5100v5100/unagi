@@ -239,8 +239,8 @@ static SQInteger length_check(HSQUIRRELVM v)
 
 	bool cpu = true, ppu = true;
 	r = 0;
-	cpu = length_check_core(d, &d->cpu, wgT("cpu_romsize"));
-	ppu = length_check_core(d, &d->ppu, wgT("ppu_romsize"));
+	cpu = length_check_core(d, &d->cpu, d->mode == MODE_ROM_DUMP ? wgT("board.cpu_rom.size") : wgT("board.cpu_ram.size"));
+	ppu = length_check_core(d, &d->ppu, wgT("board.ppu_rom.size"));
 	if(cpu == false || ppu == false){
 		r = sq_throwerror(v, wgT("script logical error"));
 	}
@@ -447,6 +447,7 @@ static SQInteger cpu_ramrw_check(HSQUIRRELVM v)
 static SQInteger ramimage_open(HSQUIRRELVM v)
 {
 	USERPOINTER_GET(d, r)
+	memory_new(v);
 	if(buf_load(d->cpu.memory.data, d->target, d->cpu.memory.size) == NG){
 		return r = sq_throwerror(v, wgT("RAM image open error"));
 	}
@@ -483,7 +484,7 @@ static SQInteger cpu_write_ramimage(HSQUIRRELVM v)
 	}
 	cmp = Malloc(length);
 	assert(d->cpu.memory.attribute == MEMORY_ATTR_READ);
-	//&d->cpu.gauge, 
+
 	d->cpu.access->memory_write(
 		d->handle, address, length, writedata
 	);
@@ -530,6 +531,11 @@ static SQInteger cpu_read_bit_check(HSQUIRRELVM v)
 	return 0;
 }
 
+static inline void gauge_increment(const struct gauge *g)
+{
+	g->value_add(g->bar, g->label, 1);
+}
+
 static SQInteger cpu_read_bit_msb(HSQUIRRELVM v)
 {
 	USERPOINTER_GET(d, r)
@@ -542,7 +548,6 @@ static SQInteger cpu_read_bit_msb(HSQUIRRELVM v)
 	assert(d->cpu.memory.attribute == MEMORY_ATTR_WRITE);
 	uint8_t readdata;
 
-//	d->cpu.access->memory_read(d->handle, &d->cpu.gauge, address, 1, &readdata);
 	d->cpu.access->memory_read(d->handle, &GAUGE_DUMMY, address, 1, &readdata);
 	readdata >>= bit;
 	readdata &= 1;
@@ -558,6 +563,7 @@ static SQInteger cpu_read_bit_msb(HSQUIRRELVM v)
 		d->cpu.read_count_bit = 0;
 		d->cpu.memory.data[d->cpu.memory.offset] = d->cpu.bitbuffer;
 		d->cpu.memory.offset += 1;
+		gauge_increment(&d->cpu.gauge);
 	}else{
 		d->cpu.bitbuffer <<= 1;
 	}
@@ -584,6 +590,7 @@ static SQInteger cpu_fetch_bit_msb(HSQUIRRELVM v)
 	if(d->cpu.read_count_bit == 8){
 		d->cpu.read_count_bit = 0;
 		d->cpu.memory.offset += 1;
+		gauge_increment(&d->cpu.gauge);
 	}else{
 		d->cpu.bitbuffer <<= 1;
 	}
@@ -599,7 +606,7 @@ bool script_workram_execute(struct dump_config *d)
 
 	{
 		HSQUIRRELVM v = qr_open(&d->log);
-		qr_function_register_global(v, wgT("memory_new"), memory_new);
+		qr_function_register_global(v, wgT("memory_new"), memory_size_set);
 		qr_function_register_global(v, wgT("cpu_write"), cpu_write_check);
 		qr_function_register_global(v, wgT("cpu_ramrw"), cpu_ramrw_check);
 		qr_function_register_global(v, wgT("memory_finalize"), length_check);
@@ -641,7 +648,7 @@ bool script_workram_execute(struct dump_config *d)
 		qr_function_register_global(v, wgT("mode_is_read"), mode_is_read);
 		switch(d->mode){
 		case MODE_RAM_READ:
-			qr_function_register_global(v, wgT("memory_new"), script_nop);
+			qr_function_register_global(v, wgT("memory_new"), memory_new);
 			qr_function_register_global(v, wgT("cpu_ramrw"), cpu_read);
 			qr_function_register_global(v, wgT("cpu_read_bit_msb"), cpu_read_bit_msb);
 			break;
