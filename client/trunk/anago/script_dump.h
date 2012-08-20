@@ -15,7 +15,8 @@ struct dump_config{
 	struct dump_memory_driver{
 		const struct reader_memory_access *access;
 		struct memory memory;
-		long read_count, increase;
+		long read_count_byte, read_count_bit, increase;
+		uint8_t bitbuffer;
 		struct gauge gauge;
 	}cpu, ppu;
 	long mappernum;
