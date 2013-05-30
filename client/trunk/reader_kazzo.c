@@ -88,23 +88,22 @@ static void device_read(const struct reader_handle *h, enum request r, enum inde
 }
 static void read_main(const struct reader_handle *h, const struct gauge *g, const enum request r, enum index index, long address, long length, uint8_t *data)
 {
-	const int packet = READ_PACKET_SIZE;
-	while(length >= packet){
-		device_read(
-			h, r, index, address, packet, data
-		);
-		data += packet;
-		address += packet;
-		length -= packet;
-		g->value_add(g->bar, g->label, packet);
+	if(length == 0){
+		uint8_t dummy;
+		device_read(h, r, index, address, 1, &dummy);
+		//do not update progress
+		return;
 	}
-	if(length != 0){
-		device_read(
-			h, r, index, address, length, data
-		);
-		g->value_add(g->bar, g->label, packet);
+	while(length > 0){
+		const int l = length < READ_PACKET_SIZE ? length : READ_PACKET_SIZE;
+		device_read(h, r, index, address, l, data);
+		data += l;
+		address += l;
+		length -= l;
+		g->value_add(g->bar, g->label, l);
 	}
 }
+
 static void kazzo_cpu_read(const struct reader_handle *h, const struct gauge *g, long address, long length, uint8_t *data)
 {
 	read_main(h, g, REQUEST_CPU_READ, INDEX_IMPLIED, address, length, data);

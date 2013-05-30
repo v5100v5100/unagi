@@ -39,16 +39,16 @@ static void dummy_close(const struct reader_handle *h)
 static void dummy_read(const struct reader_handle *h, const struct gauge *g, long address, long length, uint8_t *data)
 {
 	const int packet = 0x200;
-	while(length >= packet){
-		wait(10);
-		memset(data, 2, packet);
-		data += packet;
-		length -= packet;
-		g->value_add(g->bar, g->label, packet);
+	if(length == 0){
+		return;
 	}
-	if(length != 0){
-		memset(data, 33, length);
-		g->value_add(g->bar, g->label, length);
+	while(length > 0){
+		const int l = length < packet ? length : packet;
+		wait(10);
+		memset(data, 2, l);
+		data += l;
+		length -= l;
+		g->value_add(g->bar, g->label, l);
 	}
 }
 

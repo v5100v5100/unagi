@@ -86,7 +86,8 @@ static SQInteger read_memory(HSQUIRRELVM v, const struct reader_handle *h, struc
 		return r;
 	}
 	assert(t->memory.attribute == MEMORY_ATTR_WRITE);
-	t->access->memory_read(h, &t->gauge, address, length == 0 ? 1: length, t->memory.data + t->memory.offset);
+	t->access->memory_read(h, &t->gauge, address, length, t->memory.data + t->memory.offset);
+
 	if((length != 0) && (progress == false)){
 		buffer_show(&t->memory, length);
 	}
@@ -267,9 +268,12 @@ static SQInteger read_count(HSQUIRRELVM v, const struct textcontrol *l, struct d
 }
 static SQInteger cpu_read_count(HSQUIRRELVM v)
 {
+#ifdef DEBUG
+	static const struct range range_address = {0x6000, 0x10000}; //for Sunsoft-5 series test
+#else
 	static const struct range range_address = {0x8000, 0x10000};
-	//length == 0 は 対象アドレスを呼んで、バッファにいれない。mmc2, mmc4 で使用する。
-	static const struct range range_length = {0x0000, 0x4000};
+#endif
+	static const struct range range_length = {0x0001, 0x4000};
 	USERPOINTER_GET(d, r)
 
 	return read_count(v, &d->log, &d->cpu, &range_address, &range_length);
@@ -277,8 +281,13 @@ static SQInteger cpu_read_count(HSQUIRRELVM v)
 
 static SQInteger ppu_read_count(HSQUIRRELVM v)
 {
+#ifdef DEBUG
+	static const struct range range_address = {0x0000, 0x2800};
+#else
 	static const struct range range_address = {0x0000, 0x2000};
-	static const struct range range_length = {0x0001, 0x2000};
+#endif
+	//length == 0 は 対象アドレスを呼んで、バッファにいれない。mmc2, mmc4 で使用する。
+	static const struct range range_length = {0x0000, 0x2000};
 	USERPOINTER_GET(d, r)
 
 	return read_count(v, &d->log, &d->ppu, &range_address, &range_length);
@@ -286,7 +295,7 @@ static SQInteger ppu_read_count(HSQUIRRELVM v)
 
 static SQInteger cpu_read_register_check(HSQUIRRELVM v)
 {
-	static const struct range range_address = {0x4800, 0x7fff};
+	static const struct range range_address = {0x4800, 0x8000};
 	static const struct range range_byte = {0, 0xff};
 	USERPOINTER_GET(d, r)
 
