@@ -66,7 +66,7 @@ static int mirroring_fix(const struct textcontrol *l, struct memory *m, long min
 	ffdata = Malloc(min);
 	memset(ffdata, 0xff, min);
 	if(memcmp(ffdata, m->data, min) == 0){
-		l->append(l->object, wgT("error: data is all 0xff\n"));
+		l->append(l->object, wgT("error: %s data is all 0xff\n"), m->name);
 		ret = 1;
 	}else if(m->size != min){
 		l->append(l->object, wgT("mirroring %s ROM fixed\n"), m->name);

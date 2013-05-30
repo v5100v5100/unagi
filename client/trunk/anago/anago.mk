@@ -12,7 +12,7 @@ ifneq ($(strip $(LIBUSB)),)
 endif
 CXXFLAGS += -I.. `$(WX_CONFIG) --cppflags`
 
-LDFLAG = -L$(SQUIRREL)/lib
+LDFLAG = -L$(SQUIRREL)/lib -static-libgcc -static-libstdc++
 ifneq ($(strip $(LIBUSB)),)
   LDFLAG += -L$(LIBUSB)/lib/gcc 
 endif

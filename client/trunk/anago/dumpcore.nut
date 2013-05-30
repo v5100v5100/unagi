@@ -1,7 +1,9 @@
-function dumpsize_get(m, increase)
+function dumpsize_get(region, m, increase)
 {
 	local dumpsize = m.size_base * increase;
-	if(dumpsize > m.size_max){
+	if(dumpsize <= m.size_max){
+		//print(format("note: %s_rom.size_max is 0x%06x\n", region, m.size_max));
+	}else{
 		dumpsize = m.size_max;
 	}
 	return dumpsize;
@@ -36,8 +38,8 @@ function dump(d, script, mappernum, increase_cpu, increase_ppu)
 			increase_cpu = 1;
 		}
 	}
-	local cpu_dumpsize = dumpsize_get(board.cpu_rom, increase_cpu);
-	local ppu_dumpsize = dumpsize_get(board.ppu_rom, increase_ppu);
+	local cpu_dumpsize = dumpsize_get("cpu", board.cpu_rom, increase_cpu);
+	local ppu_dumpsize = dumpsize_get("ppu", board.ppu_rom, increase_ppu);
 
 	memory_new(d, cpu_dumpsize, ppu_dumpsize);
 	cpu_dump(d, cpu_dumpsize / board.cpu_rom.banksize, board.cpu_rom.banksize);
@@ -50,7 +52,10 @@ function dump(d, script, mappernum, increase_cpu, increase_ppu)
 function workram_rw(d, script, increase_cpu)
 {
 	dofile(script);
-	local cpu_dumpsize = dumpsize_get(board.cpu_ram, increase_cpu);
+/*	if(increase_cpu == INCREASE_AUTO){
+		increase_cpu = 1; //未指定時の倍率
+	}*/
+	local cpu_dumpsize = dumpsize_get("cpu_ram", board.cpu_ram, increase_cpu);
 	memory_new(d, cpu_dumpsize, 0);
 	cpu_ram_access(d, cpu_dumpsize / board.cpu_ram.banksize, board.cpu_ram.banksize);
 	memory_finalize(d);

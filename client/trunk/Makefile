@@ -3,13 +3,12 @@ OBJ_HD = head/nesheader.o head/header.o file.o
 SOURCE_UNAGI = \
 	*.c *.h *.mak Makefile COPYING \
 	debug/debug.mak profile/profile.mak release/release.mak \
-	unagi.rc unagi.ico
+	unagi.rc unagi.ico squirrel_unicode.patch
 SOURCE_ANAGO = \
-	Makefile.windows Makefile.unix \
-	anago.c flash_device.c progress.c reader_dummy.c \
-	script_common.c script_dump.c script_flash.c squirrel_wrap.c \
-	flash_device.h progress.h reader_dummy.h script_common.h  script_dump.h script_flash.h squirrel_wrap.h \
-	flashcore.nut flashdevice.nut \
+	Makefile.windows Makefile.unix anago.mk \
+	*.c *.h *.cpp *.hh *.ad *.af *.ag *.ai \
+	*.rc *.ico taiyo.xpm okada.xpm unagi_blue.xpm \
+	dumpcore.nut programcore.nut flashdevice.nut \
 	anago_en.txt anago_ja.txt porting.txt
 ARCHIVE_GZ = unagi_client_source.0.6.x.tar.gz
 ARCHIVE_ZIP = unagi_client_windows_06x.zip
@@ -46,9 +45,16 @@ nesheader.exe: $(OBJ_HD)
 gz:
 	cd ..; \
 	tar cfz $(ARCHIVE_GZ) $(addprefix client/,$(SOURCE_UNAGI)) $(addprefix client/anago/,$(SOURCE_ANAGO))
-zip:
+zip_unagi:
 	7za a $(ARCHIVE_ZIP) \
 		unagi.exe unagi.txt iodel.exe iodel.txt COPYING ../script/syntax.txt \
 		$(addprefix anago/,anago.exe *.ad *.af anago_en.txt anago_ja.txt flashcore.nut flashdevice.nut dumpcore.nut)
 	cd release; 7za a ../$(ARCHIVE_ZIP) unagi.cfg
+	mv $(ARCHIVE_ZIP) ..
+
+ANAGOFILE = anago.exe anago_wx.exe mingwm10.dll wxmsw28u_gcc_custom.dll \
+	*.ad *.ae *.af *.ag *.ai \
+	anago_en.txt anago_ja.txt programcore.nut flashdevice.nut dumpcore.nut
+zip:
+	7za a $(ARCHIVE_ZIP) COPYING $(addprefix anago/, $(ANAGOFILE))
 	mv $(ARCHIVE_ZIP) ..

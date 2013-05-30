@@ -197,14 +197,21 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 	cui_gauge_new(&config.ppu.gauge, wgT("Charcter ROM"), 1, -1);
 	config.except = except;
 	config.mappernum = -1;
-	if(c == 5){
-#ifdef _UNICODE
-		config.mappernum = _wtoi(v[4]);
-#else
-		config.mappernum = atoi(v[4]);
-#endif
-	}
 	config.battery = false;
+	if(c == 5){
+		const wgChar *t = v[4];
+		if(*t == 'b' || *t == 'B'){
+			config.battery = true;
+			t += 1;
+		}
+		if(*t != '\0'){
+#ifdef _UNICODE
+			config.mappernum = _wtoi(t);
+#else
+			config.mappernum = atoi(t);
+#endif
+		}
+	}
 	log_set(&config.log);
 	if(config.mode == MODE_ROM_DUMP){
 		script_dump_execute(&config);

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <squirrel.h>
 #include <sqstdio.h>
+#include <sqstdstring.h>
 #include <sqstdaux.h>
 #include "type.h"
 #include "widget.h"
@@ -43,6 +44,7 @@ HSQUIRRELVM qr_open(const struct textcontrol *p)
 	sq_pushroottable(v);
 	sqstd_seterrorhandlers(v);
 	sqstd_register_iolib(v);
+	sqstd_register_stringlib(v);
 	return v;
 }
 

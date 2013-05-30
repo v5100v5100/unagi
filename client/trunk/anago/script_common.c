@@ -19,7 +19,7 @@ SQInteger range_check(HSQUIRRELVM v, const wgChar *name, long target, const stru
 {
 	if((target < range->start) || (target > range->end)){
 		SQPRINTFUNCTION f = sq_getprintfunc(v);
-		f(v, wgT("%s range must be 0x%06x to 0x%06x"), name, (int) range->start, (int) range->end);
+		f(v, wgT("%s range must be 0x%06x to 0x%06x"), name, (int) range->start, (int) range->end - 1);
 		return sq_throwerror(v, wgT("script logical error"));
 	}
 	return 0;
@@ -103,8 +103,10 @@ void cpu_write_execute(HSQUIRRELVM v, const struct reader_handle *h, const struc
 			sq_pushinteger(v, i);
 			r = sq_get(v, -2);
 			assert(r == SQ_OK);
+			r++; //avoid warning
 			rr = qr_long_get(v, -1, &data);
 			assert(rr = true);
+			rr++; //avoid warning
 			sq_pop(v, 1);
 			d8[i] = (uint8_t) (data & 0xff);
 		}
