@@ -10,7 +10,7 @@ board <- {
 		size_base = 2 * mega, size_max = 4 * mega,
 		banksize = 0x2000
 	}, 
-	cpu_rom = {
+	cpu_ram = {
 		size_base = 0x0800, size_max = 0x0800,
 		banksize = 0x2000
 	}, 

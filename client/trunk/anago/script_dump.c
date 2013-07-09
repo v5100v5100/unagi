@@ -263,6 +263,15 @@ static SQInteger read_count(HSQUIRRELVM v, const struct textcontrol *l, struct d
 		l->append(l->object, wgT("address range must be 0x%06x to 0x%06x"), (int) range_address->start, (int) range_address->end);
 		return sq_throwerror(v, wgT("script logical error"));;
 	}
+#ifdef DEBUG
+	if(address >= 0x6000 && (address + length) < 0x8000){
+		static int e = 0;
+		if(e == 0){
+			l->append(l->object, wgT("warning: 0x6000-0x7fff dump as ROM"));
+		}
+		e++;
+	}
+#endif
 	t->read_count_byte += length;
 	return 0;
 }

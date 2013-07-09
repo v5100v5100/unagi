@@ -17,8 +17,10 @@ function cpu_dump(d, pagesize, banksize)
 }
 function ppu_dump(d, pagesize, banksize)
 {
+	local security = 0; //0,1,2,3 or don't care
+	security = security << 4;
 	for(local i = 0; i < pagesize; i++){
-		cpu_write(d, 0x8000, 0xf0 | i);
+		cpu_write(d, 0x8000, security | i);
 		ppu_read(d, 0, banksize);
 	}
 }

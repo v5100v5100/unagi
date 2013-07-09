@@ -1,8 +1,10 @@
 /*
-HVC-2I Fireemblem Gaiden
+HVC-2I Fire Emblem Gaiden
+command line option
+./anago d22 mmc4_fkrom.ae hvc_2i.nes b
 */
 board <- {
-	mappernum = 10, vram_mirrorfind = false, ppu_ramfind = true,
+	mappernum = 10, vram_mirrorfind = false, ppu_ramfind = false,
 	cpu_rom = {
 		size_base = 1 * mega, size_max = 2 * mega,
 		banksize = 0x4000,
@@ -19,12 +21,12 @@ board <- {
 
 /*
 [cpu memmorymap - read]
-$6000-$7fff SRAM (battery backup, optional)
-$8000-$bfff program ROM bank #1
-$c000-$ffff program ROM bank #2 (fixed)
+$6000-$7fff SRAM (battery backuped, optional)
+$8000-$bfff program ROM bank #0
+$c000-$ffff program ROM bank #1 (fixed)
 
 [cpu memmorymap - write]
-$a000-$afff program ROM bank register #1
+$a000-$afff program ROM bank register #0
 $b000-$bfff charcter ROM bank register #0
 $c000-$cfff charcter ROM bank register #1
 $d000-$dfff charcter ROM bank register #2
