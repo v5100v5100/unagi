@@ -1,7 +1,11 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef WIN32
+#include <lusb0_usb.h>
+#else
 #include <usb.h>
+#endif
 #include <kazzo_request.h>
 #include <kazzo_task.h>
 #include "type.h"
