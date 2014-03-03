@@ -18,9 +18,11 @@
 #ifdef _UNICODE
   #define PUTS _putws
   #define PRINTF wprintf
-#else
+  #define STRTOUL wcstoul
+ #else
   #define PUTS puts
   #define PRINTF printf
+  #define STRTOUL strtoul
 #endif
 
 static void text_append_va(void *obj, const wgChar *format, va_list list)
@@ -222,6 +224,31 @@ static void dump(int c, wgChar **v, const struct reader_driver *r)
 	cui_gauge_destory(&config.ppu.gauge);
 }
 
+static void vram_scan(int c, wgChar **v, const struct reader_driver *r)
+{
+	const struct reader_handle *h;
+	struct textcontrol log;
+	if(c == 3){
+		PUTS(wgT("anago F [address] [data]..."));
+		return;
+	}
+	log_set(&log);
+	h = r->control.open(except, &log);
+	
+	if(c == 2){
+		PRINTF(wgT("%02x\n"), r->control.vram_connection(h));
+	}else{
+		const long address = STRTOUL(v[2], NULL, 0x10);
+		int i;
+		for(i = 3; i < c; i++){
+			const uint8_t d = STRTOUL(v[i], NULL, 0x10);
+			r->cpu.memory_write(h, address, 1, &d);
+			PRINTF(wgT("$%04x = 0x%02x->0x%02x\n"), address, (int) d, r->control.vram_connection(h));
+		}
+	}
+	r->control.close(h);
+}
+
 static void usage(const wgChar *v)
 {
 	PUTS(wgT("famicom bus simluator 'anago'"));
@@ -230,6 +257,7 @@ static void usage(const wgChar *v)
 	PUTS(wgT("fF- flash program with kazzo"));
 	PUTS(wgT("r - workram read with kazzo"));
 	PUTS(wgT("w - workram write with kazzo"));
+	PUTS(wgT("V - VRAM A10 scan"));
 	if(DEBUG == 1){
 		PUTS(wgT("z - ROM dump for test"));
 		PUTS(wgT("xX- flash program for test"));
@@ -267,7 +295,12 @@ int anago_cui(int c, wgChar **v)
 			r = &DRIVER_DUMMY; //though down
 		case wgT('d'): case wgT('D'):
 		case wgT('r'): case wgT('w'):
-			dump(c,v, r);
+			dump(c, v, r);
+			break;
+		case wgT('V'):
+			r = &DRIVER_DUMMY;
+		case wgT('v'):
+			vram_scan(c, v, r);
 			break;
 		default:
 			usage(v[0]);
