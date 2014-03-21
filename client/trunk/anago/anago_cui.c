@@ -249,6 +249,40 @@ static void vram_scan(int c, wgChar **v, const struct reader_driver *r)
 	r->control.close(h);
 }
 
+#include "crc32.h"
+static void crc32_dump(const wgChar *name, const wgChar *str, struct memory *m)
+{
+	const long banksize = STRTOUL(str, NULL, 0x10);
+	if(banksize < 0x400 || (banksize & 0xff) != 0){
+		PUTS(wgT("banksize requires over 0x400"));
+		return;
+	}
+	int i, j;
+	PRINTF(wgT("%s 0x%x byte\n"), name, m->size);
+	for(i = 0, j = 0; i < m->size; i += banksize, j++){
+		PRINTF(wgT("%02x:%08x\n"), j, crc32_get(m->data + i, banksize));
+	}
+}
+
+static void crc32_display(int c, wgChar **v)
+{
+	if(c <= 3){
+		PUTS(wgT("anago b [filename] [program ROM banksize]"));
+		return;
+	}
+	struct romimage r;
+	struct textcontrol log;
+	log_set(&log);
+	if(nesfile_load(&log, v[2], &r) == false){
+		return;
+	}
+	crc32_dump(wgT("Program ROM"), v[3], &r.cpu_rom);
+	if(c == 5 && r.ppu_rom.size != 0){
+		crc32_dump(wgT("Charcter ROM"), v[4], &r.ppu_rom);
+	}
+	nesbuffer_free(&r, 0);
+}
+
 static void usage(const wgChar *v)
 {
 	PUTS(wgT("famicom bus simluator 'anago'"));
@@ -258,6 +292,7 @@ static void usage(const wgChar *v)
 	PUTS(wgT("r - workram read with kazzo"));
 	PUTS(wgT("w - workram write with kazzo"));
 	PUTS(wgT("V - VRAM A10 scan"));
+	PUTS(wgT("b - display each CRC32s by required size"));
 	if(DEBUG == 1){
 		PUTS(wgT("z - ROM dump for test"));
 		PUTS(wgT("xX- flash program for test"));
@@ -301,6 +336,9 @@ int anago_cui(int c, wgChar **v)
 			r = &DRIVER_DUMMY;
 		case wgT('v'):
 			vram_scan(c, v, r);
+			break;
+		case wgT('b'):
+			crc32_display(c, v);
 			break;
 		default:
 			usage(v[0]);
