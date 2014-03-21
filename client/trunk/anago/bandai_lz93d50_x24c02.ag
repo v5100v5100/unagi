@@ -33,7 +33,7 @@ board <- {
 };
 
 const register_offset = 0x8000;
-dofile("fcg3.ai")
+dofile("lz93d50.ai")
 /*
 =====================
 X24C02 frame sequence

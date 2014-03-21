@@ -7,6 +7,10 @@ board <- {
 		size_base = 1 * mega, size_max = 4 * mega,
 		banksize = 0x4000
 	}, 
+	cpu_ram = {
+		size_base = 0x400, size_max = 0x400,
+		banksize = 0x400
+	}, 
 	ppu_rom = {
 		size_base = 0, size_max = 0,
 		banksize = 0x2000
@@ -44,3 +48,14 @@ write register の順番から見ると変。
 		}
 	}
 }
+
+function cpu_ram_access(d, pagesize, banksize)
+{
+	cpu_write(d, 0xc008, [0x08,0x09]);
+	cpu_ramrw(d, 0xf000, 1);
+	cpu_ramrw(d, 0x8000, 1);
+	cpu_write(d, 0xc04a, [0x4a,0x4b]);
+	cpu_ramrw(d, 0x8000, 1);
+	cpu_ramrw(d, 0x6000, banksize - 3);
+}
+
