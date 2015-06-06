@@ -42,9 +42,9 @@ HSQUIRRELVM qr_open(const struct textcontrol *p)
 		sq_setprintfunc(v, print_other);
 	}
 	sq_pushroottable(v);
-	sqstd_seterrorhandlers(v);
 	sqstd_register_iolib(v);
 	sqstd_register_stringlib(v);
+	sqstd_seterrorhandlers(v);
 	return v;
 }
 

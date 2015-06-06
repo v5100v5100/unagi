@@ -348,10 +348,11 @@ static SQInteger memory_size_set(HSQUIRRELVM v)
 	r = qr_argument_get(v, 2, &d->cpu.memory.size, &d->ppu.memory.size);
 	return r;
 }
-
+//sq_pushroottable(v); //push the root table(were the globals of the script will are stored)
 static bool script_execute(HSQUIRRELVM v, struct dump_config *d)
 {
 	bool ret = true;
+//	sq_pushroottable(v);
 	if(SQ_FAILED(sqstd_dofile(v, wgT("dumpcore.nut"), SQFalse, SQTrue))){
 		d->log.append(d->log.object, wgT("dump core script error\n"));
 		ret = false;
@@ -403,6 +404,7 @@ bool script_dump_execute(struct dump_config *d)
 			return false;
 		}
 		qr_close(v);
+		v = NULL;
 	}
 
 	d->handle = d->control->open(d->except, &d->log);
@@ -410,13 +412,9 @@ bool script_dump_execute(struct dump_config *d)
 		d->log.append(d->log.object, wgT("reader open error\n"));
 		return false;
 	}
-/*	d->control->init(d->handle);
-	if(connection_check(d->handle, &d->log, d->cpu.access, d->ppu.access) == false){
-		d->control->close(d->handle);
-		return false;
-	}*/
+	//d->log.append(d->log.object, wgT("haohao\n"));
 	{
-		HSQUIRRELVM v = qr_open(&d->log); 
+		volatile HSQUIRRELVM v = qr_open(&d->log); 
 		qr_function_register_global(v, wgT("memory_new"), memory_new);
 		qr_function_register_global(v, wgT("nesfile_save"), nesfile_save);
 		qr_function_register_global(v, wgT("cpu_write"), cpu_write);
@@ -425,6 +423,7 @@ bool script_dump_execute(struct dump_config *d)
 		qr_function_register_global(v, wgT("ppu_ramfind"), ppu_ramfind);
 		script_execute(v, d);
 		qr_close(v);
+		v = NULL;
 	}
 	d->control->close(d->handle);
 	d->handle = NULL;

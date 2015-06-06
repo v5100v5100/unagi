@@ -18,8 +18,8 @@ SUNSOFT-5A, SUNSOFT-5B, FME-7
 $6000-$7fff 7:0 RAM data (if RAM is enabled)
 $8000-$9fff 3:0 memory register address
 $a000-$bfff 7:0 memory register data
-$c000-$dfff 3:0 audio register address
-$e000-$ffff 7:0 audio register data
+$c000-$dfff 3:0 audio register address (SUNSOFT-5B only)
+$e000-$ffff 7:0 audio register data (SUNSOFT-5B only)
 
 [CPU readmap]
 $6000-$7fff 7:0 Program ROM bank #0 or RAM
@@ -39,7 +39,7 @@ adr bit assignments
 -------------------------
 0-7 7:0 Charcter ROM bank #0 to #7
 8   7   RAM enable bit 0:disable 1:enable
-    6   memory select at $6000-$7fff 0:ROM 1:RAM
+    6   memory select on $6000-$7fff 0:ROM 1:RAM
     4:0 CPU ROM page for bank #0
 9-b 4:0 CPU ROM page for bank #1 to #3
 c   1:0 PPU area VRAM control
@@ -55,7 +55,7 @@ address 8, bit7:6 behave on FME-7
 11 enabled RAM
 
 audio register
-(not analysed yet)
+(not analyzed yet)
 
 */
 function sunsoft5_write(d, register_address, data)
@@ -66,16 +66,16 @@ function sunsoft5_write(d, register_address, data)
 
 function cpu_dump(d, pagesize, banksize)
 {
+	local regaddress = 9
+	local cpuaddress = 0x8000
 /*
-	//dump ROM data via $6000-$7fff
-	for(local i = 0; i < pagesize; i++){
-		sunsoft5_write(d, 8, i);
-		cpu_read(d, 0x6000, banksize);
-	}
+	//*debug* dump ROM data via $6000-$7fff
+	regaddress = 8
+	cpuaddress = 0x6000
 */
 	for(local i = 0; i < pagesize - 1; i++){
-		sunsoft5_write(d, 9, i);
-		cpu_read(d, 0x8000, banksize);
+		sunsoft5_write(d, regaddress, i);
+		cpu_read(d, cpuaddress, banksize);
 	}
 	cpu_read(d, 0xe000, banksize);
 }
@@ -103,28 +103,32 @@ CPU memory bank
 cpu address|rom address    |page|task
 $8000-$9fff|0x02000-0x03fff|1   |write 0x2aaa
 $a000-$bfff|0x04000-0x05fff|2   |write 0x5555
-$c000-$dfff|n * 0x2000     |n   |program area
+$c000-$dfff|n * 0x2000     |n   |programming area
 $e000-$ffff|0x3c000-0x3ffff|fix |program last page
 
 PPU memory bank
 ppu address  |rom address    |page|task
-0x0000-0x03ff|0x02800-0x02fff|0x0a|write 0x2aaa
-0x0400-0x07ff|0x05000-0x057ff|0x14|write 0x5555
-0x0800-0x0fff|未使用
-0x1000-0x1fff|n * 0x1000     |n   |program area
+0x0000-0x0fff|n * 0x1000     |n   |programming area
+0x1000-0x13ff|0x02800-0x02fff|0x0a|write 0x2aaa
+0x1400-0x17ff|0x05000-0x057ff|0x15|write 0x5555
+0x1800-0x1fff|未使用
 */
 function program_initalize(d, cpu_banksize, ppu_banksize)
 {
-	sunsoft5_write(d, 8, 0x40); //disable W-RAM
+	sunsoft5_write(d, 8, 1 << 6); //disable W-RAM
 
-	cpu_command(d, 0x2aaa, 0xe000, cpu_banksize);
-	cpu_command(d, 0x5555, 0xe000, cpu_banksize);
+	cpu_command(d, 0x2aaa, 0xa000, cpu_banksize);
+	cpu_command(d, 0x5555, 0xc000, cpu_banksize);
 	sunsoft5_write(d, 0xa,1);
 	sunsoft5_write(d, 0xb,2);
 
 	ppu_command(d, 0x2aaa, 0x1000, ppu_banksize);
 	ppu_command(d, 0x5555, 0x1400, ppu_banksize);
 	ppu_command(d, 0x0000, 0x1800, ppu_banksize);
+	//なぜかよくわからないが電源投入直後の erase に失敗する (2度は必ず成功する)
+/*	for(local j = 0; j < 0x80; j++){
+		sunsoft5_write(d, j & 0x07, j);
+	}*/
 	sunsoft5_write(d, 4, 0x0a);
 	sunsoft5_write(d, 5, 0x15);
 	sunsoft5_write(d, 6, 0);
@@ -133,23 +137,21 @@ function program_initalize(d, cpu_banksize, ppu_banksize)
 function cpu_transfer(d, start, end, cpu_banksize)
 {
 	for(local i = start; i < end - 1; i += 1){
-		sunsoft5_write(d, 0xb, 3);
+		sunsoft5_write(d, 9, i);
 		cpu_program(d, 0x8000, cpu_banksize);
 	}
-	cpu_program(d, 0xe000, cpu_banksize);
+	//$6000-$7fff への不正アクセスを避けるため $e000-$ffff は使用しない
+	sunsoft5_write(d, 9, 0xff & 0x1f);
+	cpu_program(d, 0x8000, cpu_banksize);
 }
 
 function ppu_transfer(d, start, end, ppu_banksize)
 {
-/*	local mul = 1;
+	local mul = 4
 	for(local i = start; i < end; i += mul){
 		for(local j = 0; j < mul; j++){
 			sunsoft5_write(d, j, i + j);
 		}
 		ppu_program(d, 0x0000, ppu_banksize * mul);
-	}*/
-	for(local i = start; i < end; i += 1){
-		sunsoft5_write(d, 4, i);
-		ppu_program(d, 0x1000, ppu_banksize);
 	}
 }

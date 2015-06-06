@@ -14,6 +14,7 @@
 #include "script_dump.h"
 #include "flash_device.h"
 #include "script_program.h"
+#include "crc32.h"
 
 #ifdef _UNICODE
   #define PUTS _putws
@@ -249,13 +250,15 @@ static void vram_scan(int c, wgChar **v, const struct reader_driver *r)
 	r->control.close(h);
 }
 
-#include "crc32.h"
 static void crc32_dump(const wgChar *name, const wgChar *str, struct memory *m)
 {
-	const long banksize = STRTOUL(str, NULL, 0x10);
+	long banksize = STRTOUL(str, NULL, 0x10);
 	if(banksize < 0x400 || (banksize & 0xff) != 0){
 		PUTS(wgT("banksize requires over 0x400"));
 		return;
+	}
+	if(banksize > m->size){
+		banksize = m->size;
 	}
 	int i, j;
 	PRINTF(wgT("%s 0x%x byte\n"), name, m->size);
@@ -291,7 +294,7 @@ static void usage(const wgChar *v)
 	PUTS(wgT("fF- flash program with kazzo"));
 	PUTS(wgT("r - workram read with kazzo"));
 	PUTS(wgT("w - workram write with kazzo"));
-	PUTS(wgT("V - VRAM A10 scan"));
+	PUTS(wgT("v - VRAM A10 scan with kazzo"));
 	PUTS(wgT("b - display each CRC32s by required size"));
 	if(DEBUG == 1){
 		PUTS(wgT("z - ROM dump for test"));

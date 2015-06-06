@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////
 // C++ code generated with wxFormBuilder (version Sep  8 2010)
 // http://www.wxformbuilder.org/
 //
@@ -54,7 +54,7 @@ panel_version::panel_version( wxWindow* parent, wxWindowID id, const wxPoint& po
 	
 	bSizer30->Add( m_version_title, 0, wxALL, 2 );
 	
-	m_version_copyright = new wxStaticText( this, wxID_ANY, wxT("(C) unagi development team 2010"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_version_copyright = new wxStaticText( this, wxID_ANY, wxT("(C) unagi development team 2010-2014"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_version_copyright->Wrap( -1 );
 	bSizer30->Add( m_version_copyright, 0, wxALL, 2 );
 	
